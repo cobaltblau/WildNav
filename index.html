@@ -136,24 +136,33 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
     </section>
 
     <section class="sec">
-      <h2>Display</h2>
-      <div class="slider-row" style="margin-top:0"><label>Base map</label></div>
-      <div class="seg" id="seg-base" style="margin-top:4px"></div>
-      <div id="display-toggles"></div>
-      <div id="display-sliders"></div>
+      <h2>Map</h2>
+      <div class="seg" id="seg-layer">
+        <button data-layer="score">Best spots</button>
+        <button data-layer="density">Houses</button>
+        <button data-layer="nearby">Useful places</button>
+      </div>
+      <div class="legend"><canvas id="leg" width="256" height="1"></canvas><div class="leg-labels" id="leg-labels"></div></div>
+      <div class="note" id="layer-note"></div>
     </section>
 
     <section class="sec">
-      <h2><span class="sw" style="background:var(--haz)"></span>Building density</h2>
-      <div id="haz-dens"></div>
-      <div class="legend"><canvas id="leg-h" width="256" height="1"></canvas><div class="leg-labels" id="leg-h-labels"></div></div>
+      <h2><span class="sw" style="background:var(--haz)"></span>Keep away from houses</h2>
+      <div id="haz-sliders"></div>
     </section>
 
     <section class="sec">
       <h2><span class="sw" style="background:var(--att)"></span>Good to have nearby</h2>
       <div id="att-cut"></div>
       <div id="rows-attract"></div>
-      <div class="legend"><canvas id="leg-a" width="256" height="1"></canvas><div class="leg-labels" id="leg-a-labels"></div></div>
+    </section>
+
+    <section class="sec">
+      <h2>Display</h2>
+      <div class="slider-row" style="margin-top:0"><label>Base map</label></div>
+      <div class="seg" id="seg-base" style="margin-top:4px"></div>
+      <div id="display-toggles"></div>
+      <div id="display-sliders"></div>
     </section>
 
     <section class="sec">
@@ -198,13 +207,13 @@ const MIRRORS = [
 
 const CATS = {
   buildings:  { label: 'Buildings',       icon: '🏠', color: '#d64545', group: 'hazard',  weight: 1   },
-  hunting:    { label: 'Hunting stands',  icon: '🎯', color: '#e0902f', group: 'hazard',  weight: 0.5 },
-  water:      { label: 'Water sources',   icon: '💧', color: '#22b8d6', group: 'attract', weight: 1   },
-  rivers:     { label: 'Rivers & lakes',  icon: '🌊', color: '#3f6fd8', group: 'attract', weight: 0.6 },   // offline data only, no markers
-  shelters:   { label: 'Shelters & huts', icon: '🛖', color: '#4caf6a', group: 'attract', weight: 1   },
-  campsites:  { label: 'Camp sites',      icon: '⛺', color: '#2f9e8f', group: 'attract', weight: 0.8 },
-  viewpoints: { label: 'Viewpoints',      icon: '🔭', color: '#9b7fe0', group: 'attract', weight: 0.5 },
-  firepits:   { label: 'Fire pits',       icon: '🔥', color: '#e8743a', group: 'attract', weight: 0.6 },
+  hunting:    { label: 'Hunting stands',  icon: '🎯', color: '#e0902f', group: 'hazard',  weight: 1   },
+  water:      { label: 'Water sources',   icon: '💧', color: '#22b8d6', group: 'attract', weight: 0.8 },
+  rivers:     { label: 'Rivers & lakes',  icon: '🌊', color: '#3f6fd8', group: 'attract', weight: 0.8 },   // offline data only, no markers
+  shelters:   { label: 'Shelters & huts', icon: '🛖', color: '#4caf6a', group: 'attract', weight: 0.8 },
+  campsites:  { label: 'Camp sites',      icon: '⛺', color: '#2f9e8f', group: 'attract', weight: 0   },
+  viewpoints: { label: 'Viewpoints',      icon: '🔭', color: '#9b7fe0', group: 'attract', weight: 0.2 },
+  firepits:   { label: 'Fire pits',       icon: '🔥', color: '#e8743a', group: 'attract', weight: 0.8 },
 };
 const CAT_KEYS = Object.keys(CATS);
 const HAZ = CAT_KEYS.filter(k => CATS[k].group === 'hazard');
@@ -254,8 +263,8 @@ out center qt;`;
 // ════════════════════════════════════════════════════════════════════
 // SETTINGS (persisted)
 // ════════════════════════════════════════════════════════════════════
-const DEFAULTS = { basemap: 'grey', denseKm2: 1000, showHaz: true, showAtt: true, markers: true, grey: false,
-  overpass: false, auto: true, opacity: 0.7, cellIdx: 2, cutA: 1500, densR: 300, weights: {} };
+const DEFAULTS = { basemap: 'grey', denseKm2: 1000, layer: 'score', markers: true, grey: false,
+  overpass: false, auto: true, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {} };
 CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
 const settings = (() => {
   try {
@@ -263,7 +272,9 @@ const settings = (() => {
     return { ...DEFAULTS, ...s, weights: { ...DEFAULTS.weights, ...(s.weights || {}) } };
   } catch { return JSON.parse(JSON.stringify(DEFAULTS)); }
 })();
-HAZ.forEach(k => settings.weights[k] = CATS[k].weight);   // no weight sliders for these any more
+if (!['score', 'density', 'nearby'].includes(settings.layer)) settings.layer = 'score';
+settings.weights.buildings = 1;                            // no slider: houses always count fully
+for (const k of CAT_KEYS) settings.weights[k] = Math.min(1, settings.weights[k]);   // sliders now go 0..100 %
 let saveT;
 function saveSettings() { clearTimeout(saveT); saveT = setTimeout(() => localStorage.setItem('wn:settings', JSON.stringify(settings)), 300); }
 
@@ -666,7 +677,7 @@ function boxV(src, dst, W, H, r) {
 // ════════════════════════════════════════════════════════════════════
 let R = { valid: false }, baseDirty = true, densDirty = true, rafId = 0;
 const cellSize = () => CELL_SIZES[settings.cellIdx];
-const neededReach = () => Math.max(settings.cutA, 3 * settings.densR);
+const neededReach = () => Math.max(settings.cutA, settings.cutH, 3 * settings.densR);
 
 function requestRender() { if (!rafId) rafId = requestAnimationFrame(render); }
 
@@ -780,15 +791,55 @@ function lut(stops) {
 const LUT_D = lut([[0, 60, 170, 90, 110], [0.22, 238, 200, 60, 190], [0.45, 240, 128, 40, 225], [0.7, 214, 50, 45, 245], [1, 110, 20, 25, 255]]);
 // good-to-have: solid blue (close) → transparent (far)
 const LUT_A = lut([[0, 29, 78, 216, 235], [0.5, 59, 130, 246, 130], [1, 96, 165, 250, 0]]);
+// best spots: red (avoid) → clear (ok) → green (great)
+const LUT_S = lut([[0, 190, 40, 35, 150], [0.1, 225, 110, 60, 70], [0.2, 235, 215, 140, 0], [0.4, 150, 210, 120, 90], [1, 20, 115, 55, 235]]);
 
 const imgs = {};
 function getImg(key, w, h) { let im = imgs[key]; if (!im || im.width !== w || im.height !== h) im = imgs[key] = new ImageData(w, h); return im; }
+
+// Spot score 0..1 = quietness × (0.4 + 0.6 × nearby bonus).
+//  quietness: distance to the nearest house vs. "keep at least", house density vs. "too busy above" (linear),
+//             minus a penalty within 150 m of hunting stands.
+//  nearby bonus: each useful place counts linearly from "right here" (full weight) to "worth walking up to" (0);
+//                several places add up like independent chances (1 − Π(1 − wᵢcᵢ)).
+function scorer() {
+  const f = R.fields, D = R.density, INFD = 1e9;
+  const FB = f.buildings, FH = f.hunting, wH = Math.min(1, settings.weights.hunting);
+  const cutH = settings.cutH, busy = settings.busyKm2, cutA = settings.cutA;
+  const ka = ATT.filter(c => f[c] && settings.weights[c] > 0);
+  const A = ka.map(c => f[c]), aw = ka.map(c => Math.min(1, settings.weights[c])), m = A.length;
+  return i => {
+    const dB = FB ? FB[i] : INFD;
+    let q = Math.min(1, dB / cutH);
+    if (D) q = Math.min(q, 1 - Math.min(1, Math.max(0, D[i]) / busy));
+    if (FH && wH > 0) { const dh = FH[i]; if (dh < 150) q *= 1 - wH * (1 - dh / 150); }
+    let miss = 1;
+    for (let j = 0; j < m; j++) { const d = A[j][i]; if (d < cutA) miss *= 1 - aw[j] * (1 - d / cutA); }
+    return q * (0.4 + 0.6 * (1 - miss));
+  };
+}
 
 function composite() {
   if (!R.valid) { hazLayer.clear(); attLayer.clear(); return; }
   const { W, gw, gh, pad, fields, cov } = R;
 
-  if (settings.showHaz && R.density) {
+  if (settings.layer === 'score') {
+    const img = getImg('h', gw, gh), px = img.data, score = scorer();
+    for (let y = 0; y < gh; y++) {
+      let i = (y + pad) * W + pad, o = y * gw * 4;
+      for (let x = 0; x < gw; x++, i++, o += 4) {
+        if (!cov[i]) { px[o + 3] = 0; continue; }
+        const li = Math.min(255, score(i) * 255 | 0) << 2;
+        px[o] = LUT_S[li]; px[o + 1] = LUT_S[li + 1]; px[o + 2] = LUT_S[li + 2]; px[o + 3] = LUT_S[li + 3];
+      }
+    }
+    hazLayer.update(R.bounds, img);
+    hazLayer.setOpacity(Math.min(1, settings.opacity + 0.15));
+    attLayer.clear();
+    return;
+  }
+
+  if (settings.layer === 'density' && R.density) {
     const img = getImg('h', gw, gh), px = img.data;
     const D = R.density, sc = 255 / Math.log1p(DMAX);
     for (let y = 0; y < gh; y++) {
@@ -804,7 +855,7 @@ function composite() {
   } else hazLayer.clear();
 
   const ka = ATT.filter(c => fields[c] && settings.weights[c] > 0);
-  if (settings.showAtt && ka.length) {
+  if (settings.layer === 'nearby' && ka.length) {
     const img = getImg('a', gw, gh), px = img.data;
     const A = ka.map(c => fields[c]), iw = ka.map(c => 1 / settings.weights[c]), m = A.length, sc = 255 / settings.cutA;
     for (let y = 0; y < gh; y++) {
@@ -872,6 +923,8 @@ function updateHover() {
   if (i < 0) { $('#info').innerHTML = (settings.overpass ? '<span class="muted">No data here yet. Zoom in to 13 or press “Load visible area”.</span>'
     : '<span class="muted">No offline data here. Turn on “Download other areas from OpenStreetMap” to load it.</span>'); return; }
   const reach = R.pad * R.cellMc, rows = [];
+  const s = scorer()(i), word = s < 0.1 ? 'avoid' : s < 0.3 ? 'ok' : s < 0.6 ? 'good' : 'great';
+  rows.push(`<div class="irow"><span>Spot score</span><b>${Math.round(s * 100)} % · ${word}</b></div><div class="isep"></div>`);
   for (const k of HAZ) {
     const f = R.fields[k], d = f ? f[i] : Infinity;
     rows.push(infoRow(CATS[k], d > reach ? 'over ' + fmtDist(reach) : fmtDist(d)));
@@ -911,7 +964,8 @@ function makeSlider(parent, { label, min, max, step, value, fmt, onInput }) {
   const pos = () => {
     const p = (+inp.value - min) / (max - min);
     tip.textContent = fmt(+inp.value);
-    tip.style.left = (7 + p * (inp.clientWidth - 14)) + 'px';
+    const w = inp.clientWidth, half = tip.offsetWidth / 2;   // keep the label inside the panel at both ends
+    tip.style.left = Math.max(half, Math.min(w - half, 7 + p * (w - 14))) + 'px';
   };
   inp.addEventListener('input', () => { pos(); onInput(+inp.value); });
   new ResizeObserver(pos).observe(inp);
@@ -950,23 +1004,28 @@ makeSlider($('#data-sliders'), { label: 'Treat as built-up above', min: 200, max
   }
   seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.key === settings.basemap));
 })();
-makeToggle($('#display-toggles'), 'Show building density', 'showHaz', requestRender);
-makeToggle($('#display-toggles'), 'Show useful places nearby', 'showAtt', requestRender);
 makeToggle($('#display-toggles'), 'Show point markers', 'markers', rebuildMarkers);
 makeToggle($('#display-toggles'), 'Grey base map', 'grey', v => document.body.classList.toggle('grey', v));
 document.body.classList.toggle('grey', settings.grey);
 
 makeSlider($('#display-sliders'), { label: 'Overlay opacity', min: 0.2, max: 1, step: 0.05, value: settings.opacity,
   fmt: v => Math.round(v * 100) + '%',
-  onInput: v => { settings.opacity = v; hazLayer.setOpacity(v); attLayer.setOpacity(Math.min(1, v + 0.15)); saveSettings(); } });
+  onInput: v => { settings.opacity = v; requestRender(); saveSettings(); } });
 makeSlider($('#display-sliders'), { label: 'Overlay detail', min: 0, max: 4, step: 1, value: settings.cellIdx,
   fmt: v => CELL_LABELS[v],
   onInput: v => { settings.cellIdx = v; baseDirty = true; requestRender(); saveSettings(); } });
 
 function reachChanged() { if (R.valid && R.pad < MAX_PAD && neededReach() > R.pad * R.cellMc) baseDirty = true; }
 
-// Building density
-makeSlider($('#haz-dens'), { label: 'Density smoothing', min: 100, max: 2000, step: 50, value: settings.densR, fmt: fmtDist,
+// Keep away from houses
+makeSlider($('#haz-sliders'), { label: 'Keep at least this far from a house', min: 50, max: 1000, step: 50, value: settings.cutH, fmt: fmtDist,
+  onInput: v => { settings.cutH = v; reachChanged(); requestRender(); saveSettings(); } });
+makeSlider($('#haz-sliders'), { label: 'Too busy above', min: 5, max: 500, step: 5, value: settings.busyKm2, fmt: v => v + ' houses/km²',
+  onInput: v => { settings.busyKm2 = v; requestRender(); saveSettings(); } });
+makeSlider($('#haz-sliders'), { label: 'Avoid hunting stands (within 150 m)', min: 0, max: 1, step: 0.1, value: settings.weights.hunting,
+  fmt: v => v === 0 ? 'off' : Math.round(v * 100) + '%',
+  onInput: v => { const was = settings.weights.hunting; settings.weights.hunting = v; requestRender(); saveSettings(); if ((was === 0) !== (v === 0)) rebuildMarkers(); } });
+makeSlider($('#haz-sliders'), { label: 'Density smoothing', min: 100, max: 2000, step: 50, value: settings.densR, fmt: fmtDist,
   onInput: v => { settings.densR = v; reachChanged(); densDirty = true; requestRender(); saveSettings(); } });
 
 // Good to have
@@ -982,7 +1041,7 @@ function buildCatRows() {
       row.innerHTML = `<span class="dot" style="background:${c.color}"></span><span class="name">${c.label}</span><span class="cnt" id="cnt-${k}"></span>`;
       box.appendChild(row);
       const cell = document.createElement('div'); row.appendChild(cell);
-      makeSlider(cell, { min: 0, max: 2, step: 0.1, value: settings.weights[k], fmt: v => v === 0 ? 'off' : Math.round(v * 100) + '%',
+      makeSlider(cell, { min: 0, max: 1, step: 0.1, value: settings.weights[k], fmt: v => v === 0 ? 'off' : Math.round(v * 100) + '%',
         onInput: v => {
           const wasOff = settings.weights[k] === 0;
           settings.weights[k] = v; requestRender(); saveSettings();
@@ -996,13 +1055,32 @@ buildCatRows();
 // Legends
 function drawLegend(sel, table) { const c = $(sel), ctx = c.getContext('2d'), im = ctx.createImageData(256, 1); im.data.set(table); ctx.putImageData(im, 0, 0); }
 function setLabels(sel, items) { $(sel).innerHTML = items.map(([t, s]) => `<span style="left:${t * 100}%">${s}</span>`).join(''); }
+const LAYER_NOTES = {
+  score: 'Green = quiet and close to useful places, red = too close to houses. Adjust what counts in the sections below.',
+  density: 'Houses per km², smoothed. Hunting stands are shown as markers.',
+  nearby: 'Distance to the nearest useful place, weighted by the sliders below.',
+};
 function updateLegends() {
-  drawLegend('#leg-h', LUT_D);
-  const L1 = Math.log1p(DMAX), at = v => Math.log1p(v) / L1;
-  setLabels('#leg-h-labels', [[0, '0'], [at(10), '10'], [at(100), '100'], [1, `${DMAX}+ houses/km²`]]);
-  drawLegend('#leg-a', LUT_A);
-  setLabels('#leg-a-labels', [[0, 'right here'], [0.5, fmtDist(settings.cutA / 2)], [1, fmtDist(settings.cutA)]]);
+  const l = settings.layer;
+  if (l === 'score') {
+    drawLegend('#leg', LUT_S);
+    setLabels('#leg-labels', [[0, 'avoid'], [0.2, 'ok'], [1, 'great spot']]);
+  } else if (l === 'density') {
+    drawLegend('#leg', LUT_D);
+    const L1 = Math.log1p(DMAX), at = v => Math.log1p(v) / L1;
+    setLabels('#leg-labels', [[0, '0'], [at(10), '10'], [at(100), '100'], [1, `${DMAX}+ houses/km²`]]);
+  } else {
+    drawLegend('#leg', LUT_A);
+    setLabels('#leg-labels', [[0, 'right here'], [0.5, fmtDist(settings.cutA / 2)], [1, fmtDist(settings.cutA)]]);
+  }
+  $('#layer-note').textContent = LAYER_NOTES[l];
 }
+function setLayer(l) {
+  settings.layer = l; saveSettings();
+  document.querySelectorAll('#seg-layer button').forEach(b => b.classList.toggle('on', b.dataset.layer === l));
+  updateLegends(); requestRender();
+}
+document.querySelectorAll('#seg-layer button').forEach(b => b.onclick = () => setLayer(b.dataset.layer));
 
 // Buttons
 $('#btn-load').onclick = () => {
@@ -1059,7 +1137,7 @@ map.on('moveend', () => {
 });
 window.addEventListener('resize', () => { baseDirty = true; requestRender(); });
 
-updateLegends();
+setLayer(settings.layer);
 updateStats();
 requestRender();
 offlineReady.then(() => { offlineChecked = true; autoLoad(); });
