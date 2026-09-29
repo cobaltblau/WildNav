@@ -13,6 +13,16 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
 - **Useful places** (`nearby`, blue): closeness to water, rivers & lakes, shelters/huts, camp sites,
   viewpoints, fire pits, weighted 0–100 % per category.
 
+## Layout
+- Top bar: logo (pine + tent, inline SVG `<symbol id="logo">`, also the favicon), search,
+  layer dropdown (`#layer-select`), status, Settings button.
+- Map: tool strip (`.tools`, `setTool`: `inspect` = click opens the spot card, saving happens
+  from the card; `off` = clicks ignored; add future tools here) and a legend box.
+- Side panel (`#panel`): spot card (when open), "Under the cursor" (hidden on touch devices), your spots.
+  On phones (≤720 px) it is a bottom sheet: 150 px showing the card summary, tap/swipe the
+  handle for 75 %.
+- All sliders live in the Settings sheet (`#settings`), over the panel on desktop, full screen on phones.
+
 ## Saved spots
 Clicking the map opens a spot card (`openSpot`): name, 1–5 stars, notes, score breakdown
 (`scorer(i, out)`), a compass map of what is within 2 km (`radarSVG`, from `analyseSpot` over the

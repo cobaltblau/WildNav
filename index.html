@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WildNav</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='10.2' y='23' width='2.6' height='6' fill='%237a5433'/%3E%3Cpolygon points='11.5,1.5 5.5,10 17.5,10' fill='%234caf6a'/%3E%3Cpolygon points='11.5,5.5 3.5,15.5 19.5,15.5' fill='%2343a062'/%3E%3Cpolygon points='11.5,10 1.5,23.5 21.5,23.5' fill='%233a9158'/%3E%3Cpolygon points='16,29.5 23.5,17 31,29.5' fill='%23f2c14e'/%3E%3Cpolygon points='23.5,21 20.8,29.5 26.2,29.5' fill='%2320282a'/%3E%3C/svg%3E">
 <!-- Barlow (SIL Open Font License) from jsDelivr/Fontsource instead of Google Fonts -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5/latin-400.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5/latin-500.css">
@@ -22,18 +23,22 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Barlow,system-ui,sans-serif;font-size:13px;color:var(--ink);background:var(--slate);
-  height:100vh;display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums}
+  height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums}
 button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--blaze);outline-offset:2px}
 
 /* header */
-header{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--slate);border-bottom:1px solid var(--line);position:relative;z-index:1001}
-.brand{font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;font-size:19px;letter-spacing:.01em;display:flex;align-items:center;gap:8px}
-.brand::before{content:"";width:14px;height:14px;background:var(--blaze);border-radius:2px;transform:rotate(45deg)}
-#search{display:flex;flex:0 1 320px}
+header{display:flex;align-items:center;gap:12px;padding:7px 12px;background:var(--slate);border-bottom:1px solid var(--line);position:relative;z-index:1003}
+.brand{font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;font-size:19px;letter-spacing:.01em;display:flex;align-items:center;gap:7px;flex-shrink:0}
+.logo{width:28px;height:28px;display:block}
+#search{display:flex;flex:0 1 300px;min-width:0}
+.layer-pick select{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit;font-weight:500;color:var(--ink);cursor:pointer}
+.hbtn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;font-weight:500;flex-shrink:0}
+.hbtn:hover,.hbtn[aria-expanded="true"]{border-color:var(--muted)}
+.hbtn svg{width:16px;height:16px}
 #search input{flex:1;background:var(--surface);border:1px solid var(--line);border-right:0;border-radius:6px 0 0 6px;padding:5px 9px;min-width:0}
 #search button{background:var(--surface);border:1px solid var(--line);border-radius:0 6px 6px 0;padding:0 10px;cursor:pointer;color:var(--muted)}
-#status{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+#status{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 #status.busy{color:var(--blaze)} #status.error{color:#f08a8a} #status.ok{color:#9fd4a8}
 #progress{position:absolute;left:0;right:0;bottom:-1px;height:2px;opacity:0;transition:opacity .2s}
 #progress.on{opacity:1}
@@ -44,8 +49,31 @@ header{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(
 body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) contrast(.88)}
 .field-canvas{position:absolute;left:0;top:0;pointer-events:none;image-rendering:auto}
 
-/* panel */
-.panel{width:278px;background:var(--slate);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+/* tool strip + legend on the map */
+.tools{position:absolute;left:10px;top:84px;z-index:1000;display:flex;flex-direction:column;gap:4px}
+.tools button{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--slate);color:var(--ink);
+  border:1px solid var(--line);border-radius:6px;cursor:pointer;box-shadow:0 1px 5px #0006}
+.tools button svg{width:18px;height:18px}
+.tools button:hover{border-color:var(--muted)}
+.tools button.on{border-color:var(--blaze);color:var(--blaze)}
+.tool-hint{position:absolute;left:52px;top:84px;z-index:1000;background:var(--slate);border:1px solid var(--line);border-radius:6px;
+  padding:4px 8px;font-size:12px;box-shadow:0 1px 5px #0006;pointer-events:none;opacity:0;transition:opacity .25s}
+.tool-hint.show{opacity:1}
+.legend-box{position:absolute;left:10px;bottom:22px;z-index:1000;width:220px;background:var(--slate);border:1px solid var(--line);
+  border-radius:8px;padding:7px 9px 5px;box-shadow:0 1px 5px #0006}
+.legend-box .legend{margin-top:0}
+.leg-title{font-size:11.5px;font-weight:600;margin-bottom:4px}
+
+/* side panel (desktop) / bottom sheet (phone) */
+.panel{width:300px;background:var(--slate);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.sheet-handle{display:none}
+
+/* settings sheet */
+.settings{position:absolute;top:0;right:0;bottom:0;width:330px;z-index:1002;background:var(--slate);border-left:1px solid var(--line);
+  overflow-y:auto;box-shadow:-8px 0 30px #0007}
+.settings[hidden]{display:none}
+.set-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--slate);z-index:1}
+.set-head h2{font-family:"Barlow Semi Condensed",sans-serif;font-size:17px;font-weight:700}
 .sec{padding:12px 14px 13px;border-bottom:1px solid var(--line)}
 .sec h2{font-family:"Barlow Semi Condensed",sans-serif;font-size:15px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:7px}
 .sec h2 .sw{width:10px;height:10px;border-radius:2px}
@@ -110,9 +138,9 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .spot-pin{color:var(--blaze);font-size:22px;line-height:24px;text-align:center;text-shadow:0 0 3px #000,0 0 6px #000a;cursor:pointer}
 .spot-pin.on{font-size:28px;color:#ffd97a}
 .spot-pin.temp{color:#fff;font-size:24px}
-.spot-card{position:absolute;top:10px;right:288px;width:360px;max-height:calc(100% - 20px);overflow-y:auto;z-index:1002;
-  background:var(--slate);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 30px #0009;padding:12px 14px 14px}
 .spot-card[hidden]{display:none}
+.sc-summary{font-size:12.5px;margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 10px}
+.sc-summary b{font-weight:600}
 .spot-card h3{font-family:"Barlow Semi Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
 .sc-head{display:flex;gap:8px;align-items:center}
 .sc-head input{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid var(--line);font-family:"Barlow Semi Condensed",sans-serif;font-size:18px;font-weight:700;padding:2px 0}
@@ -133,7 +161,7 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .radar text{font-family:Barlow,sans-serif}
 .near{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:2px 8px;font-size:12.5px;align-items:baseline}
 .near>span{min-width:0}
-.spot-card{overflow-x:hidden}
+.spot-card{overflow-x:hidden;flex-shrink:0}
 .near .n{color:var(--muted);font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .near b{font-weight:600;white-space:nowrap}
 .sc-date{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 6px;color-scheme:dark}
@@ -142,55 +170,88 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .spot-item:hover{background:var(--surface)}
 .spot-item .st{color:var(--blaze);font-size:11px;white-space:nowrap}
 .spot-item .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (max-width:720px){.panel{width:240px}#search{display:none}
-  .spot-card{left:8px;right:8px;width:auto;top:auto;bottom:8px;max-height:65%}}
+@media (hover:none){#hover-sec{display:none}}
+@media (max-width:720px){
+  header{gap:8px;padding:6px 8px}
+  .brand span,#status,.hbtn .lbl{display:none}
+  #search{flex:1}
+  .layer-pick select{padding:5px 4px}
+  .panel{position:absolute;left:0;right:0;bottom:0;width:auto;height:150px;z-index:1001;border-left:0;border-top:1px solid var(--line);
+    border-radius:14px 14px 0 0;box-shadow:0 -6px 24px #0007;transition:height .25s}
+  .panel.expanded{height:75%}
+  .sheet-handle{display:block;flex-shrink:0;height:22px;cursor:pointer;position:sticky;top:0;background:var(--slate);z-index:2}
+  .sheet-handle::after{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--line);margin:9px auto 0}
+  .legend-box{left:auto;right:10px;top:10px;bottom:auto;width:180px}
+  .leg-note{display:none}
+  .tools{top:84px;gap:6px}
+  .tools button{width:44px;height:44px}
+  .tools button svg{width:22px;height:22px}
+  .tool-hint{left:62px}
+  .panel{padding-bottom:env(safe-area-inset-bottom)}
+  .settings{left:0;width:auto;border-left:0}
+  .leaflet-bottom{bottom:150px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body class="grey">
 
+<!-- Logo: pine tree with a tent in front (also used as the browser tab icon) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 32 32">
+    <rect x="10.2" y="23" width="2.6" height="6" fill="#7a5433"/>
+    <polygon points="11.5,1.5 5.5,10 17.5,10" fill="#4caf6a"/>
+    <polygon points="11.5,5.5 3.5,15.5 19.5,15.5" fill="#43a062"/>
+    <polygon points="11.5,10 1.5,23.5 21.5,23.5" fill="#3a9158"/>
+    <polygon points="16,29.5 23.5,17 31,29.5" fill="#f2c14e"/>
+    <polygon points="23.5,21 20.8,29.5 26.2,29.5" fill="#20282a"/>
+    <line x1="0.5" y1="29.8" x2="31.5" y2="29.8" stroke="#93a3a0" stroke-width="1"/>
+  </symbol>
+</svg>
+
 <header>
-  <div class="brand">WildNav</div>
+  <div class="brand"><svg class="logo" role="img" aria-label="WildNav logo"><use href="#logo"/></svg><span>WildNav</span></div>
   <form id="search"><input id="q" placeholder="Go to a place…" aria-label="Search place"><button type="submit" aria-label="Search">⌕</button></form>
+  <label class="layer-pick"><select id="layer-select" aria-label="Map layer">
+    <option value="score">Best spots</option><option value="density">Houses</option><option value="nearby">Useful places</option>
+  </select></label>
   <div id="status">Ready</div>
+  <button class="hbtn" id="btn-settings" aria-expanded="false" aria-controls="settings" title="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+    <span class="lbl">Settings</span></button>
   <div id="progress"><div id="progress-fill"></div></div>
 </header>
 
 <div class="wrap">
   <div id="map"></div>
-  <div id="spot-card" class="spot-card" hidden aria-label="Spot details"></div>
 
-  <aside class="panel">
-    <section class="sec">
-      <h2>Map data</h2>
-      <div class="stats" id="stats" style="margin-top:0"></div>
-      <div class="note">Regions with offline data load instantly at any zoom.</div>
-      <div id="data-toggles"></div>
-      <div id="overpass-opts">
-        <div id="data-sliders"></div>
-        <div class="btns">
-          <button class="btn primary" id="btn-load">Load visible area</button>
-          <button class="btn icon" id="btn-clear" title="Delete downloaded data" aria-label="Delete downloaded data">🗑</button>
-        </div>
-        <div class="note">Outside the offline regions, data is downloaded from the Overpass API (slow, shared service) automatically from zoom 13 and stays cached in the browser. Cells above the built-up threshold are counted instead of downloaded; the threshold applies to areas loaded from now on.</div>
-      </div>
+  <div class="tools" role="toolbar" aria-label="What a click on the map does">
+    <button data-tool="inspect" title="Look at spots: click the map to see what a spot is like, and save it from there" aria-label="Look at spots">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></button>
+    <button data-tool="off" title="Click off: clicks on the map do nothing (just move and zoom)" aria-label="Clicks off">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></button>
+  </div>
+  <div class="tool-hint" id="tool-hint" role="status"></div>
+
+  <div class="legend-box" id="legend-box">
+    <div class="leg-title" id="leg-title"></div>
+    <div class="legend"><canvas id="leg" width="256" height="1"></canvas><div class="leg-labels" id="leg-labels"></div></div>
+    <div class="note leg-note" id="layer-note" style="margin-top:2px"></div>
+  </div>
+
+  <aside class="panel" id="panel">
+    <div class="sheet-handle" id="sheet-handle" role="button" tabindex="0" aria-label="Show more or less"></div>
+    <section class="sec spot-card" id="spot-card" hidden aria-label="Spot details"></section>
+
+    <section class="sec" id="hover-sec">
+      <h2>Under the cursor</h2>
+      <div class="info" id="info"><span class="muted">Move the cursor over the map, or click it to look at a spot.</span></div>
     </section>
 
     <section class="sec">
-      <h2>Map</h2>
-      <div class="seg" id="seg-layer">
-        <button data-layer="score">Best spots</button>
-        <button data-layer="density">Houses</button>
-        <button data-layer="nearby">Useful places</button>
-      </div>
-      <div class="legend"><canvas id="leg" width="256" height="1"></canvas><div class="leg-labels" id="leg-labels"></div></div>
-      <div class="note" id="layer-note"></div>
-    </section>
-
-    <section class="sec">
-      <h2><span style="color:var(--blaze)">★</span>My spots</h2>
+      <h2><span style="color:var(--blaze)">★</span>Your spots</h2>
       <div class="spot-list" id="spot-list"></div>
-      <div class="note">Click anywhere on the map to look at a spot and save it. Spots are stored in this browser only: export a backup now and then.</div>
+      <div class="note">Click the map to look at a spot, then press “Save spot”. Spots are stored in this browser only: export a backup now and then.</div>
       <div class="btns">
         <button class="btn" id="btn-gpx" title="For Garmin, Komoot, OsmAnd …">Export GPX</button>
         <button class="btn" id="btn-backup" title="All spots with notes, as a JSON file">Backup</button>
@@ -198,6 +259,16 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
       </div>
       <input type="file" id="spot-file" accept=".gpx,.json,application/json,application/gpx+xml" hidden>
     </section>
+
+    <div class="spacer"></div>
+    <div class="foot">
+      <span>Wild camping is not allowed everywhere — check local rules and respect private land.</span>
+      <span>Map data © <a href="https://www.openstreetmap.org/copyright" style="color:inherit">OpenStreetMap contributors</a>, available under the <a href="https://opendatacommons.org/licenses/odbl/" style="color:inherit">ODbL</a></span>
+    </div>
+  </aside>
+
+  <div class="settings" id="settings" hidden role="dialog" aria-label="Settings">
+    <div class="set-head"><h2>Settings</h2><button class="sc-x" id="settings-close" title="Close" aria-label="Close settings">×</button></div>
 
     <section class="sec">
       <h2><span class="sw" style="background:var(--haz)"></span>Keep away from houses</h2>
@@ -219,17 +290,21 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
     </section>
 
     <section class="sec">
-      <h2>Under the cursor</h2>
-      <div class="info" id="info"><span class="muted">Move the cursor over the map.</span></div>
+      <h2>Map data</h2>
+      <div class="stats" id="stats" style="margin-top:0"></div>
+      <div class="note">Regions with offline data load instantly at any zoom.</div>
+      <div id="data-toggles"></div>
+      <div id="overpass-opts">
+        <div id="data-sliders"></div>
+        <div class="btns">
+          <button class="btn primary" id="btn-load">Load visible area</button>
+          <button class="btn icon" id="btn-clear" title="Delete downloaded data" aria-label="Delete downloaded data">🗑</button>
+        </div>
+        <div class="note">Outside the offline regions, data is downloaded from the Overpass API (slow, shared service) automatically from zoom 13 and stays cached in the browser. Cells above the built-up threshold are counted instead of downloaded; the threshold applies to areas loaded from now on.</div>
+      </div>
+      <div class="note" id="perf"></div>
     </section>
-
-    <div class="spacer"></div>
-    <div class="foot">
-      <span>Wild camping is not allowed everywhere — check local rules and respect private land.</span>
-      <span id="perf"></span>
-      <span>Map data © <a href="https://www.openstreetmap.org/copyright" style="color:inherit">OpenStreetMap contributors</a>, available under the <a href="https://opendatacommons.org/licenses/odbl/" style="color:inherit">ODbL</a></span>
-    </div>
-  </aside>
+  </div>
 </div>
 
 <script>
@@ -946,7 +1021,7 @@ const LUT_D = lut([[0, 60, 170, 90, 110], [0.22, 238, 200, 60, 190], [0.45, 240,
 // good-to-have: solid blue (close) → transparent (far)
 const LUT_A = lut([[0, 29, 78, 216, 235], [0.5, 59, 130, 246, 130], [1, 96, 165, 250, 0]]);
 // best spots: red (avoid) → clear (ok) → green (great)
-const LUT_S = lut([[0, 190, 40, 35, 150], [0.1, 225, 110, 60, 70], [0.2, 235, 215, 140, 0], [0.4, 150, 210, 120, 90], [1, 20, 115, 55, 235]]);
+const LUT_S = lut([[0, 176, 84, 70, 80], [0.1, 196, 130, 104, 36], [0.2, 235, 215, 140, 0], [0.4, 150, 210, 120, 90], [1, 20, 115, 55, 235]]);
 
 const imgs = {};
 function getImg(key, w, h) { let im = imgs[key]; if (!im || im.width !== w || im.height !== h) im = imgs[key] = new ImageData(w, h); return im; }
@@ -1276,20 +1351,34 @@ function radarSVG(a, sun) {
 }
 
 function openSpot(s) {
-  cur = s; card.hidden = false;
+  cur = s; card.hidden = false; cardScore = null;
+  $('#hover-sec').hidden = true; panel.scrollTop = 0;
   offlineReady.then(() => {                      // offline list first, else it might ask Overpass
     ensureTiles(tilesAround(s), settings.overpass);
     ensureLand(tilesAround(s));                  // tiles that are already loaded (the others follow via dataChanged)
   });
   renderCard(); drawSpotPins();
 }
-function closeSpot() { cur = null; card.hidden = true; drawSpotPins(); }
+function closeSpot() { cur = null; card.hidden = true; $('#hover-sec').hidden = false; setSheet(false); drawSpotPins(); }
+
+// One line at the top of the card: score · terrain · protection · nearest house (visible in the collapsed phone sheet)
+let cardScore = null;
+function updateCardSummary() {
+  const el = $('#sc-summary'); if (!el) return;
+  const parts = [];
+  if (cardScore !== null) parts.push(`<b style="color:${cardScore < 0.1 ? '#f08a8a' : cardScore < 0.3 ? 'var(--blaze)' : '#9fd4a8'}">${Math.round(cardScore * 100)} % · ${scoreWord(cardScore)}</b>`);
+  const lc = landAt(cur.lat, cur.lon); if (lc >= 0) parts.push(`${LAND[lc][1]} ${esc(LAND[lc][0])}`);
+  const pa = protAt(cur.lat, cur.lon); if (pa) parts.push(`${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}`);
+  const a = cardAnalysis; if (a && a.house) parts.push(`🏠 ${fmtDist(a.house.d)} ${dirName(a.house.b)}`);
+  el.innerHTML = parts.map(p => `<span>${p}</span>`).join('') || '<span class="muted">Loading…</span>';
+}
 
 function renderCard() {
   const s = cur, saved = !!s.id;
   card.innerHTML = `
     <div class="sc-head"><input id="sc-name" value="${esc(s.name || '')}" placeholder="${saved ? 'Unnamed spot' : 'Name this spot'}" aria-label="Spot name">
       <button class="sc-x" id="sc-close" title="Close" aria-label="Close">×</button></div>
+    <div class="sc-summary" id="sc-summary"></div>
     <div class="sc-sub">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.created ? ' · saved ' + new Date(s.created).toLocaleDateString() : ''}</div>
     <div class="sc-stars" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" class="${n <= (s.rating || 0) ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
     <textarea id="sc-note" placeholder="Notes: access, ground, where to pitch, water, who you met…">${esc(s.note || '')}</textarea>
@@ -1358,12 +1447,13 @@ function updateCardAround() {
     row('🌇', 'Sunset', sun.set ? `${fmtTime(sun.set.t)} ${dirName(sun.set.b)}` : '—', `golden hour from ${fmtTime(sun.goldenEve)}, dark ${fmtTime(sun.dusk)}`),
     row(sun.moonPhase < 0.5 ? '🌔' : '🌖', 'Moon', Math.round(sun.moonFrac * 100) + ' % lit', `${moonName(sun.moonPhase)} · rises ${fmtTime(sun.moonRise)}, sets ${fmtTime(sun.moonSet)}`),
   ].join('');
+  updateCardSummary();
 }
 
 function updateCardScore() {
   if (!cur || card.hidden) return;
   const el = $('#sc-score'), i = gridIndex(L.latLng(cur.lat, cur.lon));
-  if (i < 0) { el.innerHTML = '<span class="muted" style="font-size:12px">Move the map so the spot is in view (with data) to see its score.</span>'; return; }
+  if (i < 0) { el.innerHTML = '<span class="muted" style="font-size:12px">Move the map so the spot is in view (with data) to see its score.</span>'; cardScore = null; updateCardSummary(); return; }
   const p = { cats: [] }, pct = v => Math.round(v * 100) + ' %';
   let s = scorer()(i, p);
   // The map grid is coarse (tens of metres); for the card use the exact terrain and protection at the spot.
@@ -1386,10 +1476,19 @@ function updateCardScore() {
       <span>🌲</span><span>Quiet<span class="n">${lim.length ? esc(lim.join(' · ')) : 'no houses or hunting stands too close'}</span></span><b>${pct(p.quiet)}</b>
       <span>✚</span><span>Useful places bonus<span class="n">${p.cats.length ? p.cats.sort((u, v) => v.c - u.c).map(c => `${CATS[c.k].icon} ${fmtDist(c.d)}`).join('  ') : `nothing within ${fmtDist(settings.cutA)}`}</span></span><b>${pct(p.bonus)}</b>
     </div>`;
+  cardScore = s; updateCardSummary();
 }
 
-map.on('click', e => openSpot({ lat: e.latlng.lat, lon: e.latlng.lng }));
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && cur && !card.hidden) closeSpot(); });
+// What a click on the map does depends on the tool strip
+map.on('click', e => {
+  if (tool === 'off') return;
+  openSpot({ lat: e.latlng.lat, lon: e.latlng.lng });
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('#settings').hidden) showSettings(false);
+  else if (cur && !card.hidden) closeSpot();
+});
 
 // Export / import
 function download(name, text, type) {
@@ -1554,10 +1653,11 @@ buildCatRows();
 function drawLegend(sel, table) { const c = $(sel), ctx = c.getContext('2d'), im = ctx.createImageData(256, 1); im.data.set(table); ctx.putImageData(im, 0, 0); }
 function setLabels(sel, items) { $(sel).innerHTML = items.map(([t, s]) => `<span style="left:${t * 100}%">${s}</span>`).join(''); }
 const LAYER_NOTES = {
-  score: 'Green = quiet and close to useful places, red = too close to houses. Adjust what counts in the sections below.',
+  score: 'Green = quiet, dry, allowed and close to useful places. Adjust what counts under Settings.',
   density: 'Houses per km², smoothed. Hunting stands are shown as markers.',
-  nearby: 'Distance to the nearest useful place, weighted by the sliders below.',
+  nearby: 'Distance to the nearest useful place, weighted under Settings.',
 };
+const LAYER_TITLES = { score: 'Best spots', density: 'Houses per km²', nearby: 'Useful places nearby' };
 function updateLegends() {
   const l = settings.layer;
   if (l === 'score') {
@@ -1572,13 +1672,50 @@ function updateLegends() {
     setLabels('#leg-labels', [[0, 'right here'], [0.5, fmtDist(settings.cutA / 2)], [1, fmtDist(settings.cutA)]]);
   }
   $('#layer-note').textContent = LAYER_NOTES[l];
+  $('#leg-title').textContent = LAYER_TITLES[l];
 }
 function setLayer(l) {
   settings.layer = l; saveSettings();
-  document.querySelectorAll('#seg-layer button').forEach(b => b.classList.toggle('on', b.dataset.layer === l));
+  $('#layer-select').value = l;
   updateLegends(); requestRender();
 }
-document.querySelectorAll('#seg-layer button').forEach(b => b.onclick = () => setLayer(b.dataset.layer));
+$('#layer-select').onchange = e => setLayer(e.target.value);
+
+// Settings sheet (opens over the side panel; full screen on phones)
+function showSettings(open) {
+  $('#settings').hidden = !open;
+  $('#btn-settings').setAttribute('aria-expanded', open);
+  if (open) $('#settings-close').focus();
+}
+$('#btn-settings').onclick = () => showSettings($('#settings').hidden);
+$('#settings-close').onclick = () => { showSettings(false); $('#btn-settings').focus(); };
+
+// Phone bottom sheet: tap the handle (or swipe it) to show more or less
+const panel = $('#panel');
+const setSheet = open => panel.classList.toggle('expanded', open);
+$('#sheet-handle').onclick = () => setSheet(!panel.classList.contains('expanded'));
+$('#sheet-handle').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSheet(!panel.classList.contains('expanded')); } };
+let sheetY = null;
+$('#sheet-handle').addEventListener('touchstart', e => { sheetY = e.touches[0].clientY; }, { passive: true });
+$('#sheet-handle').addEventListener('touchend', e => {
+  if (sheetY === null) return;
+  const dy = e.changedTouches[0].clientY - sheetY; sheetY = null;
+  if (Math.abs(dy) > 25) setSheet(dy < 0);
+});
+
+// Tool strip: decides what a click on the map does
+let tool = 'inspect';
+const TOOL_HINTS = { inspect: 'Click the map to look at a spot', off: 'Map clicks are off' };
+let hintT;
+function setTool(t, quiet) {
+  tool = t;
+  document.querySelectorAll('.tools button').forEach(b => { b.classList.toggle('on', b.dataset.tool === t); b.setAttribute('aria-pressed', b.dataset.tool === t); });
+  $('#map').style.cursor = t === 'off' ? '' : 'crosshair';
+  if (quiet) return;
+  const h = $('#tool-hint'); h.textContent = TOOL_HINTS[t]; h.classList.add('show');
+  clearTimeout(hintT); hintT = setTimeout(() => h.classList.remove('show'), 1800);
+}
+document.querySelectorAll('.tools button').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 
 // Buttons
 $('#btn-load').onclick = () => {
@@ -1637,6 +1774,7 @@ map.on('moveend', () => {
 window.addEventListener('resize', () => { baseDirty = true; requestRender(); });
 
 setLayer(settings.layer);
+setTool('inspect', true);
 updateStats();
 requestRender();
 offlineReady.then(() => { offlineChecked = true; autoLoad(); });
