@@ -1,8 +1,8 @@
 # WildNav
 
 A web map for planning wild camping and bikepacking trips. It shows building density
-(places to stay away from) and how close useful places are: water, shelters, camp sites,
-viewpoints and fire pits.
+(places to stay away from) and how close useful places are: water sources, rivers and lakes,
+shelters, camp sites, viewpoints and fire pits.
 
 Live version: https://cobaltblau.github.io/WildNav/
 

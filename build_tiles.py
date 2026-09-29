@@ -9,8 +9,10 @@ Writes (default out_dir = "data"):
     data/index.json              list of covered tiles (merged with an existing index)
     data/12/<x>/<y>.bin          building centres, Float32 pairs (tile-relative Mercator x, y)
     data/12/<x>/<y>.json         points of interest [{c, lat, lon, n}]
+    data/12/<x>/<y>.water.bin    rivers, streams and lake shores sampled every ~40 m,
+                                 Uint16 pairs (tile-relative Mercator x, y scaled to 0..65535)
 
-Same tile scheme and categories as wildnav-map.html (zoom-12 tiles).
+Same tile scheme and categories as index.html (zoom-12 tiles).
 Requires: pip install "osmium>=4"
 """
 import json
@@ -25,11 +27,18 @@ import osmium
 
 TILE_Z = 12
 N = 1 << TILE_Z
-KEYS = ('building', 'amenity', 'tourism', 'natural', 'leisure', 'man_made')
+KEYS = ('building', 'amenity', 'tourism', 'natural', 'leisure', 'man_made', 'waterway')
+
+# Surface water. Ditches/drains are left out: very common, often dry or polluted.
+WATERWAYS = {'river', 'stream', 'canal'}
+AREA_WATER_EXCLUDE = {'wastewater', 'basin', 'reflecting_pool', 'fountain', 'moat'}
+WATER_STEP_M = 40            # sample spacing along lines and shores
+WATER_GRID = 300             # de-duplicate samples on a 300x300 grid per tile (~20 m)
+Q = 65535                    # Uint16 scale for water points
 
 
 def classify(t):
-    """Mirror of classify() in wildnav-map.html."""
+    """Mirror of classify() in index.html."""
     b, am, tour = t.get('building'), t.get('amenity'), t.get('tourism')
     nat, leis, mm = t.get('natural'), t.get('leisure'), t.get('man_made')
     if am == 'hunting_stand':
@@ -47,6 +56,19 @@ def classify(t):
     if b and b not in ('no', 'ruins'):
         return 'buildings'
     return None
+
+
+def is_water_line(t):
+    return (t.get('waterway') in WATERWAYS and t.get('intermittent') != 'yes'
+            and t.get('tunnel') not in ('yes', 'culvert'))
+
+
+def is_water_area(t):
+    if t.get('intermittent') == 'yes':
+        return False
+    if t.get('waterway') == 'riverbank':
+        return True
+    return t.get('natural') == 'water' and t.get('water') not in AREA_WATER_EXCLUDE
 
 
 def merc(lat, lon):
@@ -92,6 +114,26 @@ def inside(rings, lon, lat):
     return hit
 
 
+def sample_line(nodes, water):
+    """Add points every WATER_STEP_M along a node list to water[(tx, ty)] (a set of grid cells)."""
+    ll = [(n.location.lat, n.location.lon) for n in nodes if n.location.valid()]
+    if not ll:
+        return
+    pts = [merc(lat, lon) for lat, lon in ll]
+    # metres per zoom-12 tile unit at this latitude (constant enough within one feature)
+    m_per_unit = 40075016.686 * math.cos(math.radians(ll[0][0])) / N
+    step = WATER_STEP_M / m_per_unit
+    add = lambda x, y: water[(int(x), int(y))].add((int((x - int(x)) * WATER_GRID), int((y - int(y)) * WATER_GRID)))
+    add(*pts[0])
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        d = math.hypot(x1 - x0, y1 - y0)
+        k = int(d / step)
+        for i in range(1, k + 1):
+            f = i / (k + 1)
+            add(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)
+        add(x1, y1)
+
+
 def main():
     if len(sys.argv) < 3:
         print(__doc__)
@@ -102,20 +144,37 @@ def main():
 
     buildings = defaultdict(lambda: array('f'))
     pois = defaultdict(list)
-    t0, count = time.time(), 0
+    water = defaultdict(set)                       # (tx, ty) -> {(gx, gy)} on a WATER_GRID grid
+    t0, count, n_lines, n_areas = time.time(), 0, 0, 0
 
     # with_locations() stores node positions so way centres can be computed;
+    # with_areas() assembles lake polygons (also multipolygon relations) for water areas only;
     # the key filter drops everything that is not relevant before it reaches Python.
+    water_tags = (('natural', 'water'), ('waterway', 'riverbank'))
     fp = (osmium.FileProcessor(pbf)
           .with_locations()
-          .with_filter(osmium.filter.KeyFilter(*KEYS)))
+          .with_areas(osmium.filter.TagFilter(*water_tags))
+          .with_filter(osmium.filter.KeyFilter(*KEYS))
+          .with_filter(osmium.filter.TagFilter(*water_tags).enable_for(osmium.osm.AREA)))
 
     for o in fp:
+        if o.is_area():
+            if is_water_area(o.tags):
+                for outer in o.outer_rings():
+                    sample_line(outer, water)
+                    for inner in o.inner_rings(outer):
+                        sample_line(inner, water)
+                n_areas += 1
+            continue
         if o.is_node():
             if not o.location.valid():
                 continue
             lat, lon = o.location.lat, o.location.lon
         elif o.is_way():
+            if is_water_line(o.tags):
+                sample_line(o.nodes, water)
+                n_lines += 1
+                continue
             s_lat = s_lon = 0.0
             k = 0
             for nd in o.nodes:
@@ -165,7 +224,7 @@ def main():
                 continue
             covered.append((tx, ty))
 
-    total_b = 0
+    total_b = total_w = total_p = 0
     for tx, ty in covered:
         d = os.path.join(out, str(TILE_Z), str(tx))
         os.makedirs(d, exist_ok=True)
@@ -173,8 +232,17 @@ def main():
         total_b += len(arr) // 2
         with open(os.path.join(d, f'{ty}.bin'), 'wb') as f:
             arr.tofile(f)
+        p = pois.get((tx, ty), [])
+        total_p += len(p)
         with open(os.path.join(d, f'{ty}.json'), 'w', encoding='utf-8') as f:
-            json.dump(pois.get((tx, ty), []), f, ensure_ascii=False)
+            json.dump(p, f, ensure_ascii=False)
+        wa = array('H')
+        for gx, gy in sorted(water.get((tx, ty), ())):
+            wa.append(round((gx + 0.5) / WATER_GRID * Q))
+            wa.append(round((gy + 0.5) / WATER_GRID * Q))
+        total_w += len(wa) // 2
+        with open(os.path.join(d, f'{ty}.water.bin'), 'wb') as f:
+            wa.tofile(f)
 
     # Merge with an existing index so several regions can share one data folder.
     idx_path = os.path.join(out, 'index.json')
@@ -187,7 +255,8 @@ def main():
         json.dump({'z': TILE_Z, 'built': time.strftime('%Y-%m-%d'), 'tiles': sorted(tiles)}, f)
 
     print(f'Done in {time.time() - t0:.0f} s: {len(covered)} tiles, {total_b:,} buildings, '
-          f'{sum(len(v) for v in pois.values()):,} points of interest -> {out}/')
+          f'{total_p:,} points of interest, {total_w:,} water points '
+          f'({n_lines:,} rivers/streams, {n_areas:,} lakes) -> {out}/')
 
 
 if __name__ == '__main__':

@@ -18,6 +18,10 @@ developer: explain changes briefly and ask before anything destructive.
   - `data/index.json` – `{z: 12, built, tiles: ["x/y", ...]}`
   - `data/12/<x>/<y>.bin` – Float32 pairs, tile-relative Mercator x,y (0..1) of building centres
   - `data/12/<x>/<y>.json` – points of interest `[{c, lat, lon, n}]`
+  - `data/12/<x>/<y>.water.bin` – rivers/streams/canals and lake shores sampled every ~40 m,
+    Uint16 pairs (tile-relative Mercator x,y × 65535). Category `rivers` ("Rivers & lakes") in the
+    app; offline data only (no Overpass equivalent), no markers. Ditches, drains, intermittent
+    and culverted water are excluded on purpose.
 - `raw/` – Geofabrik downloads. Large – never commit (in `.gitignore`).
 - `start.bat` – starts a local server on port 8765 and opens the app.
 

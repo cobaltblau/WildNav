@@ -200,6 +200,7 @@ const CATS = {
   buildings:  { label: 'Buildings',       icon: '🏠', color: '#d64545', group: 'hazard',  weight: 1   },
   hunting:    { label: 'Hunting stands',  icon: '🎯', color: '#e0902f', group: 'hazard',  weight: 0.5 },
   water:      { label: 'Water sources',   icon: '💧', color: '#22b8d6', group: 'attract', weight: 1   },
+  rivers:     { label: 'Rivers & lakes',  icon: '🌊', color: '#3f6fd8', group: 'attract', weight: 0.6 },   // offline data only, no markers
   shelters:   { label: 'Shelters & huts', icon: '🛖', color: '#4caf6a', group: 'attract', weight: 1   },
   campsites:  { label: 'Camp sites',      icon: '⛺', color: '#2f9e8f', group: 'attract', weight: 0.8 },
   viewpoints: { label: 'Viewpoints',      icon: '🔭', color: '#9b7fe0', group: 'attract', weight: 0.5 },
@@ -421,7 +422,9 @@ function pumpOffline() {
     Promise.all([
       fetch(base + '.bin').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }),
       fetch(base + '.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
-    ]).then(([buf, pois]) => { busy.delete(k); addTile(x, y, { b: new Float32Array(buf), pois }); })
+      // rivers & lake shores (Uint16 pairs, 0..65535 across the tile); missing in older data folders
+      fetch(base + '.water.bin').then(r => r.ok ? r.arrayBuffer() : new ArrayBuffer(0)).catch(() => new ArrayBuffer(0)),
+    ]).then(([buf, pois, wbuf]) => { busy.delete(k); addTile(x, y, { b: new Float32Array(buf), pois, w: new Uint16Array(wbuf) }); })
       .catch(err => { console.warn('offline tile failed, using Overpass', k, err); busy.delete(k); offline.delete(k); autoLoad(); })
       .finally(() => { offActive--; jobsDone++; pumpOffline(); });
   }
@@ -568,7 +571,7 @@ function addTile(x, y, rec) {
   if (tiles.has(k)) return;
   const pois = rec.pois.map(p => ({ ...p, mx: mercX(p.lon), my: mercY(p.lat) }));
   const dense = rec.dense || [];
-  tiles.set(k, { x, y, b: rec.b, pois, dense });
+  tiles.set(k, { x, y, b: rec.b, w: rec.w || null, pois, dense });
   catCount.buildings += rec.b.length / 2 + dense.reduce((s, d) => s + d[1], 0);
   denseCells += dense.length;
   pois.forEach(p => catCount[p.c]++);
@@ -731,6 +734,14 @@ function computeBase() {
         pts += n;
       }
     }
+    if (t.w && t.w.length) {
+      const sw = seeds.rivers || (seeds.rivers = new Uint8Array(N)), kw = k / 65535;
+      for (let i = 0; i < t.w.length; i += 2) {
+        const fx = ox + t.w[i] * kw, fy = oy + t.w[i + 1] * kw;
+        if (fx < 0 || fy < 0 || fx >= W || fy >= H) continue;
+        sw[(fy | 0) * W + (fx | 0)] = 1;
+      }
+    }
     for (const p of t.pois) {
       const fx = (p.mx * worldPx - gx0) / S, fy = (p.my * worldPx - gy0) / S;
       if (fx < 0 || fy < 0 || fx >= W || fy >= H) continue;
@@ -874,7 +885,14 @@ function updateHover() {
     const d = hdist(hoverLL.lat, hoverLL.lng, p.lat, p.lon);
     if (!best[p.c] || d < best[p.c].d) best[p.c] = { d, n: p.n };
   }
-  for (const k of ATT) { const b = best[k]; rows.push(infoRow(CATS[k], b ? fmtDist(b.d) : '—', b && b.n)); }
+  for (const k of ATT) {
+    if (k === 'rivers') {                      // lines and shores: read the distance field directly
+      const f = R.fields.rivers, d = f ? f[i] : Infinity;
+      rows.push(infoRow(CATS[k], !isFinite(d) || d > 1e9 ? '—' : d > reach ? 'over ' + fmtDist(reach) : fmtDist(d)));
+      continue;
+    }
+    const b = best[k]; rows.push(infoRow(CATS[k], b ? fmtDist(b.d) : '—', b && b.n));
+  }
   $('#info').innerHTML = rows.join('');
 }
 
