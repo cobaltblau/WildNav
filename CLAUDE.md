@@ -4,16 +4,24 @@ A static web map for planning wild camping and bikepacking trips. The owner is n
 developer: explain changes briefly and ask before anything destructive.
 
 ## What it shows
-- **Building density** (red/green): houses per km² (the old "distance to houses" mode was removed).
-  Hunting stands are shown as markers only.
-- **Good to have nearby** (blue): closeness to water, shelters/huts, camp sites, viewpoints, fire pits.
+One overlay at a time, chosen with the "Map" switch (`settings.layer`):
+- **Best spots** (default, `score`): one score per cell, see `scorer()` in index.html.
+  quietness (distance to nearest house vs. "keep at least", density vs. "too busy above",
+  penalty within 150 m of hunting stands) × (0.4 + 0.6 × bonus for useful places nearby).
+  Red = avoid, clear = ok, green = great spot.
+- **Houses** (`density`): houses per km².
+- **Useful places** (`nearby`, blue): closeness to water, rivers & lakes, shelters/huts, camp sites,
+  viewpoints, fire pits, weighted 0–100 % per category.
 
 ## Files
 - `index.html` – the whole app in one file (Leaflet 1.9.4 from CDN + plain JavaScript, no build step).
 - `build_tiles.py` – converts a Geofabrik `.osm.pbf` + `.poly` into offline tiles in `data/`.
   Needs `pip install "osmium>=4"`.
-  Usage: `python build_tiles.py raw/<region>.osm.pbf raw/<region>.poly [data]`
-  (merges into an existing `data/index.json`, so several regions can share one folder).
+  Usage: `python build_tiles.py raw/a.osm.pbf raw/a.poly [raw/b.osm.pbf raw/b.poly ...] [data]`
+  Build neighbouring regions **in one run**: each extract is read in its own process (parallel),
+  and tiles on shared borders are filled from both extracts with duplicates removed by OSM id.
+  Tiles inside no region are left out. Merges into an existing `data/index.json`.
+  Current data: Niedersachsen + Nordrhein-Westfalen (Geofabrik 2026-09-28).
 - `data/` – generated offline tiles (committed, served as static files):
   - `data/index.json` – `{z: 12, built, tiles: ["x/y", ...]}`
   - `data/12/<x>/<y>.bin` – Float32 pairs, tile-relative Mercator x,y (0..1) of building centres
