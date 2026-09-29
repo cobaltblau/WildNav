@@ -416,10 +416,12 @@ let denseCells = 0;
 // Offline data: tiles listed in data/index.json are read from static files instead of Overpass.
 // They hold every building as a point, so they need no built-up shortcut and no IndexedDB cache.
 const offline = new Set();
-const offQueue = []; let offActive = 0;
-const offlineReady = fetch(OFFLINE_URL + 'index.json')
+const offQueue = []; let offActive = 0, offVersion = '';
+// 'no-cache' asks the server every time (cheap if unchanged), so newly built regions show up at once;
+// tile URLs carry the build stamp, so a rebuild never mixes old cached tiles with the new index.
+const offlineReady = fetch(OFFLINE_URL + 'index.json', { cache: 'no-cache' })
   .then(r => r.ok ? r.json() : { tiles: [] })
-  .then(j => { if (j.z === TILE_Z) j.tiles.forEach(k => offline.add(k)); })
+  .then(j => { if (j.z === TILE_Z) { j.tiles.forEach(k => offline.add(k)); offVersion = '?v=' + encodeURIComponent(j.built || ''); } })
   .catch(() => {});                           // no offline data (or opened as a file): Overpass only
 
 function enqueueOffline(x, y) {
@@ -431,10 +433,10 @@ function pumpOffline() {
     const { x, y } = offQueue.shift(), k = tkey(x, y), base = `${OFFLINE_URL}${TILE_Z}/${k}`;
     offActive++;
     Promise.all([
-      fetch(base + '.bin').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }),
-      fetch(base + '.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
+      fetch(base + '.bin' + offVersion).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }),
+      fetch(base + '.json' + offVersion).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
       // rivers & lake shores (Uint16 pairs, 0..65535 across the tile); missing in older data folders
-      fetch(base + '.water.bin').then(r => r.ok ? r.arrayBuffer() : new ArrayBuffer(0)).catch(() => new ArrayBuffer(0)),
+      fetch(base + '.water.bin' + offVersion).then(r => r.ok ? r.arrayBuffer() : new ArrayBuffer(0)).catch(() => new ArrayBuffer(0)),
     ]).then(([buf, pois, wbuf]) => { busy.delete(k); addTile(x, y, { b: new Float32Array(buf), pois, w: new Uint16Array(wbuf) }); })
       .catch(err => { console.warn('offline tile failed, using Overpass', k, err); busy.delete(k); offline.delete(k); autoLoad(); })
       .finally(() => { offActive--; jobsDone++; pumpOffline(); });

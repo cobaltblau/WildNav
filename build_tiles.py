@@ -335,7 +335,8 @@ def main():
             tiles.update(json.load(f).get('tiles', []))
     tiles.update(f'{x}/{y}' for x, y in covered)
     with open(idx_path, 'w', encoding='utf-8') as f:
-        json.dump({'z': TILE_Z, 'built': time.strftime('%Y-%m-%d'), 'tiles': sorted(tiles)}, f)
+        # 'built' doubles as the cache-busting version for tile URLs in the app, so include the time
+        json.dump({'z': TILE_Z, 'built': time.strftime('%Y-%m-%dT%H:%M'), 'tiles': sorted(tiles)}, f)
 
     print(f'Done in {time.time() - t0:.0f} s: {len(covered)} tiles, {total_b:,} buildings, '
           f'{total_p:,} points of interest, {total_w:,} water points '
