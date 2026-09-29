@@ -178,8 +178,9 @@ that's already loaded, plus one small library.
 - **Search:** also search saved spots.
 
 ### Suggested order
-1. Saved spots + detail card (distances, directions, sun) → most useful right away, no new data.
-2. Protected-area warning → needs a small addition to `build_tiles.py`.
+1. ✅ Saved spots + detail card (distances, directions, sun), plus terrain at the spot.
+2. ✅ Protected-area warning (nature reserves 0 %, landscape protection 50 %). Note: landscape
+   protection areas are only patchily mapped in OSM (106 vs. 4,641 nature reserves in NS + NRW).
 3. PWA offline + mobile layout → makes it usable on the road.
 4. Hidden score (section 1) and DEM-based terrain factors.
 5. GPX route planning and weather.

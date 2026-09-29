@@ -667,6 +667,20 @@ const LAND_FACTOR = { 0: 1, 1: 0.7, 2: 1, 3: 0.3, 4: 1, 5: 0.8, 6: 1, 7: 1, 8: 1
   11: 0.1, 12: 0, 13: 0, 14: 0.3, 15: 0, 16: 0 };
 const LAND_WHY = { 1: 'crops — field edges are better', 3: 'private or fenced', 9: 'busy, often lit', 5: 'hard to pitch',
   10: 'hard to pitch', 11: 'unsafe', 12: 'built-up or farmyard', 13: 'cemetery', 14: 'wet ground', 15: 'military area — no entry', 16: "you can't camp in water" };
+// Protected areas: the terrain PNG's green/blue channels hold an area id, data/protected.json
+// its name and level (2 = nature reserve / national park: no camping, 1 = landscape protection /
+// Natura 2000: check local rules). PROT_FACTOR multiplies the spot score.
+const PROT_FACTOR = [1, 0.5, 0];
+let protList = null, protLoading = false;
+function loadProtList() {
+  if (protList || protLoading) return;
+  protLoading = true;
+  fetch(`${OFFLINE_URL}protected.json${offVersion}`).then(r => r.ok ? r.json() : [])
+    .then(a => { protList = Array.isArray(a) ? a : []; }, () => { protList = []; })
+    .finally(() => dataChanged());
+}
+const protInfo = id => id && protList ? protList[id - 1] || null : null;
+
 async function decodeLand(blob) {
   if (!blob || !blob.size) return null;
   const bmp = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
@@ -674,21 +688,34 @@ async function decodeLand(blob) {
     : Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height });
   const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(bmp, 0, 0);
-  const d = ctx.getImageData(0, 0, bmp.width, bmp.height).data, out = new Uint8Array(bmp.width * bmp.height);
-  for (let i = 0; i < out.length; i++) out[i] = d[i * 4];      // grey value = class code
+  const d = ctx.getImageData(0, 0, bmp.width, bmp.height).data, n = bmp.width * bmp.height;
   bmp.close();
-  return out.length === LAND_PX * LAND_PX ? out : null;
+  if (n !== LAND_PX * LAND_PX) return null;
+  const land = new Uint8Array(n); let prot = null;
+  for (let i = 0, j = 0; i < n; i++, j += 4) {
+    land[i] = d[j];                                               // red = terrain class
+    const id = d[j + 1] << 8 | d[j + 2];                          // green/blue = protected-area id
+    if (id) (prot || (prot = new Uint16Array(n)))[i] = id;
+  }
+  return { land, prot };
 }
 function ensureLand(list) {
   for (const { x, y } of list) {
     const k = tkey(x, y), t = tiles.get(k);
     if (!t || t.land !== undefined || landBusy.has(k) || !offline.has(k)) continue;
-    landBusy.add(k);
+    landBusy.add(k); loadProtList();
     fetch(`${OFFLINE_URL}${TILE_Z}/${k}.land.png${offVersion}`)
       .then(r => r.ok ? r.blob() : null).then(decodeLand)
-      .then(l => { t.land = l; }, () => { t.land = null; })
+      .then(r => { t.land = r ? r.land : null; t.prot = r ? r.prot : null; }, () => { t.land = null; })
       .finally(() => { landBusy.delete(k); dataChanged(); });
   }
+}
+// protected area at a point: { n, l, t } or null
+function protAt(lat, lon) {
+  const gx = mercX(lon) * N12, gy = mercY(lat) * N12, t = tiles.get(tkey(Math.floor(gx), Math.floor(gy)));
+  if (!t || !t.prot) return null;
+  const px = Math.min(LAND_PX - 1, (gx - Math.floor(gx)) * LAND_PX | 0), py = Math.min(LAND_PX - 1, (gy - Math.floor(gy)) * LAND_PX | 0);
+  return protInfo(t.prot[py * LAND_PX + px]);
 }
 // terrain class at a point, or -1 if its terrain map is not loaded
 function landAt(lat, lon) {
@@ -821,7 +848,7 @@ function computeBase() {
     ? [...tiles.values()].filter(inRange)
     : (() => { const a = []; for (let x = tx0; x <= tx1; x++) for (let y = ty0; y <= ty1; y++) { const t = tiles.get(tkey(x, y)); if (t) a.push(t); } return a; })();
 
-  let pts = 0, land = null;
+  let pts = 0, land = null, prot = null;
   for (const t of list) {
     const ox = (t.x * span - gx0) / S, oy = (t.y * span - gy0) / S;
     // coverage mask: only loaded areas get coloured
@@ -834,6 +861,17 @@ function computeBase() {
       for (let yy = cy0; yy < cy1; yy++) {
         const py = Math.min(LAND_PX - 1, Math.max(0, (yy + 0.5 - oy) * sc | 0)) * LAND_PX, row = yy * W;
         for (let xx = cx0; xx < cx1; xx++) land[row + xx] = L[py + Math.min(LAND_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0))];
+      }
+      if (t.prot && protList) {                // protection level of each cell centre
+        prot = prot || new Uint8Array(N);
+        const P = t.prot;
+        for (let yy = cy0; yy < cy1; yy++) {
+          const py = Math.min(LAND_PX - 1, Math.max(0, (yy + 0.5 - oy) * sc | 0)) * LAND_PX, row = yy * W;
+          for (let xx = cx0; xx < cx1; xx++) {
+            const id = P[py + Math.min(LAND_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0))];
+            if (id) { const a = protList[id - 1]; if (a) prot[row + xx] = a.l; }
+          }
+        }
       }
     }
 
@@ -879,7 +917,7 @@ function computeBase() {
   const fields = {};
   for (const c of CAT_KEYS) fields[c] = seeds[c] ? edtField(seeds[c], W, H, cellM) : null;
   const nw = map.unproject([x0, y0], z), se = map.unproject([x0 + gw * S, y0 + gh * S], z);
-  R = { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts, land,
+  R = { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts, land, prot,
         bounds: L.latLngBounds(nw, se) };
 }
 
@@ -918,11 +956,12 @@ function getImg(key, w, h) { let im = imgs[key]; if (!im || im.width !== w || im
 //             minus a penalty within 150 m of hunting stands.
 //  nearby bonus: each useful place counts linearly from "right here" (full weight) to "worth walking up to" (0);
 //                several places add up like independent chances (1 − Π(1 − wᵢcᵢ)).
-//  × terrain factor (LAND_FACTOR: water, built-up, military 0 … forest, meadow 1);
+//  × terrain factor (LAND_FACTOR: water, built-up, military 0 … forest, meadow 1)
+//  × protected-area factor (PROT_FACTOR: nature reserve / national park 0, landscape protection 0.5);
 //  terrain maps are loaded from zoom LAND_MIN_Z, before that the factor is 1.
 function scorer() {
   const f = R.fields, D = R.density, INFD = 1e9;
-  const FB = f.buildings, FH = f.hunting, wH = Math.min(1, settings.weights.hunting), LD = R.land;
+  const FB = f.buildings, FH = f.hunting, wH = Math.min(1, settings.weights.hunting), LD = R.land, PR = R.prot;
   const cutH = settings.cutH, busy = settings.busyKm2, cutA = settings.cutA;
   const ka = ATT.filter(c => f[c] && settings.weights[c] > 0);
   const A = ka.map(c => f[c]), aw = ka.map(c => Math.min(1, settings.weights[c])), m = A.length;
@@ -938,10 +977,10 @@ function scorer() {
       const d = A[j][i];
       if (d < cutA) { miss *= 1 - aw[j] * (1 - d / cutA); if (out) out.cats.push({ k: ka[j], d, c: aw[j] * (1 - d / cutA) }); }
     }
-    const lc = LD ? LD[i] : 0, qLand = LAND_FACTOR[lc];
-    const s = qLand * q * (0.4 + 0.6 * (1 - miss));
+    const lc = LD ? LD[i] : 0, qLand = LAND_FACTOR[lc], pl = PR ? PR[i] : 0, qProt = PROT_FACTOR[pl];
+    const s = qProt * qLand * q * (0.4 + 0.6 * (1 - miss));
     if (out) Object.assign(out, { dB, qDist, dens, qDens, qHunt, dh: FH ? FH[i] : INFD, quiet: q, bonus: 1 - miss, score: s,
-      land: LD ? lc : -1, qLand });
+      land: LD ? lc : -1, qLand, prot: pl, qProt });
     return s;
   };
 }
@@ -1058,6 +1097,9 @@ function updateHover() {
   const s = scorer()(i);
   rows.push(`<div class="irow"><span>Spot score</span><b>${Math.round(s * 100)} % · ${scoreWord(s)}</b></div>`);
   if (R.land) rows.push(`<div class="irow"><span class="muted">Terrain</span><b>${LAND[R.land[i]][1]} ${LAND[R.land[i]][0]}</b></div>`);
+  const pa = R.prot && R.prot[i] ? protAt(hoverLL.lat, hoverLL.lng) : null;
+  if (pa) rows.push(`<div class="irow"><span class="muted">${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}</span><b>${pa.l === 2 ? 'no camping' : 'check rules'}</b></div>`
+    + (pa.n ? `<div class="isub">${esc(pa.n)}</div>` : ''));
   rows.push('<div class="isep"></div>');
   for (const k of HAZ) {
     const f = R.fields[k], d = f ? f[i] : Infinity;
@@ -1300,6 +1342,10 @@ function updateCardAround() {
     mix ? 'within 100 m: ' + mix.filter(m => m.f >= 0.05).map(m => `${LAND[m.c][0].toLowerCase()} ${Math.round(m.f * 100)} %`).join(', ') : ''));
   else if (offline.has(tkey(Math.floor(mercX(cur.lon) * N12), Math.floor(mercY(cur.lat) * N12))))
     rows.push(row('⏳', '<span class="muted">Loading terrain…</span>', ''));
+  const pa = protAt(cur.lat, cur.lon);
+  if (pa) rows.push(row(pa.l === 2 ? '⛔' : '⚠', `<b>${esc(pa.t)}</b>`, pa.l === 2 ? 'no camping' : 'check rules',
+    (pa.n ? pa.n + ' · ' : '') + (pa.l === 2 ? 'camping is not allowed here; often you must also stay on the paths'
+      : 'camping is often restricted; check the local rules')));
   rows.push(row('🏠', 'Nearest house', a.house ? `${fmtDist(a.house.d)} ${dirName(a.house.b)}` : `over ${fmtDist(RADAR_MAX)}`,
     a.houses500 ? `${a.houses500} building${a.houses500 > 1 ? 's' : ''} within 500 m` : 'none within 500 m'));
   if (a.hunting.length) rows.push(row('🎯', 'Hunting stands', `${fmtDist(a.hunting[0].d)} ${dirName(a.hunting[0].b)}`,
@@ -1318,7 +1364,13 @@ function updateCardScore() {
   if (!cur || card.hidden) return;
   const el = $('#sc-score'), i = gridIndex(L.latLng(cur.lat, cur.lon));
   if (i < 0) { el.innerHTML = '<span class="muted" style="font-size:12px">Move the map so the spot is in view (with data) to see its score.</span>'; return; }
-  const p = { cats: [] }, s = scorer()(i, p), pct = v => Math.round(v * 100) + ' %';
+  const p = { cats: [] }, pct = v => Math.round(v * 100) + ' %';
+  let s = scorer()(i, p);
+  // The map grid is coarse (tens of metres); for the card use the exact terrain and protection at the spot.
+  const exLand = landAt(cur.lat, cur.lon), exProt = protAt(cur.lat, cur.lon);
+  if (exLand >= 0) { p.land = exLand; p.qLand = LAND_FACTOR[exLand]; }
+  if (exLand >= 0 || exProt) { p.prot = exProt ? exProt.l : 0; p.qProt = PROT_FACTOR[p.prot]; }
+  s = p.qProt * p.qLand * p.quiet * (0.4 + 0.6 * p.bonus);
   const bar = (v, col) => `<div class="sc-bar"><i style="width:${Math.max(2, v * 100)}%;background:${col}"></i></div>`;
   const lim = [];
   // the score uses the render grid; for the text prefer the exact distance from the card's analysis
@@ -1329,6 +1381,7 @@ function updateCardScore() {
   el.innerHTML = `<div class="near">
       <span></span><span><b style="font-size:15px">${pct(s)} · ${scoreWord(s)}</b></span><b></b></div>${bar(s, s < 0.1 ? '#d64545' : s < 0.3 ? '#e0b24e' : '#4caf6a')}
     <div class="near">
+      ${p.prot ? `<span>${p.prot === 2 ? '⛔' : '⚠'}</span><span>Protected area<span class="n">${p.prot === 2 ? 'nature reserve or national park: no camping' : 'landscape protection / Natura 2000: check the rules'}</span></span><b>${pct(p.qProt)}</b>` : ''}
       ${p.land >= 0 ? `<span>${LAND[p.land][1]}</span><span>Terrain: ${esc(LAND[p.land][0])}<span class="n">${p.qLand < 1 ? LAND_WHY[p.land] || '' : 'fine for a tent'}</span></span><b>${pct(p.qLand)}</b>` : ''}
       <span>🌲</span><span>Quiet<span class="n">${lim.length ? esc(lim.join(' · ')) : 'no houses or hunting stands too close'}</span></span><b>${pct(p.quiet)}</b>
       <span>✚</span><span>Useful places bonus<span class="n">${p.cats.length ? p.cats.sort((u, v) => v.c - u.c).map(c => `${CATS[c.k].icon} ${fmtDist(c.d)}`).join('  ') : `nothing within ${fmtDist(settings.cutA)}`}</span></span><b>${pct(p.bonus)}</b>

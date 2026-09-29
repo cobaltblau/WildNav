@@ -14,8 +14,10 @@ Writes (default out_dir = "data"):
     data/12/<x>/<y>.json         points of interest [{c, lat, lon, n}]
     data/12/<x>/<y>.water.bin    rivers, streams and lake shores sampled every ~40 m,
                                  Uint16 pairs (tile-relative Mercator x, y scaled to 0..65535)
-    data/12/<x>/<y>.land.png     terrain map, 512x512 greyscale PNG (~12 m per pixel);
-                                 each pixel value is a LAND class code (0 = not mapped)
+    data/12/<x>/<y>.land.png     terrain map, 512x512 RGB PNG (~12 m per pixel):
+                                 R = LAND class code (0 = not mapped),
+                                 G/B = protected-area id, high/low byte (0 = none)
+    data/protected.json          protected areas [{n: name, l: level, t: type}], id = index + 1
 
 Same tile scheme and categories as index.html (zoom-12 tiles).
 Requires: pip install "osmium>=4" pillow
@@ -35,8 +37,12 @@ from PIL import Image, ImageDraw
 
 TILE_Z = 12
 N = 1 << TILE_Z
-KEYS = ('building', 'amenity', 'tourism', 'natural', 'leisure', 'man_made', 'waterway', 'landuse')
-AREA_KEYS = ('landuse', 'natural', 'waterway', 'leisure')   # areas that can become terrain
+KEYS = ('building', 'amenity', 'tourism', 'natural', 'leisure', 'man_made', 'waterway', 'landuse', 'boundary')
+AREA_KEYS = ('landuse', 'natural', 'waterway', 'leisure', 'boundary')   # areas: terrain + protected areas
+
+# Protected areas: 2 = strict (nature reserve, national park: no camping),
+# 1 = restricted (landscape protection, Natura 2000: check local rules). Mirror of PROT in index.html.
+PROT_STRICT, PROT_LIMITED = 2, 1
 
 # Terrain classes. The code is also the drawing order: higher codes are drawn on top
 # (a pond inside a forest ends up as water). Mirror of LAND in index.html.
@@ -110,6 +116,32 @@ def land_class(t):
     return 0
 
 
+def prot_level(t):
+    """Protection level of an area (German tagging conventions), or 0."""
+    b = t.get('boundary')
+    if t.get('leisure') == 'nature_reserve' or b == 'national_park':
+        return PROT_STRICT
+    if b != 'protected_area':
+        return 0
+    title = ' '.join(t.get(k, '') for k in ('protection_title', 'designation', 'name')).lower()
+    pc = t.get('protect_class', '')
+    if 'naturpark' in title or 'nature park' in title or 'wasserschutz' in title:
+        return 0                                   # huge, no camping ban as such
+    if pc in ('1', '1a', '1b', '2', '3', '4') or 'naturschutzgebiet' in title or 'nationalpark' in title:
+        return PROT_STRICT
+    if pc in ('5', '97') or any(w in title for w in ('landschaftsschutz', 'ffh', 'natura 2000', 'vogelschutz')):
+        return PROT_LIMITED
+    return 0
+
+
+def prot_title(t, level):
+    title = t.get('protection_title') or t.get('designation') or ''
+    if not title:
+        title = ('National park' if t.get('boundary') == 'national_park' else 'Nature reserve') if level == PROT_STRICT \
+            else 'Protected area'
+    return title.replace('_', ' ')[:60]
+
+
 def ring_merc(nodes):
     """Node list -> flat array('d') of Mercator x, y in zoom-12 tile units."""
     a = array('d')
@@ -117,6 +149,15 @@ def ring_merc(nodes):
         if n.location.valid():
             a.extend(merc(n.location.lat, n.location.lon))
     return a
+
+
+def tiles_of(ring):
+    xs, ys = ring[0::2], ring[1::2]
+    return [(tx, ty) for tx in range(int(min(xs)), int(max(xs)) + 1) for ty in range(int(min(ys)), int(max(ys)) + 1)]
+
+
+def touches_covered(ring, owner):
+    return len(ring) >= 6 and any(t in owner for t in tiles_of(ring))
 
 
 def add_land(land, owner, ri, key, code, rings, is_line=False):
@@ -133,30 +174,51 @@ def add_land(land, owner, ri, key, code, rings, is_line=False):
                 land[(tx, ty)].append((code, is_line, rings, key if own == -1 else None))
 
 
+def paint(imgs, tx, ty, rings, values):
+    """Fill a polygon (outer ring + holes, in tile units) with values[k] on imgs[k]."""
+    pts = [[((a[i] - tx) * LAND_PX, (a[i + 1] - ty) * LAND_PX) for i in range(0, len(a), 2)] for a in rings]
+    if len(pts) == 1:
+        for img, v in zip(imgs, values):
+            ImageDraw.Draw(img).polygon(pts[0], fill=v)
+        return
+    # holes: draw through a mask limited to the bounding box
+    x0 = max(0, int(min(p[0] for p in pts[0]))); x1 = min(LAND_PX, int(max(p[0] for p in pts[0])) + 1)
+    y0 = max(0, int(min(p[1] for p in pts[0]))); y1 = min(LAND_PX, int(max(p[1] for p in pts[0])) + 1)
+    if x1 <= x0 or y1 <= y0:
+        return
+    mask = Image.new('1', (x1 - x0, y1 - y0), 0)
+    md = ImageDraw.Draw(mask)
+    for j, p in enumerate(pts):
+        md.polygon([(x - x0, y - y0) for x, y in p], fill=0 if j else 1)
+    for img, v in zip(imgs, values):
+        img.paste(v, (x0, y0, x1, y1), mask)
+
+
 def draw_land(tx, ty, items):
-    """Rasterise terrain items of one tile into a PNG (bytes)."""
+    """Rasterise terrain items of one tile (greyscale, returned as raw bytes)."""
     img = Image.new('L', (LAND_PX, LAND_PX), 0)
-    draw = ImageDraw.Draw(img)
-    px = lambda a: [((a[i] - tx) * LAND_PX, (a[i + 1] - ty) * LAND_PX) for i in range(0, len(a), 2)]
     for code, is_line, rings, _ in sorted(items, key=lambda it: it[0]):
         if is_line:
-            draw.line(px(rings[0]), fill=code, width=1)
-        elif len(rings) == 1:
-            draw.polygon(px(rings[0]), fill=code)
-        else:                                          # holes: draw through a mask limited to the bounding box
-            pts = [px(r) for r in rings]
-            x0 = max(0, int(min(p[0] for p in pts[0]))); x1 = min(LAND_PX, int(max(p[0] for p in pts[0])) + 1)
-            y0 = max(0, int(min(p[1] for p in pts[0]))); y1 = min(LAND_PX, int(max(p[1] for p in pts[0])) + 1)
-            if x1 <= x0 or y1 <= y0:
-                continue
-            mask = Image.new('1', (x1 - x0, y1 - y0), 0)
-            md = ImageDraw.Draw(mask)
-            for j, p in enumerate(pts):
-                md.polygon([(x - x0, y - y0) for x, y in p], fill=0 if j else 1)
-            img.paste(code, (x0, y0, x1, y1), mask)
+            a = rings[0]
+            ImageDraw.Draw(img).line([((a[i] - tx) * LAND_PX, (a[i + 1] - ty) * LAND_PX) for i in range(0, len(a), 2)],
+                                     fill=code, width=1)
+        else:
+            paint([img], tx, ty, rings, [code])
+    return img.tobytes()
+
+
+def finish_tile(job):
+    """Second step (runs on all cores): add protected-area ids to a terrain map and encode
+    it as PNG. R = terrain class, G/B = protected-area id (high/low byte, 0 = none)."""
+    tx, ty, land_raw, prot_items = job
+    size = (LAND_PX, LAND_PX)
+    land = Image.frombytes('L', size, land_raw) if land_raw else Image.new('L', size, 0)
+    hi, lo = Image.new('L', size, 0), Image.new('L', size, 0)
+    for pid, rings in prot_items:                  # already sorted: weaker/larger areas first
+        paint([hi, lo], tx, ty, rings, [pid >> 8, pid & 255])
     buf = io.BytesIO()
-    img.save(buf, format='PNG', optimize=True)
-    return buf.getvalue()
+    Image.merge('RGB', (land, hi, lo)).save(buf, format='PNG', optimize=True)
+    return (tx, ty), buf.getvalue()
 
 
 def is_water_line(t):
@@ -290,6 +352,7 @@ def read_region(ri, pbf, owner):
     print(f'Reading {name}', flush=True)
 
     land = defaultdict(list)                       # (tx, ty) -> [(code, is_line, rings, id or None)]
+    prot = {}                                      # protected areas touching covered tiles
 
     # with_locations() stores node positions so way centres can be computed;
     # with_areas() assembles polygons (also multipolygon relations) for terrain and lakes;
@@ -309,11 +372,15 @@ def read_region(ri, pbf, owner):
                     for inner in o.inner_rings(outer):
                         sample_line(inner, water)
                 n_areas += 1
-            code = land_class(tags)
-            if code:
-                for outer in o.outer_rings():
-                    rings = [ring_merc(outer)] + [ring_merc(inner) for inner in o.inner_rings(outer)]
-                    add_land(land, owner, ri, ('a', o.id), code, rings)
+            code, level = land_class(tags), prot_level(tags)
+            if code or level:
+                polys = [[ring_merc(outer)] + [ring_merc(inner) for inner in o.inner_rings(outer)]
+                         for outer in o.outer_rings()]
+                for rings in polys:
+                    if code:
+                        add_land(land, owner, ri, ('a', o.id), code, rings)
+                if level and any(touches_covered(r[0], owner) for r in polys):
+                    prot[('p', o.id)] = {'l': level, 'n': tags.get('name', ''), 't': prot_title(tags, level), 'polys': polys}
             continue
         if o.is_node():
             if not o.location.valid():
@@ -369,16 +436,17 @@ def read_region(ri, pbf, owner):
 
     # Terrain: owned tiles are drawn here (in this worker); shared border tiles are returned
     # as raw items, because the parent has to merge them with the other extract first.
-    land_png, land_shared = {}, {}
+    land_raw, land_shared = {}, {}
     for t, items in land.items():
         if owner.get(t) == ri:
-            land_png[t] = draw_land(t[0], t[1], items)
+            land_raw[t] = draw_land(t[0], t[1], items)
         else:
             land_shared[t] = items
-    print(f'{name}: finished in {time.time() - t0:.0f} s (terrain for {len(land_png)} tiles)', flush=True)
+    print(f'{name}: finished in {time.time() - t0:.0f} s (terrain for {len(land_raw)} tiles, '
+          f'{len(prot)} protected areas)', flush=True)
     return {'b': dict(b), 'p': dict(p), 'sb': dict(sb), 'sp': dict(sp),
             'w': {t: s for t, s in water.items() if t in owner}, 'lines': n_lines, 'areas': n_areas,
-            'land': land_png, 'land_shared': land_shared}
+            'land': land_raw, 'land_shared': land_shared, 'prot': prot}
 
 
 def main():
@@ -402,9 +470,11 @@ def main():
     water = defaultdict(set)
     seen = defaultdict(set)                        # shared tiles: ids already taken from an earlier extract
     n_lines = n_areas = 0
-    land_png, land_shared, land_seen = {}, defaultdict(list), defaultdict(set)
+    land_raw, land_shared, land_seen, prot = {}, defaultdict(list), defaultdict(set), {}
     for res in results:                            # in region order, so the output does not depend on timing
-        land_png.update(res['land'])
+        land_raw.update(res['land'])
+        for k, a in res['prot'].items():
+            prot.setdefault(k, a)
         for t, items in res['land_shared'].items():
             for it in items:
                 if it[3] not in land_seen[t]:
@@ -431,8 +501,31 @@ def main():
 
     covered = sorted(owner)
     for t, items in land_shared.items():
-        land_png[t] = draw_land(t[0], t[1], items)
-    empty_png = draw_land(0, 0, [])
+        land_raw[t] = draw_land(t[0], t[1], items)
+
+    # Protected areas get ids 1..n (stable order); the list with names goes to protected.json.
+    keys = sorted(prot)
+    if len(keys) > 65535:
+        sys.exit('Too many protected areas for 16-bit ids')
+    prot_tiles = defaultdict(list)
+    for pid, k in enumerate(keys, 1):
+        a = prot[k]
+        for rings in a['polys']:
+            xs, ys = rings[0][0::2], rings[0][1::2]
+            size = (max(xs) - min(xs)) * (max(ys) - min(ys))
+            for t in tiles_of(rings[0]):
+                if t in owner:
+                    prot_tiles[t].append(((a['l'], -size), pid, rings))
+    with open(os.path.join(out, 'protected.json'), 'w', encoding='utf-8') as f:
+        json.dump([{'n': prot[k]['n'], 'l': prot[k]['l'], 't': prot[k]['t']} for k in keys], f, ensure_ascii=False)
+
+    # Second step on all cores: add protected-area ids to the terrain maps and encode the PNGs.
+    t1 = time.time()
+    jobs = [(t[0], t[1], land_raw.get(t), [(pid, r) for _, pid, r in sorted(prot_tiles.get(t, []), key=lambda it: it[0])])
+            for t in covered]
+    with ProcessPoolExecutor(max_workers=os.cpu_count() or 1) as ex:
+        land_png = dict(ex.map(finish_tile, jobs, chunksize=8))
+    print(f'Terrain + protected areas encoded in {time.time() - t1:.0f} s ({len(keys)} protected areas)', flush=True)
 
     total_b = total_w = total_p = land_bytes = 0
     for tx, ty in covered:
@@ -453,7 +546,7 @@ def main():
         total_w += len(wa) // 2
         with open(os.path.join(d, f'{ty}.water.bin'), 'wb') as f:
             wa.tofile(f)
-        png = land_png.get((tx, ty), empty_png)
+        png = land_png[(tx, ty)]
         land_bytes += len(png)
         with open(os.path.join(d, f'{ty}.land.png'), 'wb') as f:
             f.write(png)

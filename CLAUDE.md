@@ -36,8 +36,13 @@ Clicking the map opens a spot card (`openSpot`): name, 1–5 stars, notes, score
     Uint16 pairs (tile-relative Mercator x,y × 65535). Category `rivers` ("Rivers & lakes") in the
     app; offline data only (no Overpass equivalent), no markers. Ditches, drains, intermittent
     and culverted water are excluded on purpose.
-  - `data/12/<x>/<y>.land.png` – terrain map, 512×512 greyscale PNG (~12 m/pixel), pixel value =
-    terrain class (`LAND` in build_tiles.py and index.html, keep in sync; code = drawing order,
+  - `data/protected.json` – protected areas `[{n: name, l: level, t: type}]`, id = index + 1.
+    Level 2 = nature reserve / national park (score × 0), 1 = landscape protection / Natura 2000
+    (score × 0.5); nature parks and water protection areas are ignored (`prot_level()`).
+    **The ids are global: always build all regions in one run**, or ids and tiles won't match.
+  - `data/12/<x>/<y>.land.png` – terrain map, 512×512 RGB PNG (~12 m/pixel). Green/blue =
+    protected-area id (high/low byte, 0 = none), added in a second build step on all cores.
+    Red = terrain class (`LAND` in build_tiles.py and index.html, keep in sync; code = drawing order,
     16 = water on top). Drawn with Pillow. The app loads these only from zoom 11 (`LAND_MIN_Z`)
     and around an open spot card (~260 KB each once decoded). The score is multiplied by
     `LAND_FACTOR` (water/built-up/cemetery/military 0, quarry 0.1, wetland/orchard/park 0.3,
