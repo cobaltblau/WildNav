@@ -34,6 +34,8 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
 - Settings → "Offline use": "Save this area" stores the data files of the visible tiles.
 - `manifest.webmanifest` + `icons/` (PNG, made from the logo shapes with Pillow; iPhone needs
   `apple-touch-icon.png`). iOS keeps storage for home-screen apps; plain Safari may clear it.
+- Status bar style must stay `black`, not `black-translucent`: iOS 26 has a bug that shifts the
+  whole page up and leaves a gap at the bottom in home-screen apps drawn under the status bar.
 
 ## Saved spots
 Clicking the map opens a spot card (`openSpot`): name, 1–5 stars, notes, score breakdown
