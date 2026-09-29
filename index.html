@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow-semi-condensed@5/latin-700.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- SunCalc (BSD-2-Clause): sunrise/sunset times and directions, moon phase -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 <style>
 :root{
   --slate:#20282a; --surface:#2a3437; --line:#3a4749;
@@ -103,7 +105,45 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 
 .leaflet-tooltip{background:var(--slate);color:var(--ink);border:1px solid var(--line);font-family:Barlow,sans-serif;font-size:12px;box-shadow:0 3px 12px #0006}
 .leaflet-tooltip-top::before{border-top-color:var(--line)}
-@media (max-width:720px){.panel{width:240px}#search{display:none}}
+/* saved spots + spot card */
+.wrap{position:relative}
+.spot-pin{color:var(--blaze);font-size:22px;line-height:24px;text-align:center;text-shadow:0 0 3px #000,0 0 6px #000a;cursor:pointer}
+.spot-pin.on{font-size:28px;color:#ffd97a}
+.spot-pin.temp{color:#fff;font-size:24px}
+.spot-card{position:absolute;top:10px;right:288px;width:360px;max-height:calc(100% - 20px);overflow-y:auto;z-index:1002;
+  background:var(--slate);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 30px #0009;padding:12px 14px 14px}
+.spot-card[hidden]{display:none}
+.spot-card h3{font-family:"Barlow Semi Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.sc-head{display:flex;gap:8px;align-items:center}
+.sc-head input{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid var(--line);font-family:"Barlow Semi Condensed",sans-serif;font-size:18px;font-weight:700;padding:2px 0}
+.sc-head input:focus{outline:0;border-bottom-color:var(--blaze)}
+.sc-x{background:none;border:0;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:0 4px}
+.sc-sub{font-size:11.5px;color:var(--muted);margin-top:4px}
+.sc-sub a{color:var(--muted)}
+.sc-stars{margin-top:6px;display:flex;gap:2px}
+.sc-stars button{background:none;border:0;font-size:19px;line-height:1;color:var(--line);cursor:pointer;padding:0 1px}
+.sc-stars button.on{color:var(--blaze)}
+.spot-card textarea{width:100%;min-height:74px;margin-top:8px;resize:vertical;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;line-height:1.4}
+.spot-card textarea:focus{outline:0;border-color:var(--blaze)}
+.sc-btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.sc-btns .btn{flex:1 1 auto;padding:6px 8px}
+.sc-bar{height:6px;border-radius:3px;background:var(--surface);overflow:hidden;margin:3px 0 6px}
+.sc-bar i{display:block;height:100%}
+.radar{display:block;width:100%;height:auto;margin:0 auto}
+.radar text{font-family:Barlow,sans-serif}
+.near{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:2px 8px;font-size:12.5px;align-items:baseline}
+.near>span{min-width:0}
+.spot-card{overflow-x:hidden}
+.near .n{color:var(--muted);font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.near b{font-weight:600;white-space:nowrap}
+.sc-date{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 6px;color-scheme:dark}
+.spot-list{margin-top:4px}
+.spot-item{display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:6px;cursor:pointer;font-size:12.5px}
+.spot-item:hover{background:var(--surface)}
+.spot-item .st{color:var(--blaze);font-size:11px;white-space:nowrap}
+.spot-item .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:720px){.panel{width:240px}#search{display:none}
+  .spot-card{left:8px;right:8px;width:auto;top:auto;bottom:8px;max-height:65%}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -118,6 +158,7 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 
 <div class="wrap">
   <div id="map"></div>
+  <div id="spot-card" class="spot-card" hidden aria-label="Spot details"></div>
 
   <aside class="panel">
     <section class="sec">
@@ -144,6 +185,18 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
       </div>
       <div class="legend"><canvas id="leg" width="256" height="1"></canvas><div class="leg-labels" id="leg-labels"></div></div>
       <div class="note" id="layer-note"></div>
+    </section>
+
+    <section class="sec">
+      <h2><span style="color:var(--blaze)">★</span>My spots</h2>
+      <div class="spot-list" id="spot-list"></div>
+      <div class="note">Click anywhere on the map to look at a spot and save it. Spots are stored in this browser only: export a backup now and then.</div>
+      <div class="btns">
+        <button class="btn" id="btn-gpx" title="For Garmin, Komoot, OsmAnd …">Export GPX</button>
+        <button class="btn" id="btn-backup" title="All spots with notes, as a JSON file">Backup</button>
+        <button class="btn" id="btn-import" title="Import a GPX or backup file">Import</button>
+      </div>
+      <input type="file" id="spot-file" accept=".gpx,.json,application/json,application/gpx+xml" hidden>
     </section>
 
     <section class="sec">
@@ -588,8 +641,61 @@ function addTile(x, y, rec) {
   catCount.buildings += rec.b.length / 2 + dense.reduce((s, d) => s + d[1], 0);
   denseCells += dense.length;
   pois.forEach(p => catCount[p.c]++);
+  dataChanged();
+}
+function dataChanged() {                         // batch redraws while many tiles arrive
   clearTimeout(dataT);
-  dataT = setTimeout(() => { baseDirty = true; requestRender(); rebuildMarkers(); updateStats(); }, 150);
+  dataT = setTimeout(() => {
+    baseDirty = true; requestRender(); rebuildMarkers(); updateStats();
+    if (map.getZoom() >= LAND_MIN_Z) ensureLand(tilesInBounds(map.getBounds().pad(0.15), 400) || []);
+    if (cur) { ensureLand(tilesAround(cur)); updateCardAround(); }
+  }, 150);
+}
+
+// Terrain maps (data/12/x/y.land.png, 512×512, pixel value = LAND code). About 260 KB each once
+// decoded, so they are only loaded from zoom LAND_MIN_Z on and around an open spot card.
+const LAND_MIN_Z = 11, LAND_PX = 512, LAND_WATER = 16, landBusy = new Set();
+const LAND = {
+  0: ['Not mapped', '·'], 1: ['Field / farmland', '🌾'], 2: ['Meadow / grassland', '🌱'],
+  3: ['Orchard, vineyard or allotments', '🍎'], 4: ['Heath', '🌿'], 5: ['Scrub', '🌿'], 6: ['Forest (broadleaved)', '🌳'],
+  7: ['Forest (conifer)', '🌲'], 8: ['Forest (mixed)', '🌳'], 9: ['Park or sports ground', '⚽'], 10: ['Sand, beach or rock', '🏖'],
+  11: ['Quarry, landfill or construction', '🚧'], 12: ['Built-up area / farmyard', '🏘'], 13: ['Cemetery', '✝'],
+  14: ['Wetland / marsh', '💦'], 15: ['Military area', '⚠'], 16: ['Water', '🌊'],
+};
+// How suitable each terrain is for pitching a tent (multiplies the spot score).
+const LAND_FACTOR = { 0: 1, 1: 0.7, 2: 1, 3: 0.3, 4: 1, 5: 0.8, 6: 1, 7: 1, 8: 1, 9: 0.3, 10: 0.8,
+  11: 0.1, 12: 0, 13: 0, 14: 0.3, 15: 0, 16: 0 };
+const LAND_WHY = { 1: 'crops — field edges are better', 3: 'private or fenced', 9: 'busy, often lit', 5: 'hard to pitch',
+  10: 'hard to pitch', 11: 'unsafe', 12: 'built-up or farmyard', 13: 'cemetery', 14: 'wet ground', 15: 'military area — no entry', 16: "you can't camp in water" };
+async function decodeLand(blob) {
+  if (!blob || !blob.size) return null;
+  const bmp = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+  const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bmp.width, bmp.height)
+    : Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height });
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0);
+  const d = ctx.getImageData(0, 0, bmp.width, bmp.height).data, out = new Uint8Array(bmp.width * bmp.height);
+  for (let i = 0; i < out.length; i++) out[i] = d[i * 4];      // grey value = class code
+  bmp.close();
+  return out.length === LAND_PX * LAND_PX ? out : null;
+}
+function ensureLand(list) {
+  for (const { x, y } of list) {
+    const k = tkey(x, y), t = tiles.get(k);
+    if (!t || t.land !== undefined || landBusy.has(k) || !offline.has(k)) continue;
+    landBusy.add(k);
+    fetch(`${OFFLINE_URL}${TILE_Z}/${k}.land.png${offVersion}`)
+      .then(r => r.ok ? r.blob() : null).then(decodeLand)
+      .then(l => { t.land = l; }, () => { t.land = null; })
+      .finally(() => { landBusy.delete(k); dataChanged(); });
+  }
+}
+// terrain class at a point, or -1 if its terrain map is not loaded
+function landAt(lat, lon) {
+  const gx = mercX(lon) * N12, gy = mercY(lat) * N12, t = tiles.get(tkey(Math.floor(gx), Math.floor(gy)));
+  if (!t || !t.land) return -1;
+  const px = Math.min(LAND_PX - 1, (gx - Math.floor(gx)) * LAND_PX | 0), py = Math.min(LAND_PX - 1, (gy - Math.floor(gy)) * LAND_PX | 0);
+  return t.land[py * LAND_PX + px];
 }
 
 function updateStats() {
@@ -715,13 +821,21 @@ function computeBase() {
     ? [...tiles.values()].filter(inRange)
     : (() => { const a = []; for (let x = tx0; x <= tx1; x++) for (let y = ty0; y <= ty1; y++) { const t = tiles.get(tkey(x, y)); if (t) a.push(t); } return a; })();
 
-  let pts = 0;
+  let pts = 0, land = null;
   for (const t of list) {
     const ox = (t.x * span - gx0) / S, oy = (t.y * span - gy0) / S;
     // coverage mask: only loaded areas get coloured
     const cx0 = Math.max(0, Math.floor(ox)), cx1 = Math.min(W, Math.ceil(ox + k));
     const cy0 = Math.max(0, Math.floor(oy)), cy1 = Math.min(H, Math.ceil(oy + k));
     for (let yy = cy0; yy < cy1; yy++) cov.fill(1, yy * W + cx0, yy * W + cx1);
+    if (t.land) {                              // terrain class of each cell centre (nearest terrain pixel)
+      land = land || new Uint8Array(N);
+      const sc = LAND_PX / k, L = t.land;
+      for (let yy = cy0; yy < cy1; yy++) {
+        const py = Math.min(LAND_PX - 1, Math.max(0, (yy + 0.5 - oy) * sc | 0)) * LAND_PX, row = yy * W;
+        for (let xx = cx0; xx < cx1; xx++) land[row + xx] = L[py + Math.min(LAND_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0))];
+      }
+    }
 
     const b = t.b;
     if (b.length) {
@@ -765,7 +879,7 @@ function computeBase() {
   const fields = {};
   for (const c of CAT_KEYS) fields[c] = seeds[c] ? edtField(seeds[c], W, H, cellM) : null;
   const nw = map.unproject([x0, y0], z), se = map.unproject([x0 + gw * S, y0 + gh * S], z);
-  R = { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts,
+  R = { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts, land,
         bounds: L.latLngBounds(nw, se) };
 }
 
@@ -804,20 +918,31 @@ function getImg(key, w, h) { let im = imgs[key]; if (!im || im.width !== w || im
 //             minus a penalty within 150 m of hunting stands.
 //  nearby bonus: each useful place counts linearly from "right here" (full weight) to "worth walking up to" (0);
 //                several places add up like independent chances (1 − Π(1 − wᵢcᵢ)).
+//  × terrain factor (LAND_FACTOR: water, built-up, military 0 … forest, meadow 1);
+//  terrain maps are loaded from zoom LAND_MIN_Z, before that the factor is 1.
 function scorer() {
   const f = R.fields, D = R.density, INFD = 1e9;
-  const FB = f.buildings, FH = f.hunting, wH = Math.min(1, settings.weights.hunting);
+  const FB = f.buildings, FH = f.hunting, wH = Math.min(1, settings.weights.hunting), LD = R.land;
   const cutH = settings.cutH, busy = settings.busyKm2, cutA = settings.cutA;
   const ka = ATT.filter(c => f[c] && settings.weights[c] > 0);
   const A = ka.map(c => f[c]), aw = ka.map(c => Math.min(1, settings.weights[c])), m = A.length;
-  return i => {
-    const dB = FB ? FB[i] : INFD;
-    let q = Math.min(1, dB / cutH);
-    if (D) q = Math.min(q, 1 - Math.min(1, Math.max(0, D[i]) / busy));
-    if (FH && wH > 0) { const dh = FH[i]; if (dh < 150) q *= 1 - wH * (1 - dh / 150); }
+  // `out` (optional, used by the spot card) receives the parts of the score
+  return (i, out) => {
+    const dB = FB ? FB[i] : INFD, qDist = Math.min(1, dB / cutH);
+    const dens = D ? Math.max(0, D[i]) : 0, qDens = 1 - Math.min(1, dens / busy);
+    let q = Math.min(qDist, qDens), qHunt = 1;
+    if (FH && wH > 0) { const dh = FH[i]; if (dh < 150) qHunt = 1 - wH * (1 - dh / 150); }
+    q *= qHunt;
     let miss = 1;
-    for (let j = 0; j < m; j++) { const d = A[j][i]; if (d < cutA) miss *= 1 - aw[j] * (1 - d / cutA); }
-    return q * (0.4 + 0.6 * (1 - miss));
+    for (let j = 0; j < m; j++) {
+      const d = A[j][i];
+      if (d < cutA) { miss *= 1 - aw[j] * (1 - d / cutA); if (out) out.cats.push({ k: ka[j], d, c: aw[j] * (1 - d / cutA) }); }
+    }
+    const lc = LD ? LD[i] : 0, qLand = LAND_FACTOR[lc];
+    const s = qLand * q * (0.4 + 0.6 * (1 - miss));
+    if (out) Object.assign(out, { dB, qDist, dens, qDens, qHunt, dh: FH ? FH[i] : INFD, quiet: q, bonus: 1 - miss, score: s,
+      land: LD ? lc : -1, qLand });
+    return s;
   };
 }
 
@@ -885,6 +1010,7 @@ function render() {
   composite();
   const tc = performance.now() - t2;
   $('#perf').textContent = `${fmtN(R.pts)} points · fields ${tb | 0} ms · density ${td | 0} ms · draw ${tc | 0} ms`;
+  if (cur) updateCardScore();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -913,20 +1039,26 @@ map.on('mouseout', () => { hoverLL = null; $('#info').innerHTML = '<span class="
 function infoRow(c, val, sub) {
   return `<div class="irow"><span><i style="background:${c.color}"></i>${c.label}</span><b>${val}</b></div>` + (sub ? `<div class="isub">${esc(sub)}</div>` : '');
 }
+// index of the render-grid cell under a location, or -1 (not drawn / no data there)
+function gridIndex(ll) {
+  if (!R.valid || map.getZoom() !== R.z) return -1;
+  const p = map.project(ll, R.z);
+  const cx = Math.floor((p.x - R.gx0) / R.S), cy = Math.floor((p.y - R.gy0) / R.S);
+  return cx >= 0 && cy >= 0 && cx < R.W && cy < R.H && R.cov[cy * R.W + cx] ? cy * R.W + cx : -1;
+}
+const scoreWord = s => s < 0.1 ? 'avoid' : s < 0.3 ? 'ok' : s < 0.6 ? 'good' : 'great';
+
 function updateHover() {
   hoverRaf = 0;
   if (!hoverLL) return;
-  let i = -1;
-  if (R.valid && map.getZoom() === R.z) {
-    const p = map.project(hoverLL, R.z);
-    const cx = Math.floor((p.x - R.gx0) / R.S), cy = Math.floor((p.y - R.gy0) / R.S);
-    if (cx >= 0 && cy >= 0 && cx < R.W && cy < R.H && R.cov[cy * R.W + cx]) i = cy * R.W + cx;
-  }
+  const i = gridIndex(hoverLL);
   if (i < 0) { $('#info').innerHTML = (settings.overpass ? '<span class="muted">No data here yet. Zoom in to 13 or press “Load visible area”.</span>'
     : '<span class="muted">No offline data here. Turn on “Download other areas from OpenStreetMap” to load it.</span>'); return; }
   const reach = R.pad * R.cellMc, rows = [];
-  const s = scorer()(i), word = s < 0.1 ? 'avoid' : s < 0.3 ? 'ok' : s < 0.6 ? 'good' : 'great';
-  rows.push(`<div class="irow"><span>Spot score</span><b>${Math.round(s * 100)} % · ${word}</b></div><div class="isep"></div>`);
+  const s = scorer()(i);
+  rows.push(`<div class="irow"><span>Spot score</span><b>${Math.round(s * 100)} % · ${scoreWord(s)}</b></div>`);
+  if (R.land) rows.push(`<div class="irow"><span class="muted">Terrain</span><b>${LAND[R.land[i]][1]} ${LAND[R.land[i]][0]}</b></div>`);
+  rows.push('<div class="isep"></div>');
   for (const k of HAZ) {
     const f = R.fields[k], d = f ? f[i] : Infinity;
     rows.push(infoRow(CATS[k], d > reach ? 'over ' + fmtDist(reach) : fmtDist(d)));
@@ -950,6 +1082,317 @@ function updateHover() {
   }
   $('#info').innerHTML = rows.join('');
 }
+
+// ════════════════════════════════════════════════════════════════════
+// SAVED SPOTS + SPOT CARD
+// Spots live in localStorage ('wn:spots'). Clicking the map opens a card for that point;
+// "Save" adds it to the list. The card analyses the 3×3 data tiles around the spot.
+// ════════════════════════════════════════════════════════════════════
+const SPOTS_KEY = 'wn:spots', RADAR_MAX = 2000;
+const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+let spots = (() => { try { const a = JSON.parse(localStorage.getItem(SPOTS_KEY)); return Array.isArray(a) ? a : []; } catch { return []; } })();
+let cur = null;                                  // spot shown in the card; saved spots have an id
+let cardAnalysis = null;                         // last analyseSpot() result for cur
+let cardDate = new Date();
+const card = $('#spot-card'), spotLayer = L.layerGroup().addTo(map);
+
+function storeSpots() {
+  try { localStorage.setItem(SPOTS_KEY, JSON.stringify(spots)); }
+  catch { setStatus('Could not save spots in this browser', 'error'); }
+  renderSpotList(); drawSpotPins();
+}
+let noteT;
+const storeSoon = () => { clearTimeout(noteT); noteT = setTimeout(storeSpots, 400); };
+
+const pinIcon = cls => L.divIcon({ className: 'spot-pin ' + cls, html: '★', iconSize: [28, 28], iconAnchor: [14, 14] });
+function drawSpotPins() {
+  spotLayer.clearLayers();
+  for (const s of spots)
+    L.marker([s.lat, s.lon], { icon: pinIcon(cur && cur.id === s.id ? 'on' : ''), title: s.name || 'Saved spot', keyboard: false })
+      .on('click', () => openSpot(s)).addTo(spotLayer);
+  if (cur && !cur.id) L.marker([cur.lat, cur.lon], { icon: pinIcon('temp'), interactive: false }).addTo(spotLayer);
+}
+
+function renderSpotList() {
+  const box = $('#spot-list');
+  if (!spots.length) { box.innerHTML = '<div class="muted" style="font-size:12px">No saved spots yet.</div>'; return; }
+  box.innerHTML = spots.map((s, j) => `<div class="spot-item" data-j="${j}" tabindex="0">
+      <span class="nm">${esc(s.name || 'Unnamed spot')}</span><span class="st">${'★'.repeat(s.rating || 0)}</span></div>`).join('');
+  box.querySelectorAll('.spot-item').forEach(el => {
+    const go = () => { const s = spots[+el.dataset.j]; map.setView([s.lat, s.lon], Math.max(map.getZoom(), 14)); openSpot(s); };
+    el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); };
+  });
+}
+
+// ── geometry around the spot (local flat approximation is fine within a few km)
+function localFrame(lat0, lon0) {
+  const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110574;
+  return (lat, lon) => {
+    const dx = (lon - lon0) * kx, dy = (lat - lat0) * ky;
+    return [Math.hypot(dx, dy), (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360];
+  };
+}
+const dirName = b => DIRS[Math.round(b / 45) % 8];
+
+function tilesAround(s) {
+  const cx = Math.floor(mercX(s.lon) * N12), cy = Math.floor(mercY(s.lat) * N12), out = [];
+  for (let x = cx - 1; x <= cx + 1; x++) for (let y = cy - 1; y <= cy + 1; y++) out.push({ x, y });
+  return out;
+}
+
+// Nearest things within RADAR_MAX: houses per compass sector, water/river, each useful place, hunting stands.
+function analyseSpot(s) {
+  const at = localFrame(s.lat, s.lon);
+  const a = { house: null, houses500: 0, sectors: Array(8).fill(null), near: {}, hunting: [], missing: 0 };
+  const keep = (k, d, b, extra) => { if (!a.near[k] || d < a.near[k].d) a.near[k] = { d, b, ...extra }; };
+  for (const { x, y } of tilesAround(s)) {
+    const t = tiles.get(tkey(x, y));
+    if (!t) { a.missing++; continue; }
+    for (let i = 0; i < t.b.length; i += 2) {
+      const [d, b] = at(yToLat((y + t.b[i + 1]) / N12), (x + t.b[i]) / N12 * 360 - 180);
+      if (d > RADAR_MAX) continue;
+      if (d < 500) a.houses500++;
+      if (!a.house || d < a.house.d) a.house = { d, b };
+      const o = Math.round(b / 45) % 8;
+      if (!a.sectors[o] || d < a.sectors[o].d) a.sectors[o] = { d, b };
+    }
+    if (t.w) for (let i = 0; i < t.w.length; i += 2) {
+      const [d, b] = at(yToLat((y + t.w[i + 1] / 65535) / N12), (x + t.w[i] / 65535) / N12 * 360 - 180);
+      if (d <= RADAR_MAX) keep('rivers', d, b);
+    }
+    for (const p of t.pois) {
+      const [d, b] = at(p.lat, p.lon);
+      if (d > RADAR_MAX) continue;
+      if (p.c === 'hunting') { if (d < 1000) a.hunting.push({ d, b, n: p.n }); }
+      else keep(p.c, d, b, { n: p.n });
+    }
+  }
+  a.hunting.sort((u, v) => u.d - v.d);
+  return a;
+}
+
+// Share of each terrain class within r metres (null while the terrain maps are not loaded).
+function terrainMix(s, r = 100) {
+  const gx = mercX(s.lon) * N12 * LAND_PX, gy = mercY(s.lat) * N12 * LAND_PX;   // global terrain pixel
+  const rp = r / (EARTH_C * Math.cos(s.lat * Math.PI / 180) / (N12 * LAND_PX)), cnt = {}, R0 = Math.ceil(rp);
+  let n = 0;
+  for (let dy = -R0; dy <= R0; dy++) for (let dx = -R0; dx <= R0; dx++) {
+    if (dx * dx + dy * dy > rp * rp) continue;
+    const X = Math.floor(gx + dx), Y = Math.floor(gy + dy), t = tiles.get(tkey(Math.floor(X / LAND_PX), Math.floor(Y / LAND_PX)));
+    if (!t || !t.land) return null;
+    const c = t.land[(Y % LAND_PX) * LAND_PX + (X % LAND_PX)];
+    cnt[c] = (cnt[c] || 0) + 1; n++;
+  }
+  return Object.entries(cnt).map(([c, v]) => ({ c: +c, f: v / n })).sort((a, b) => b.f - a.f);
+}
+
+function sunInfo(s) {
+  if (!window.SunCalc) return null;
+  const day = new Date(cardDate); day.setHours(12, 0, 0, 0);
+  const t = SunCalc.getTimes(day, s.lat, s.lon);
+  const az = time => { const p = SunCalc.getPosition(time, s.lat, s.lon); return (p.azimuth * 180 / Math.PI + 180) % 360; };
+  const moon = SunCalc.getMoonIllumination(day), mt = SunCalc.getMoonTimes(day, s.lat, s.lon);
+  const ok = d => d instanceof Date && !isNaN(d);
+  return {
+    rise: ok(t.sunrise) ? { t: t.sunrise, b: az(t.sunrise) } : null,
+    set: ok(t.sunset) ? { t: t.sunset, b: az(t.sunset) } : null,
+    goldenEve: ok(t.goldenHour) ? t.goldenHour : null, goldenMorn: ok(t.goldenHourEnd) ? t.goldenHourEnd : null,
+    dusk: ok(t.dusk) ? t.dusk : null, dawn: ok(t.dawn) ? t.dawn : null,
+    moonFrac: moon.fraction, moonPhase: moon.phase, moonRise: ok(mt.rise) ? mt.rise : null, moonSet: ok(mt.set) ? mt.set : null,
+  };
+}
+const fmtTime = d => d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+function moonName(p) {
+  return p < 0.03 || p > 0.97 ? 'new moon' : p < 0.22 ? 'waxing crescent' : p < 0.28 ? 'first quarter' : p < 0.47 ? 'waxing gibbous'
+    : p < 0.53 ? 'full moon' : p < 0.72 ? 'waning gibbous' : p < 0.78 ? 'last quarter' : 'waning crescent';
+}
+
+// Compass map: spot in the centre, square-root distance scale up to 2 km, icons at their real bearing.
+function radarSVG(a, sun) {
+  const C = 160, RM = 136, r = d => RM * Math.sqrt(Math.min(d, RADAR_MAX) / RADAR_MAX);
+  const P = (d, b) => [C + r(d) * Math.sin(b * Math.PI / 180), C - r(d) * Math.cos(b * Math.PI / 180)];
+  const o = [`<svg class="radar" viewBox="0 0 320 320" role="img" aria-label="Map of what is around the spot">`];
+  for (const d of [250, 500, 1000, 2000]) {
+    o.push(`<circle cx="${C}" cy="${C}" r="${r(d)}" fill="none" stroke="var(--line)" stroke-dasharray="${d === 2000 ? '' : '2 3'}"/>`);
+    o.push(`<text x="${C + 3}" y="${C - r(d) - 2}" font-size="9" fill="var(--muted)">${fmtDist(d)}</text>`);
+  }
+  if (a.houses500) o.push(`<circle cx="${C}" cy="${C}" r="${r(500)}" fill="#d64545" opacity=".07"/>`);
+  DIRS.forEach((n, j) => { if (j % 2) return; const [x, y] = P(RADAR_MAX * 1.16, j * 45);
+    o.push(`<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--muted)">${n}</text>`); });
+  const icon = (d, b, ch, title, size = 15) => { const [x, y] = P(d, b);
+    o.push(`<text x="${x}" y="${y + size * 0.35}" text-anchor="middle" font-size="${size}"><title>${esc(title)}</title>${ch}</text>`); };
+  if (sun) for (const [s, ch, lbl] of [[sun.rise, '🌅', 'Sunrise'], [sun.set, '🌇', 'Sunset']]) if (s) {
+    const [x, y] = P(RADAR_MAX, s.b);
+    o.push(`<line x1="${C}" y1="${C}" x2="${x}" y2="${y}" stroke="#f2c14e" stroke-width="1.5" stroke-dasharray="4 4" opacity=".7"/>`);
+    icon(RADAR_MAX * 1.02, s.b, ch, `${lbl} ${fmtTime(s.t)}, ${dirName(s.b)}`, 16);
+  }
+  for (const h of a.sectors) if (h) icon(h.d, h.b, '🏠', `Nearest house to the ${dirName(h.b)}: ${fmtDist(h.d)}`, 13);
+  for (const h of a.hunting) icon(h.d, h.b, '🎯', `Hunting stand ${fmtDist(h.d)} ${dirName(h.b)}`, 13);
+  for (const k of ATT) { const n = a.near[k]; if (n) icon(n.d, n.b, CATS[k].icon, `${CATS[k].label}${n.n ? ' – ' + n.n : ''}: ${fmtDist(n.d)} ${dirName(n.b)}`); }
+  o.push(`<text x="${C}" y="${C + 7}" text-anchor="middle" font-size="20" fill="#f2c14e" stroke="#000" stroke-width=".6">★</text></svg>`);
+  return o.join('');
+}
+
+function openSpot(s) {
+  cur = s; card.hidden = false;
+  offlineReady.then(() => {                      // offline list first, else it might ask Overpass
+    ensureTiles(tilesAround(s), settings.overpass);
+    ensureLand(tilesAround(s));                  // tiles that are already loaded (the others follow via dataChanged)
+  });
+  renderCard(); drawSpotPins();
+}
+function closeSpot() { cur = null; card.hidden = true; drawSpotPins(); }
+
+function renderCard() {
+  const s = cur, saved = !!s.id;
+  card.innerHTML = `
+    <div class="sc-head"><input id="sc-name" value="${esc(s.name || '')}" placeholder="${saved ? 'Unnamed spot' : 'Name this spot'}" aria-label="Spot name">
+      <button class="sc-x" id="sc-close" title="Close" aria-label="Close">×</button></div>
+    <div class="sc-sub">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.created ? ' · saved ' + new Date(s.created).toLocaleDateString() : ''}</div>
+    <div class="sc-stars" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" class="${n <= (s.rating || 0) ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
+    <textarea id="sc-note" placeholder="Notes: access, ground, where to pitch, water, who you met…">${esc(s.note || '')}</textarea>
+    <div class="sc-btns">
+      ${saved ? '<button class="btn" id="sc-del">Delete</button>' : '<button class="btn primary" id="sc-save">Save spot</button>'}
+      <button class="btn" id="sc-share" title="Copy a link to this spot">Copy link</button>
+      <button class="btn" id="sc-zoom">Zoom to</button>
+    </div>
+    <h3>Score here</h3><div id="sc-score"></div>
+    <h3>Around the spot</h3><div id="sc-radar"></div><div class="near" id="sc-near"></div>
+    <h3>Sun &amp; moon</h3>
+    <div style="font-size:12px;margin-bottom:6px"><span class="muted">Date </span><input type="date" class="sc-date" id="sc-date" value="${cardDate.getFullYear()}-${String(cardDate.getMonth() + 1).padStart(2, '0')}-${String(cardDate.getDate()).padStart(2, '0')}" aria-label="Date"></div>
+    <div class="near" id="sc-sun"></div>`;
+
+  $('#sc-close').onclick = closeSpot;
+  $('#sc-name').oninput = e => { s.name = e.target.value; if (saved) storeSoon(); };
+  $('#sc-note').oninput = e => { s.note = e.target.value; if (saved) storeSoon(); };
+  card.querySelectorAll('.sc-stars button').forEach(b => b.onclick = () => {
+    s.rating = s.rating === +b.dataset.n ? 0 : +b.dataset.n;
+    card.querySelectorAll('.sc-stars button').forEach(x => x.classList.toggle('on', +x.dataset.n <= s.rating));
+    if (saved) storeSpots();
+  });
+  if (saved) $('#sc-del').onclick = () => {
+    if (!confirm(`Delete “${s.name || 'Unnamed spot'}”? This cannot be undone (unless you have a backup).`)) return;
+    spots = spots.filter(x => x !== s); storeSpots(); closeSpot();
+  };
+  else $('#sc-save').onclick = () => {
+    s.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); s.created = Date.now();
+    if (!s.name) s.name = 'Spot ' + (spots.length + 1);
+    spots.push(s); storeSpots(); renderCard(); setStatus('Spot saved', 'ok');
+  };
+  $('#sc-share').onclick = async () => {
+    const url = `${location.origin}${location.pathname}#spot=${s.lat.toFixed(5)},${s.lon.toFixed(5)},${encodeURIComponent(s.name || '')}`;
+    try { await navigator.clipboard.writeText(url); setStatus('Link copied', 'ok'); } catch { prompt('Link to this spot:', url); }
+  };
+  $('#sc-zoom').onclick = () => map.setView([s.lat, s.lon], 15);
+  $('#sc-date').onchange = e => { if (e.target.value) { cardDate = new Date(e.target.value + 'T12:00'); updateCardAround(); } };
+  updateCardAround(); updateCardScore();
+}
+
+function updateCardAround() {
+  if (!cur || card.hidden) return;
+  const a = cardAnalysis = analyseSpot(cur), sun = sunInfo(cur);
+  $('#sc-radar').innerHTML = radarSVG(a, sun);
+  const row = (ic, label, val, sub) => `<span>${ic}</span><span>${label}${sub ? `<span class="n">${esc(sub)}</span>` : ''}</span><b>${val}</b>`;
+  const rows = [];
+  if (a.missing) rows.push(row('⏳', '<span class="muted">Loading data around the spot…</span>', ''));
+  const here = landAt(cur.lat, cur.lon), mix = terrainMix(cur);
+  if (here >= 0) rows.push(row(LAND[here][1], 'Terrain here', esc(LAND[here][0]),
+    mix ? 'within 100 m: ' + mix.filter(m => m.f >= 0.05).map(m => `${LAND[m.c][0].toLowerCase()} ${Math.round(m.f * 100)} %`).join(', ') : ''));
+  else if (offline.has(tkey(Math.floor(mercX(cur.lon) * N12), Math.floor(mercY(cur.lat) * N12))))
+    rows.push(row('⏳', '<span class="muted">Loading terrain…</span>', ''));
+  rows.push(row('🏠', 'Nearest house', a.house ? `${fmtDist(a.house.d)} ${dirName(a.house.b)}` : `over ${fmtDist(RADAR_MAX)}`,
+    a.houses500 ? `${a.houses500} building${a.houses500 > 1 ? 's' : ''} within 500 m` : 'none within 500 m'));
+  if (a.hunting.length) rows.push(row('🎯', 'Hunting stands', `${fmtDist(a.hunting[0].d)} ${dirName(a.hunting[0].b)}`,
+    a.hunting.length > 1 ? `${a.hunting.length} within 1 km` : ''));
+  for (const k of ATT) { const n = a.near[k];
+    rows.push(row(CATS[k].icon, CATS[k].label, n ? `${fmtDist(n.d)} ${dirName(n.b)}` : '—', n && n.n)); }
+  $('#sc-near').innerHTML = rows.join('');
+  $('#sc-sun').innerHTML = !sun ? row('☀', '<span class="muted">Sun times unavailable (SunCalc did not load)</span>', '') : [
+    row('🌅', 'Sunrise', sun.rise ? `${fmtTime(sun.rise.t)} ${dirName(sun.rise.b)}` : '—', `first light ${fmtTime(sun.dawn)}, golden hour until ${fmtTime(sun.goldenMorn)}`),
+    row('🌇', 'Sunset', sun.set ? `${fmtTime(sun.set.t)} ${dirName(sun.set.b)}` : '—', `golden hour from ${fmtTime(sun.goldenEve)}, dark ${fmtTime(sun.dusk)}`),
+    row(sun.moonPhase < 0.5 ? '🌔' : '🌖', 'Moon', Math.round(sun.moonFrac * 100) + ' % lit', `${moonName(sun.moonPhase)} · rises ${fmtTime(sun.moonRise)}, sets ${fmtTime(sun.moonSet)}`),
+  ].join('');
+}
+
+function updateCardScore() {
+  if (!cur || card.hidden) return;
+  const el = $('#sc-score'), i = gridIndex(L.latLng(cur.lat, cur.lon));
+  if (i < 0) { el.innerHTML = '<span class="muted" style="font-size:12px">Move the map so the spot is in view (with data) to see its score.</span>'; return; }
+  const p = { cats: [] }, s = scorer()(i, p), pct = v => Math.round(v * 100) + ' %';
+  const bar = (v, col) => `<div class="sc-bar"><i style="width:${Math.max(2, v * 100)}%;background:${col}"></i></div>`;
+  const lim = [];
+  // the score uses the render grid; for the text prefer the exact distance from the card's analysis
+  const houseD = cardAnalysis && cardAnalysis.house ? cardAnalysis.house.d : p.dB;
+  if (p.qDist < 1) lim.push(`nearest house ${fmtDist(houseD)} (want ${fmtDist(settings.cutH)})`);
+  if (p.qDens < 1) lim.push(`${Math.round(p.dens)} houses/km² (limit ${settings.busyKm2})`);
+  if (p.qHunt < 1) lim.push(`hunting stand ${fmtDist(p.dh)} away`);
+  el.innerHTML = `<div class="near">
+      <span></span><span><b style="font-size:15px">${pct(s)} · ${scoreWord(s)}</b></span><b></b></div>${bar(s, s < 0.1 ? '#d64545' : s < 0.3 ? '#e0b24e' : '#4caf6a')}
+    <div class="near">
+      ${p.land >= 0 ? `<span>${LAND[p.land][1]}</span><span>Terrain: ${esc(LAND[p.land][0])}<span class="n">${p.qLand < 1 ? LAND_WHY[p.land] || '' : 'fine for a tent'}</span></span><b>${pct(p.qLand)}</b>` : ''}
+      <span>🌲</span><span>Quiet<span class="n">${lim.length ? esc(lim.join(' · ')) : 'no houses or hunting stands too close'}</span></span><b>${pct(p.quiet)}</b>
+      <span>✚</span><span>Useful places bonus<span class="n">${p.cats.length ? p.cats.sort((u, v) => v.c - u.c).map(c => `${CATS[c.k].icon} ${fmtDist(c.d)}`).join('  ') : `nothing within ${fmtDist(settings.cutA)}`}</span></span><b>${pct(p.bonus)}</b>
+    </div>`;
+}
+
+map.on('click', e => openSpot({ lat: e.latlng.lat, lon: e.latlng.lng }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && cur && !card.hidden) closeSpot(); });
+
+// Export / import
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const xmlEsc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+$('#btn-gpx').onclick = () => {
+  if (!spots.length) { setStatus('No saved spots to export', 'error'); return; }
+  const w = spots.map(s => `  <wpt lat="${s.lat.toFixed(6)}" lon="${s.lon.toFixed(6)}"><name>${xmlEsc(s.name)}</name>` +
+    `<desc>${xmlEsc((s.rating ? '★'.repeat(s.rating) + ' ' : '') + (s.note || ''))}</desc><sym>Campground</sym></wpt>`).join('\n');
+  download('wildnav-spots.gpx', `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="WildNav" xmlns="http://www.topografix.com/GPX/1/1">\n${w}\n</gpx>\n`, 'application/gpx+xml');
+};
+$('#btn-backup').onclick = () => download(`wildnav-spots-${new Date().toISOString().slice(0, 10)}.json`,
+  JSON.stringify({ app: 'WildNav', version: 1, spots }, null, 1), 'application/json');
+$('#btn-import').onclick = () => $('#spot-file').click();
+$('#spot-file').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  let found = [];
+  try {
+    const txt = await f.text();
+    if (txt.trimStart().startsWith('<')) {
+      const doc = new DOMParser().parseFromString(txt, 'application/xml');
+      found = [...doc.getElementsByTagName('wpt')].map(w => ({ lat: +w.getAttribute('lat'), lon: +w.getAttribute('lon'),
+        name: w.getElementsByTagName('name')[0]?.textContent || '', note: w.getElementsByTagName('desc')[0]?.textContent || '' }));
+    } else {
+      const j = JSON.parse(txt); found = Array.isArray(j) ? j : j.spots || [];
+    }
+  } catch { setStatus('Could not read that file', 'error'); return; }
+  const same = (a, b) => Math.abs(a.lat - b.lat) < 1e-5 && Math.abs(a.lon - b.lon) < 1e-5;
+  let added = 0;
+  for (const s of found) {
+    if (!isFinite(s.lat) || !isFinite(s.lon) || spots.some(x => same(x, s))) continue;
+    spots.push({ id: s.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 6), created: s.created || Date.now(),
+      lat: +s.lat, lon: +s.lon, name: String(s.name || ''), note: String(s.note || ''), rating: Math.max(0, Math.min(5, s.rating | 0)) });
+    added++;
+  }
+  storeSpots(); setStatus(`${added} spot${added === 1 ? '' : 's'} imported${found.length > added ? `, ${found.length - added} skipped (already there)` : ''}`, 'ok');
+};
+
+// Shared link: #spot=lat,lon,name (on page load, and when the hash changes on an open page)
+function openFromHash() {
+  const m = location.hash.match(/^#spot=(-?[\d.]+),(-?[\d.]+),?(.*)$/);
+  if (!m) return;
+  const s = { lat: +m[1], lon: +m[2], name: decodeURIComponent(m[3] || '') };
+  if (!isFinite(s.lat) || !isFinite(s.lon)) return;
+  const known = spots.find(x => Math.abs(x.lat - s.lat) < 1e-5 && Math.abs(x.lon - s.lon) < 1e-5);
+  map.setView([s.lat, s.lon], 14);
+  history.replaceState(null, '', location.pathname + location.search);
+  setTimeout(() => openSpot(known || s), 0);
+}
+window.addEventListener('hashchange', openFromHash);
+openFromHash();
+renderSpotList(); drawSpotPins();
 
 // ════════════════════════════════════════════════════════════════════
 // UI
@@ -1131,6 +1574,7 @@ function autoLoad() {
   const list = tilesInBounds(map.getBounds().pad(0.15), 4000);
   if (!list) return;
   ensureTiles(list, settings.overpass && settings.auto && map.getZoom() >= AUTO_MIN_Z);
+  if (map.getZoom() >= LAND_MIN_Z) ensureLand(list);
 }
 map.on('moveend', () => {
   requestRender(); rebuildMarkers(); autoLoad(); reorderQueue();

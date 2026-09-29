@@ -13,10 +13,16 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
 - **Useful places** (`nearby`, blue): closeness to water, rivers & lakes, shelters/huts, camp sites,
   viewpoints, fire pits, weighted 0–100 % per category.
 
+## Saved spots
+Clicking the map opens a spot card (`openSpot`): name, 1–5 stars, notes, score breakdown
+(`scorer(i, out)`), a compass map of what is within 2 km (`radarSVG`, from `analyseSpot` over the
+3×3 tiles around the spot) and sun/moon times (SunCalc from cdnjs). Saved spots live only in
+`localStorage['wn:spots']`; export as GPX or JSON backup, import GPX/JSON, share via `#spot=lat,lon,name`.
+
 ## Files
 - `index.html` – the whole app in one file (Leaflet 1.9.4 from CDN + plain JavaScript, no build step).
 - `build_tiles.py` – converts a Geofabrik `.osm.pbf` + `.poly` into offline tiles in `data/`.
-  Needs `pip install "osmium>=4"`.
+  Needs `pip install "osmium>=4" pillow`.
   Usage: `python build_tiles.py raw/a.osm.pbf raw/a.poly [raw/b.osm.pbf raw/b.poly ...] [data]`
   Build neighbouring regions **in one run**: each extract is read in its own process (parallel),
   and tiles on shared borders are filled from both extracts with duplicates removed by OSM id.
@@ -30,6 +36,12 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
     Uint16 pairs (tile-relative Mercator x,y × 65535). Category `rivers` ("Rivers & lakes") in the
     app; offline data only (no Overpass equivalent), no markers. Ditches, drains, intermittent
     and culverted water are excluded on purpose.
+  - `data/12/<x>/<y>.land.png` – terrain map, 512×512 greyscale PNG (~12 m/pixel), pixel value =
+    terrain class (`LAND` in build_tiles.py and index.html, keep in sync; code = drawing order,
+    16 = water on top). Drawn with Pillow. The app loads these only from zoom 11 (`LAND_MIN_Z`)
+    and around an open spot card (~260 KB each once decoded). The score is multiplied by
+    `LAND_FACTOR` (water/built-up/cemetery/military 0, quarry 0.1, wetland/orchard/park 0.3,
+    field 0.7, scrub/sand 0.8, forest/meadow/heath/unmapped 1).
 - `raw/` – Geofabrik downloads. Large – never commit (in `.gitignore`).
 - `start.bat` – starts a local server on port 8765 and opens the app.
 - `IDEAS.md` – planned features (e.g. the "hidden spot" score) with research notes and algorithm sketches.
