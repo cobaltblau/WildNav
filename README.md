@@ -19,8 +19,9 @@ Double-click `start.bat`, or run `python -m http.server 8765` and open http://lo
 ## Offline data
 `data/` holds pre-built tiles made from [Geofabrik](https://download.geofabrik.de/) extracts:
 
-    pip install "osmium>=4" pillow
+    pip install "osmium>=4" pillow numpy
     python build_tiles.py raw/<region>.osm.pbf raw/<region>.poly
+    python build_tiles.py --slope raw/fabdem      # slopes, from FABDEM tiles in raw/fabdem/
 
 Several regions can be built into the same `data/` folder. Outside those regions the app can
 optionally download data from the Overpass API (off by default).
@@ -31,6 +32,10 @@ optionally download data from the Overpass API (off by default).
 - [Leaflet](https://leafletjs.com/) (BSD-2-Clause), [SunCalc](https://github.com/mourner/suncalc)
   (BSD-2-Clause, sun and moon times), fonts Barlow / Barlow Semi Condensed
   (SIL Open Font License) via [Fontsource](https://fontsource.org/) and jsDelivr.
+- Slopes: [FABDEM V1-2](https://data.bris.ac.uk/data/dataset/s5hqmjcdj8yo2ibzi9b4ew3sn) (Hawker et al. 2022,
+  University of Bristol), CC BY-NC-SA 4.0 (non-commercial), based on the Copernicus DEM
+  (© DLR e.V. 2010-2014, © Airbus Defence and Space GmbH 2014-2018). The slope maps in `data/` are
+  under the same licence, see [data/LICENSE.md](data/LICENSE.md).
 - Base maps: [OpenStreetMap](https://www.openstreetmap.org/) (Grey and Streets),
   [OpenTopoMap](https://opentopomap.org/) (CC-BY-SA), and
   [Sentinel-2 cloudless](https://s2maps.eu) by EOX IT Services GmbH (CC BY-NC-SA 4.0).

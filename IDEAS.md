@@ -5,7 +5,10 @@ Ideas that are not built yet. Each one should stay compatible with the rules in 
 
 ---
 
-## 1. "How well hidden is this spot?" (hidden score)
+## 1. ✅ "How well hidden is this spot?" (hidden score)
+
+> Built (v1, OSM only, plus road noise and path access) in `hide_tile()` of build_tiles.py; slope from
+> FABDEM (30 m, forests/buildings removed) instead of the DEM terrain phase below.
 
 **Goal:** a second part of the spot score that says how likely it is that someone on a road,
 path or in a house **sees or hears** you. It is added to the "Best spots" map as a factor
@@ -168,6 +171,18 @@ that's already loaded, plus one small library.
 - **Mosquitoes:** a slight minus right next to standing water (ponds, marsh) in summer.
 - **Wind shelter:** forest edges on the windward side (with the weather forecast's wind direction).
 - **Access:** distance to the nearest track/path, since you need to get there with a bike.
+- **Official noise maps for "Quiet night":** under the EU Environmental Noise Directive, Germany publishes
+  strategic noise maps (*Umgebungslärmkartierung*, `Lnight` / `Lden` in 5 dB bands) for main roads,
+  railways, airports and industry. They are measured and modelled with real traffic counts, so they
+  would be more accurate than our estimate from road types — but they only cover busy roads and
+  agglomerations. Idea: take the louder of the two (official map where it exists, our estimate
+  elsewhere), and add aircraft noise, which we don't have at all. To check: download formats per
+  state (NRW, Niedersachsen, Eisenbahn-Bundesamt for railways) and licences.
+- **Light pollution:** how dark the night sky is at the spot (e.g. the *World Atlas of Artificial
+  Night Sky Brightness* or VIIRS satellite night lights). Could be a small score factor ("dark spot":
+  fewer people around at night, your headlamp stands out less) or just bonus info in the spot card
+  ("Bortle 3 · Milky Way visible"), next to the moon phase. To check: resolution (~500 m – 1 km is
+  enough), licences, and whether it adds anything beyond "far from houses" before making it a factor.
 
 ## 6. App quality
 
@@ -181,9 +196,9 @@ that's already loaded, plus one small library.
 1. ✅ Saved spots + detail card (distances, directions, sun), plus terrain at the spot.
 2. ✅ Protected-area warning (nature reserves 0 %, landscape protection 50 %). Note: landscape
    protection areas are only patchily mapped in OSM (106 vs. 4,641 nature reserves in NS + NRW).
-3. PWA offline + mobile layout → makes it usable on the road.
-4. Hidden score (section 1) and DEM-based terrain factors.
-5. GPX route planning and weather.
+3. ✅ PWA offline + mobile layout → makes it usable on the road.
+4. ✅ Hidden score (section 1), quiet night (traffic noise) and slope (FABDEM).
+5. GPX route planning and weather. (First step done: "Find spots here" tool with a movable search centre.)
 
 ---
 

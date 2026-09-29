@@ -8,6 +8,11 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
 - **Best spots** (default, `score`): one score per cell, see `scorer()` in index.html.
   quietness (distance to nearest house vs. "keep at least", density vs. "too busy above",
   penalty within 150 m of hunting stands) × (0.4 + 0.6 × bonus for useful places nearby).
+  Where a hide map is loaded, quietness = √(house part) × hunting × hidden factor
+  (`1 − hideW × (1 − hidden)`, "Stay hidden") × noise factor (`1 − quietW × penalty`, 35 → 55 dB,
+  "Quiet night"): being hidden counts more than house distance, as the owner asked.
+  The whole score is also × slope factor (`1 − slopeW × slopePenalty`: 0 up to 5°, 0.8 at 15°,
+  max 0.95 from 25° — a slope alone never rules a spot out, the 30 m model misses small flat patches).
   Red = avoid, clear = ok, green = great spot.
 - **Houses** (`density`): houses per km².
 - **Useful places** (`nearby`, blue): closeness to water, rivers & lakes, shelters/huts, camp sites,
@@ -22,6 +27,9 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
   (blue dot); the first fix jumps to zoom `NEAR_Z` (12), where the drawn grid holds the whole 5 km circle.
   `findNearby()` runs after each redraw at that zoom and lists the best `NEAR_N` cells ≥ `NEAR_SEP`
   apart as numbered pins + "Best spots near you" in the panel. Tap again: back to you, then off.
+  Tool `near` ("Find spots here"): a map click sets the search centre manually (`setNearAt(…, manual)`),
+  shown as a draggable ✥ marker with a dashed 5 km circle; GPS updates don't move a manual centre,
+  the locate button brings it back to you. First step towards GPX route planning (IDEAS.md 4).
   Messages for phones go through `showHint()` (the status text is hidden there).
 - Side panel (`#panel`): spot card (when open), "Under the cursor" (hidden on touch devices), your spots.
   On phones (≤720 px) it is a bottom sheet: 150 px showing the card summary, tap/swipe the
@@ -51,11 +59,17 @@ Clicking the map opens a spot card (`openSpot`): name, 1–5 stars, notes, score
 ## Files
 - `index.html` – the whole app in one file (Leaflet 1.9.4 from CDN + plain JavaScript, no build step).
 - `build_tiles.py` – converts a Geofabrik `.osm.pbf` + `.poly` into offline tiles in `data/`.
-  Needs `pip install "osmium>=4" pillow`.
+  Needs `pip install "osmium>=4" pillow numpy`.
   Usage: `python build_tiles.py raw/a.osm.pbf raw/a.poly [raw/b.osm.pbf raw/b.poly ...] [data]`
   Build neighbouring regions **in one run**: each extract is read in its own process (parallel),
   and tiles on shared borders are filled from both extracts with duplicates removed by OSM id.
   Tiles inside no region are left out. Merges into an existing `data/index.json`.
+  **Safety:** the owner's PC powered off at full load on all 24 cores. The build therefore uses half
+  the cores by default at low priority (`--workers N` to change; 8 has worked well). Hidden maps are
+  written atomically and existing readable ones are skipped; if a build stops, it prints a
+  `--resume <temp folder>` command that finishes only the hidden maps. With `--keep` the temp folder
+  stays, and `--resume <folder> --keep --redo` recomputes all hidden maps (~6 min on 8 cores) after
+  tuning `WAYS` sight weights, `K_*`, `E0` etc. — no need to re-read the OSM files (~13 min).
   Current data: Niedersachsen + Nordrhein-Westfalen (Geofabrik 2026-09-28).
 - `data/` – generated offline tiles (committed, served as static files):
   - `data/index.json` – `{z: 12, built, tiles: ["x/y", ...]}`
@@ -76,6 +90,19 @@ Clicking the map opens a spot card (`openSpot`): name, 1–5 stars, notes, score
     and around an open spot card (~260 KB each once decoded). The score is multiplied by
     `LAND_FACTOR` (water/built-up/cemetery/military 0, quarry 0.1, wetland/orchard/park 0.3,
     field 0.7, scrub/sand 0.8, forest/meadow/heath/unmapped 1).
+  - `data/12/<x>/<y>.hide.png` – 256×256 RGB PNG (~24 m/pixel), third build step (`hide_tile()`,
+    all cores, needs numpy): R = hidden 0–255, G = road/railway noise in dB(A), B = distance to the
+    nearest path/road you can cycle on in 10 m (255 = 2.5 km+). Computed on the 3×3 tiles around
+    each tile by sweeping 16 directions: observers = roads/paths (`WAYS`, weighted by how busy) and
+    houses; forest, scrub, hedges and buildings block sight/sound (`K_SIGHT`, `K_HEAR`, `K_NOISE`);
+    tunables `L_SIGHT`, `L_HEAR`, `E0` etc. at the top of build_tiles.py (see IDEAS.md 1.3 for the idea).
+    Loaded with the terrain maps (`ensureLand`, `decodeHide`, `hideAt`).
+  - `data/12/<x>/<y>.slope.png` – 128×128 RGB PNG (~47 m/pixel) from FABDEM V1-2 (30 m elevation with
+    forests and buildings removed; 1°×1° GeoTIFFs in `raw/fabdem/`, from the LINKS Foundation mirror
+    on Hugging Face). R = slope in ¼°, G = direction the slope faces (16 compass points × 16),
+    B = elevation / 4 m. Separate step, no OSM needed: `python build_tiles.py --slope raw/fabdem [data]`
+    (skips existing, `--redo` for all). **Licence: non-commercial only** (credit in the app footer,
+    README and data/LICENSE.md). Loaded with the terrain maps (`decodeSlope`, `slopeAt`).
 - `raw/` – Geofabrik downloads. Large – never commit (in `.gitignore`).
 - `start.bat` – starts a local server on port 8765 and opens the app.
 - `IDEAS.md` – planned features (e.g. the "hidden spot" score) with research notes and algorithm sketches.

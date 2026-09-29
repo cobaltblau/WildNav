@@ -185,6 +185,7 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .spot-item .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* locate me + best spots near you */
 .tools .tool-gap{height:6px}
+.near-centre{width:30px;height:30px;border-radius:50%;background:#147337;color:#fff;font-size:18px;line-height:28px;text-align:center;border:2px solid #fff;box-shadow:0 1px 6px #000a;cursor:grab}
 .tools button.locating svg{animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 .near-pin{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#147337;color:#fff;
@@ -253,6 +254,8 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></button>
     <button data-tool="off" title="Click off: clicks on the map do nothing (just move and zoom)" aria-label="Clicks off">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></button>
+    <button data-tool="near" title="Find spots here: click the map to list the best spots within 5 km of that point (drag the centre marker to move it)" aria-label="Find spots here">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-dasharray="3 2.5"/><path d="M12 7.2l1.45 2.95 3.25.47-2.35 2.3.55 3.23L12 14.6l-2.9 1.55.55-3.23-2.35-2.3 3.25-.47z" fill="currentColor" stroke-width="1"/></svg></button>
     <div class="tool-gap"></div>
     <button id="btn-locate" title="Show where I am and the best spots within 5 km" aria-label="Locate me" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5"/></svg></button>
@@ -296,6 +299,7 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
     <div class="foot">
       <span>Wild camping is not allowed everywhere — check local rules and respect private land.</span>
       <span>Map data © <a href="https://www.openstreetmap.org/copyright" style="color:inherit">OpenStreetMap contributors</a>, available under the <a href="https://opendatacommons.org/licenses/odbl/" style="color:inherit">ODbL</a></span>
+      <span>Slopes: <a href="https://data.bris.ac.uk/data/dataset/s5hqmjcdj8yo2ibzi9b4ew3sn" style="color:inherit">FABDEM V1-2</a> (Hawker et al., University of Bristol), <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" style="color:inherit">CC BY-NC-SA 4.0</a>, based on Copernicus DEM © DLR e.V., © Airbus Defence and Space GmbH</span>
     </div>
   </aside>
 
@@ -305,6 +309,12 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
     <section class="sec">
       <h2><span class="sw" style="background:var(--haz)"></span>Keep away from houses</h2>
       <div id="haz-sliders"></div>
+    </section>
+
+    <section class="sec">
+      <h2><span class="sw" style="background:#4caf6a"></span>Hidden, quiet &amp; flat</h2>
+      <div id="hide-sliders"></div>
+      <div class="note">From zoom 11 in the offline regions. “Hidden”: can people on roads, paths or in houses see or hear you? Forest, scrub and hedges hide you; open fields don't. Counts more than the house distance. “Quiet night”: road and railway noise, full penalty from 55 dB. “Avoid slopes”: from a 30 m elevation model, so small flat patches on a slope may not show.</div>
     </section>
 
     <section class="sec">
@@ -344,7 +354,7 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
         <button class="btn primary" id="btn-save-area" title="Store the data of the visible map area on this device">Save this area</button>
         <button class="btn icon" id="btn-clear-offline" title="Delete stored offline data" aria-label="Delete stored offline data">🗑</button>
       </div>
-      <div class="note">Stores buildings, water, terrain and protected areas for the visible area. The app itself and every area you've viewed also stay available offline. The background map only works offline where you've already looked at it (bulk downloads aren't allowed by OpenStreetMap), so for navigation without signal also export your spots as GPX to an offline map app.</div>
+      <div class="note">Stores buildings, water, terrain, protected areas, the hidden/noise maps and slopes for the visible area. The app itself and every area you've viewed also stay available offline. The background map only works offline where you've already looked at it (bulk downloads aren't allowed by OpenStreetMap), so for navigation without signal also export your spots as GPX to an offline map app.</div>
       <div class="note" id="install-hint"><b>iPhone:</b> in Safari tap Share → “Add to Home Screen”. Installed, WildNav opens like an app and iOS keeps its stored data.</div>
     </section>
   </div>
@@ -435,7 +445,8 @@ out center qt;`;
 // SETTINGS (persisted)
 // ════════════════════════════════════════════════════════════════════
 const DEFAULTS = { basemap: 'grey', denseKm2: 1000, layer: 'score', markers: true, grey: false,
-  overpass: false, auto: true, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {} };
+  overpass: false, auto: true, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {},
+  hideW: 1, quietW: 0.7, slopeW: 1 };
 CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
 const settings = (() => {
   try {
@@ -818,16 +829,65 @@ async function decodeLand(blob) {
   }
   return { land, prot };
 }
+// Hide maps (data/12/x/y.hide.png, 256×256 RGB, made by hide_tile() in build_tiles.py):
+// red = hidden (255 = nobody on a road, path or in a house sees or hears you), green = traffic noise
+// in dB(A), blue = distance to the nearest path or road you can cycle on, in 10 m. Loaded with the terrain.
+const HIDE_PX = 256;
+async function decodeHide(blob) {
+  if (!blob || !blob.size) return null;
+  const bmp = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+  const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bmp.width, bmp.height)
+    : Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height });
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0);
+  const d = ctx.getImageData(0, 0, bmp.width, bmp.height).data, n = bmp.width * bmp.height;
+  bmp.close();
+  if (n !== HIDE_PX * HIDE_PX) return null;
+  const h = new Uint8Array(n), db = new Uint8Array(n), bike = new Uint8Array(n);
+  for (let i = 0, j = 0; i < n; i++, j += 4) { h[i] = d[j]; db[i] = d[j + 1]; bike[i] = d[j + 2]; }
+  return { h, db, bike };
+}
+// Slope maps (data/12/x/y.slope.png, 128×128 RGB, from the FABDEM elevation model, ~47 m):
+// red = slope in ¼ degrees, green = direction the slope faces (16 compass points × 16), blue = elevation / 4 m.
+const SLOPE_PX = 128;
+async function decodeSlope(blob) {
+  if (!blob || !blob.size) return null;
+  const bmp = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+  const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bmp.width, bmp.height)
+    : Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height });
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0);
+  const d = ctx.getImageData(0, 0, bmp.width, bmp.height).data, n = bmp.width * bmp.height;
+  bmp.close();
+  if (n !== SLOPE_PX * SLOPE_PX) return null;
+  const s = new Uint8Array(n), asp = new Uint8Array(n), el = new Uint8Array(n);
+  for (let i = 0, j = 0; i < n; i++, j += 4) { s[i] = d[j]; asp[i] = d[j + 1]; el[i] = d[j + 2]; }
+  return { s, asp, el };
+}
 function ensureLand(list) {
   for (const { x, y } of list) {
     const k = tkey(x, y), t = tiles.get(k);
     if (!t || t.land !== undefined || landBusy.has(k) || !offline.has(k)) continue;
     landBusy.add(k); loadProtList();
-    fetch(`${OFFLINE_URL}${TILE_Z}/${k}.land.png${offVersion}`)
-      .then(r => r.ok ? r.blob() : null).then(decodeLand)
-      .then(r => { t.land = r ? r.land : null; t.prot = r ? r.prot : null; }, () => { t.land = null; })
+    const get = (ext, dec) => fetch(`${OFFLINE_URL}${TILE_Z}/${k}${ext}${offVersion}`).then(r => r.ok ? r.blob() : null).then(dec).catch(() => null);
+    Promise.all([get('.land.png', decodeLand), get('.hide.png', decodeHide), get('.slope.png', decodeSlope)])
+      .then(([r, h, sl]) => { t.land = r ? r.land : null; t.prot = r ? r.prot : null; t.hide = h; t.slope = sl; })
       .finally(() => { landBusy.delete(k); dataChanged(); });
   }
+}
+// slope at a point: { deg, faces (bearing of the downhill direction), elev (m) } or null if not loaded
+function slopeAt(lat, lon) {
+  const gx = mercX(lon) * N12, gy = mercY(lat) * N12, t = tiles.get(tkey(Math.floor(gx), Math.floor(gy)));
+  if (!t || !t.slope) return null;
+  const i = Math.min(SLOPE_PX - 1, (gy - Math.floor(gy)) * SLOPE_PX | 0) * SLOPE_PX + Math.min(SLOPE_PX - 1, (gx - Math.floor(gx)) * SLOPE_PX | 0);
+  return { deg: t.slope.s[i] / 4, faces: (t.slope.asp[i] >> 4) * 22.5, elev: t.slope.el[i] * 4 };
+}
+// hide map values at a point: { h: 0..1 hidden, db, bike (m) } or null if not loaded
+function hideAt(lat, lon) {
+  const gx = mercX(lon) * N12, gy = mercY(lat) * N12, t = tiles.get(tkey(Math.floor(gx), Math.floor(gy)));
+  if (!t || !t.hide) return null;
+  const i = Math.min(HIDE_PX - 1, (gy - Math.floor(gy)) * HIDE_PX | 0) * HIDE_PX + Math.min(HIDE_PX - 1, (gx - Math.floor(gx)) * HIDE_PX | 0);
+  return { h: t.hide.h[i] / 255, db: t.hide.db[i], bike: t.hide.bike[i] * 10 };
 }
 // protected area at a point: { n, l, t } or null
 function protAt(lat, lon) {
@@ -967,7 +1027,7 @@ function computeBase() {
     ? [...tiles.values()].filter(inRange)
     : (() => { const a = []; for (let x = tx0; x <= tx1; x++) for (let y = ty0; y <= ty1; y++) { const t = tiles.get(tkey(x, y)); if (t) a.push(t); } return a; })();
 
-  let pts = 0, land = null, prot = null;
+  let pts = 0, land = null, prot = null, hid = null, hdb = null, hbike = null, hmask = null, slp = null;
   for (const t of list) {
     const ox = (t.x * span - gx0) / S, oy = (t.y * span - gy0) / S;
     // coverage mask: only loaded areas get coloured
@@ -991,6 +1051,25 @@ function computeBase() {
             if (id) { const a = protList[id - 1]; if (a) prot[row + xx] = a.l; }
           }
         }
+      }
+    }
+    if (t.hide) {                              // hidden / noise / path distance of each cell centre
+      if (!hid) { hid = new Uint8Array(N); hdb = new Uint8Array(N); hbike = new Uint8Array(N); hmask = new Uint8Array(N); }
+      const sc = HIDE_PX / k, { h, db, bike } = t.hide;
+      for (let yy = cy0; yy < cy1; yy++) {
+        const py = Math.min(HIDE_PX - 1, Math.max(0, (yy + 0.5 - oy) * sc | 0)) * HIDE_PX, row = yy * W;
+        for (let xx = cx0; xx < cx1; xx++) {
+          const j = py + Math.min(HIDE_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0)), i = row + xx;
+          hid[i] = h[j]; hdb[i] = db[j]; hbike[i] = bike[j]; hmask[i] = 1;
+        }
+      }
+    }
+    if (t.slope) {                             // slope of each cell centre, ¼ degrees + 1 (0 = no data)
+      slp = slp || new Uint16Array(N);
+      const sc = SLOPE_PX / k, S2 = t.slope.s;
+      for (let yy = cy0; yy < cy1; yy++) {
+        const py = Math.min(SLOPE_PX - 1, Math.max(0, (yy + 0.5 - oy) * sc | 0)) * SLOPE_PX, row = yy * W;
+        for (let xx = cx0; xx < cx1; xx++) slp[row + xx] = S2[py + Math.min(SLOPE_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0))] + 1;
       }
     }
 
@@ -1037,6 +1116,7 @@ function computeBase() {
   for (const c of CAT_KEYS) fields[c] = seeds[c] ? edtField(seeds[c], W, H, cellM) : null;
   const nw = map.unproject([x0, y0], z), se = map.unproject([x0 + gw * S, y0 + gh * S], z);
   R = { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts, land, prot,
+        hid, hdb, hbike, hmask, slp,
         bounds: L.latLngBounds(nw, se) };
 }
 
@@ -1078,9 +1158,23 @@ function getImg(key, w, h) { let im = imgs[key]; if (!im || im.width !== w || im
 //  × terrain factor (LAND_FACTOR: water, built-up, military 0 … forest, meadow 1)
 //  × protected-area factor (PROT_FACTOR: nature reserve / national park 0, landscape protection 0.5);
 //  terrain maps are loaded from zoom LAND_MIN_Z, before that the factor is 1.
+//  Where a hide map is loaded (same zoom), quietness also includes
+//    hidden (can people on roads, paths or in houses see or hear you): × (1 − wHide × (1 − hidden)),
+//    and then counts more than the house distance, which becomes √(house part);
+//    traffic noise: × (1 − wQuiet × noisePenalty(dB)).
+//  × slope factor (FABDEM, ~47 m): 1 − slopeW × slopePenalty(degrees). A slope never rules a spot out
+//    completely on its own (max. penalty 0.95), since there may be a flat patch the 30 m model misses.
+const slopePenalty = d => d <= 5 ? 0 : d <= 15 ? 0.8 * (d - 5) / 10 : Math.min(0.95, 0.8 + 0.15 * (d - 15) / 10);
+const slopeWord = d => d < 3 ? 'flat' : d < 6 ? 'gentle slope' : d < 12 ? 'sloped, look for a flat patch' : d < 20 ? 'steep' : 'very steep';
+const NOISE_OK = 35, NOISE_BAD = 55;           // dB(A): no penalty below, full penalty above
+const noisePenalty = db => Math.max(0, Math.min(1, (db - NOISE_OK) / (NOISE_BAD - NOISE_OK)));
+const hideWord = h => h >= 0.8 ? 'well hidden' : h >= 0.5 ? 'partly hidden' : h >= 0.2 ? 'easy to spot' : 'in plain view';
+const noiseWord = db => db < 30 ? 'silent' : db < 40 ? 'very quiet' : db < 45 ? 'quiet' : db < 55 ? 'some traffic noise' : 'loud traffic';
 function scorer() {
   const f = R.fields, D = R.density, INFD = 1e9;
   const FB = f.buildings, FH = f.hunting, wH = Math.min(1, settings.weights.hunting), LD = R.land, PR = R.prot;
+  const HM = R.hmask, HI = R.hid, HD = R.hdb, wHide = settings.hideW, wQuiet = settings.quietW;
+  const SL = R.slp, wSlope = settings.slopeW;
   const cutH = settings.cutH, busy = settings.busyKm2, cutA = settings.cutA;
   const ka = ATT.filter(c => f[c] && settings.weights[c] > 0);
   const A = ka.map(c => f[c]), aw = ka.map(c => Math.min(1, settings.weights[c])), m = A.length;
@@ -1088,18 +1182,26 @@ function scorer() {
   return (i, out) => {
     const dB = FB ? FB[i] : INFD, qDist = Math.min(1, dB / cutH);
     const dens = D ? Math.max(0, D[i]) : 0, qDens = 1 - Math.min(1, dens / busy);
-    let q = Math.min(qDist, qDens), qHunt = 1;
+    let q = Math.min(qDist, qDens), qHunt = 1, qHide = 1, qNoise = 1, hidden = -1, db = -1;
     if (FH && wH > 0) { const dh = FH[i]; if (dh < 150) qHunt = 1 - wH * (1 - dh / 150); }
-    q *= qHunt;
+    if (HM && HM[i]) {
+      hidden = HI[i] / 255; db = HD[i];
+      q = Math.sqrt(q);
+      qHide = 1 - wHide * (1 - hidden);
+      qNoise = 1 - wQuiet * noisePenalty(db);
+    }
+    if (out) Object.assign(out, { qHouses: q, hidden, qHide, db, qNoise, bike: HM && HM[i] ? R.hbike[i] * 10 : -1 });
+    q *= qHunt * qHide * qNoise;
     let miss = 1;
     for (let j = 0; j < m; j++) {
       const d = A[j][i];
       if (d < cutA) { miss *= 1 - aw[j] * (1 - d / cutA); if (out) out.cats.push({ k: ka[j], d, c: aw[j] * (1 - d / cutA) }); }
     }
     const lc = LD ? LD[i] : 0, qLand = LAND_FACTOR[lc], pl = PR ? PR[i] : 0, qProt = PROT_FACTOR[pl];
-    const s = qProt * qLand * q * (0.4 + 0.6 * (1 - miss));
+    const sv = SL ? SL[i] : 0, slope = sv ? (sv - 1) / 4 : -1, qSlope = sv ? 1 - wSlope * slopePenalty(slope) : 1;
+    const s = qProt * qLand * qSlope * q * (0.4 + 0.6 * (1 - miss));
     if (out) Object.assign(out, { dB, qDist, dens, qDens, qHunt, dh: FH ? FH[i] : INFD, quiet: q, bonus: 1 - miss, score: s,
-      land: LD ? lc : -1, qLand, prot: pl, qProt });
+      land: LD ? lc : -1, qLand, prot: pl, qProt, slope, qSlope });
     return s;
   };
 }
@@ -1217,6 +1319,13 @@ function updateHover() {
   const s = scorer()(i);
   rows.push(`<div class="irow"><span>Spot score</span><b>${Math.round(s * 100)} % · ${scoreWord(s)}</b></div>`);
   if (R.land) rows.push(`<div class="irow"><span class="muted">Terrain</span><b>${LAND[R.land[i]][1]} ${LAND[R.land[i]][0]}</b></div>`);
+  if (R.hmask && R.hmask[i]) {
+    const h = R.hid[i] / 255, db = R.hdb[i], bk = R.hbike[i] * 10;
+    rows.push(`<div class="irow"><span class="muted">Hidden</span><b>${Math.round(h * 100)} % · ${hideWord(h)}</b></div>`,
+      `<div class="irow"><span class="muted">Road noise</span><b>${db} dB · ${noiseWord(db)}</b></div>`,
+      `<div class="irow"><span class="muted">Nearest path or track</span><b>${bk >= 2550 ? 'over 2.5 km' : fmtDist(bk)}</b></div>`);
+  }
+  if (R.slp && R.slp[i]) { const d = (R.slp[i] - 1) / 4; rows.push(`<div class="irow"><span class="muted">Slope</span><b>${Math.round(d)}° · ${slopeWord(d)}</b></div>`); }
   const pa = R.prot && R.prot[i] ? protAt(hoverLL.lat, hoverLL.lng) : null;
   if (pa) rows.push(`<div class="irow"><span class="muted">${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}</span><b>${pa.l === 2 ? 'no camping' : 'check rules'}</b></div>`
     + (pa.n ? `<div class="isub">${esc(pa.n)}</div>` : ''));
@@ -1414,6 +1523,8 @@ function updateCardSummary() {
   if (cardScore !== null) parts.push(`<b style="color:${cardScore < 0.1 ? '#f08a8a' : cardScore < 0.3 ? 'var(--blaze)' : '#9fd4a8'}">${Math.round(cardScore * 100)} % · ${scoreWord(cardScore)}</b>`);
   const lc = landAt(cur.lat, cur.lon); if (lc >= 0) parts.push(`${LAND[lc][1]} ${esc(LAND[lc][0])}`);
   const pa = protAt(cur.lat, cur.lon); if (pa) parts.push(`${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}`);
+  const hd = hideAt(cur.lat, cur.lon); if (hd) parts.push(`👁 ${hideWord(hd.h)}`);
+  const sl = slopeAt(cur.lat, cur.lon); if (sl && sl.deg >= 6) parts.push(`⛰ ${Math.round(sl.deg)}°`);
   const a = cardAnalysis; if (a && a.house) parts.push(`🏠 ${fmtDist(a.house.d)} ${dirName(a.house.b)}`);
   el.innerHTML = parts.map(p => `<span>${p}</span>`).join('') || '<span class="muted">Loading…</span>';
 }
@@ -1505,7 +1616,15 @@ function updateCardScore() {
   const exLand = landAt(cur.lat, cur.lon), exProt = protAt(cur.lat, cur.lon);
   if (exLand >= 0) { p.land = exLand; p.qLand = LAND_FACTOR[exLand]; }
   if (exLand >= 0 || exProt) { p.prot = exProt ? exProt.l : 0; p.qProt = PROT_FACTOR[p.prot]; }
-  s = p.qProt * p.qLand * p.quiet * (0.4 + 0.6 * p.bonus);
+  const exHide = hideAt(cur.lat, cur.lon);
+  if (exHide) {
+    Object.assign(p, { hidden: exHide.h, db: exHide.db, bike: exHide.bike, qHouses: Math.sqrt(Math.min(p.qDist, p.qDens)),
+      qHide: 1 - settings.hideW * (1 - exHide.h), qNoise: 1 - settings.quietW * noisePenalty(exHide.db) });
+    p.quiet = p.qHouses * p.qHunt * p.qHide * p.qNoise;
+  }
+  const exSlope = slopeAt(cur.lat, cur.lon);
+  if (exSlope) Object.assign(p, { slope: exSlope.deg, faces: exSlope.faces, elev: exSlope.elev, qSlope: 1 - settings.slopeW * slopePenalty(exSlope.deg) });
+  s = p.qProt * p.qLand * p.qSlope * p.quiet * (0.4 + 0.6 * p.bonus);
   const bar = (v, col) => `<div class="sc-bar"><i style="width:${Math.max(2, v * 100)}%;background:${col}"></i></div>`;
   const lim = [];
   // the score uses the render grid; for the text prefer the exact distance from the card's analysis
@@ -1518,7 +1637,12 @@ function updateCardScore() {
     <div class="near">
       ${p.prot ? `<span>${p.prot === 2 ? '⛔' : '⚠'}</span><span>Protected area<span class="n">${p.prot === 2 ? 'nature reserve or national park: no camping' : 'landscape protection / Natura 2000: check the rules'}</span></span><b>${pct(p.qProt)}</b>` : ''}
       ${p.land >= 0 ? `<span>${LAND[p.land][1]}</span><span>Terrain: ${esc(LAND[p.land][0])}<span class="n">${p.qLand < 1 ? LAND_WHY[p.land] || '' : 'fine for a tent'}</span></span><b>${pct(p.qLand)}</b>` : ''}
-      <span>🌲</span><span>Quiet<span class="n">${lim.length ? esc(lim.join(' · ')) : 'no houses or hunting stands too close'}</span></span><b>${pct(p.quiet)}</b>
+      ${p.slope >= 0 ? `<span>⛰</span><span>Slope: about ${Math.round(p.slope)}°<span class="n">${slopeWord(p.slope)}${p.slope >= 3 && p.faces !== undefined ? ` · faces ${dirName(p.faces)}` : ''}${p.elev !== undefined ? ` · ${p.elev} m above sea level` : ''}</span></span><b>${pct(p.qSlope)}</b>` : ''}
+      <span>🏠</span><span>Away from houses<span class="n">${lim.length ? esc(lim.join(' · ')) : 'no houses or hunting stands too close'}</span></span><b>${pct(p.qHouses * p.qHunt)}</b>
+      ${p.hidden >= 0 ? `<span>👁</span><span>Hidden<span class="n">${pct(p.hidden)} · ${hideWord(p.hidden)} from roads, paths and houses</span></span><b>${pct(p.qHide)}</b>
+      <span>🔇</span><span>Quiet night<span class="n">road noise about ${p.db} dB · ${noiseWord(p.db)}</span></span><b>${pct(p.qNoise)}</b>
+      <span>🚲</span><span>Access<span class="n">nearest path or track ${p.bike >= 2550 ? 'over 2.5 km' : fmtDist(p.bike)} away</span></span><b></b>`
+      : '<span></span><span class="muted" style="font-size:11.5px">Hidden, quiet night and access: zoom in to 11 or more (offline regions only).</span><b></b>'}
       <span>✚</span><span>Useful places bonus<span class="n">${p.cats.length ? p.cats.sort((u, v) => v.c - u.c).map(c => `${CATS[c.k].icon} ${fmtDist(c.d)}`).join('  ') : `nothing within ${fmtDist(settings.cutA)}`}</span></span><b>${pct(p.bonus)}</b>
     </div>`;
   cardScore = s; updateCardSummary();
@@ -1527,6 +1651,7 @@ function updateCardScore() {
 // What a click on the map does depends on the tool strip
 map.on('click', e => {
   if (tool === 'off') return;
+  if (tool === 'near') { setNearAt(e.latlng.lat, e.latlng.lng, true, true); return; }
   openSpot({ lat: e.latlng.lat, lon: e.latlng.lng });
 });
 document.addEventListener('keydown', e => {
@@ -1670,6 +1795,15 @@ makeSlider($('#haz-sliders'), { label: 'Avoid hunting stands (within 150 m)', mi
 makeSlider($('#haz-sliders'), { label: 'Density smoothing', min: 100, max: 2000, step: 50, value: settings.densR, fmt: fmtDist,
   onInput: v => { settings.densR = v; reachChanged(); densDirty = true; requestRender(); saveSettings(); } });
 
+// Hidden & quiet
+const pctOff = v => v === 0 ? 'off' : Math.round(v * 100) + '%';
+makeSlider($('#hide-sliders'), { label: 'Stay hidden', min: 0, max: 1, step: 0.1, value: settings.hideW, fmt: pctOff,
+  onInput: v => { settings.hideW = v; requestRender(); saveSettings(); } });
+makeSlider($('#hide-sliders'), { label: 'Quiet night (no traffic noise)', min: 0, max: 1, step: 0.1, value: settings.quietW, fmt: pctOff,
+  onInput: v => { settings.quietW = v; requestRender(); saveSettings(); } });
+makeSlider($('#hide-sliders'), { label: 'Avoid slopes (flat up to 5°, steep from 15°)', min: 0, max: 1, step: 0.1, value: settings.slopeW, fmt: pctOff,
+  onInput: v => { settings.slopeW = v; requestRender(); saveSettings(); } });
+
 // Good to have
 makeSlider($('#att-cut'), { label: 'Worth walking up to', min: 100, max: 10000, step: 100, value: settings.cutA, fmt: fmtDist,
   onInput: v => { settings.cutA = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
@@ -1698,7 +1832,7 @@ buildCatRows();
 function drawLegend(sel, table) { const c = $(sel), ctx = c.getContext('2d'), im = ctx.createImageData(256, 1); im.data.set(table); ctx.putImageData(im, 0, 0); }
 function setLabels(sel, items) { $(sel).innerHTML = items.map(([t, s]) => `<span style="left:${t * 100}%">${s}</span>`).join(''); }
 const LAYER_NOTES = {
-  score: 'Green = quiet, dry, allowed and close to useful places. Adjust what counts under Settings.',
+  score: 'Green = hidden, quiet, dry, allowed and close to useful places. Adjust what counts under Settings.',
   density: 'Houses per km², smoothed. Hunting stands are shown as markers.',
   nearby: 'Distance to the nearest useful place, weighted under Settings.',
 };
@@ -1750,7 +1884,7 @@ $('#sheet-handle').addEventListener('touchend', e => {
 
 // Tool strip: decides what a click on the map does
 let tool = 'inspect';
-const TOOL_HINTS = { inspect: 'Click the map to look at a spot', off: 'Map clicks are off' };
+const TOOL_HINTS = { inspect: 'Click the map to look at a spot', near: 'Click the map to find the best spots around that point', off: 'Map clicks are off' };
 let hintT;
 // short message next to the tool strip (also visible on phones, where the status text is hidden); ms = 0 keeps it
 function showHint(text, ms = 1800) {
@@ -1769,7 +1903,8 @@ document.querySelectorAll('.tools button[data-tool]').forEach(b => b.onclick = (
 const NEAR_R = 5000, NEAR_N = 5, NEAR_SEP = 1000;  // radius, number of spots, min. distance between them (m)
 const NEAR_Z = 12;                                  // zoom the search is done at (same result on phone and desktop)
 const meLayer = L.layerGroup().addTo(map), nearLayer = L.layerGroup().addTo(map), locBtn = $('#btn-locate');
-let me = null, meWatch = null, meFirst = false, nearAt = null, nearKey = '';
+let me = null, meWatch = null, meFirst = false, nearAt = null, nearKey = '', nearManual = false;
+const nearCentreLayer = L.layerGroup().addTo(map);
 const isPhone = () => matchMedia('(max-width:720px)').matches;
 
 function startLocate() {
@@ -1790,16 +1925,33 @@ function onPosition(p) {
   L.circle([me.lat, me.lon], { radius: me.acc, color: '#3b82f6', weight: 1, fillOpacity: 0.1, interactive: false }).addTo(meLayer);
   L.circleMarker([me.lat, me.lon], { radius: 7, color: '#fff', weight: 2.5, fillColor: '#3b82f6', fillOpacity: 1 })
     .bindTooltip(`You are here (± ${fmtDist(me.acc)})`).addTo(meLayer);
-  // search again when you've moved more than 1 km from where the list was made
-  if (!nearAt || hdist(nearAt.lat, nearAt.lon, me.lat, me.lon) > 1000) { nearAt = { lat: me.lat, lon: me.lon }; nearKey = ''; showNear(); }
-  if (meFirst) {                                 // first fix: zoom 12, where the drawn grid (view + margin) holds the
-    meFirst = false; showHint(`Found you (± ${fmtDist(me.acc)})`);   // whole 5 km circle at a useful resolution
-    map.setView(meCentre(NEAR_Z), NEAR_Z);
-  }
+  // the search follows you (again after 1 km), unless you placed the search centre yourself
+  if (meFirst) {
+    meFirst = false; showHint(`Found you (± ${fmtDist(me.acc)})`);
+    setNearAt(me.lat, me.lon, false, true);
+  } else if (!nearManual && (!nearAt || hdist(nearAt.lat, nearAt.lon, me.lat, me.lon) > 1000)) setNearAt(me.lat, me.lon, false, false);
   requestRender();
 }
-// map centre that puts you in the middle of the visible map (phones: above the 150 px bottom sheet)
-const meCentre = z => map.unproject(map.project([me.lat, me.lon], z).add([0, isPhone() ? 75 : 0]), z);
+// map centre that puts a point in the middle of the visible map (phones: above the 150 px bottom sheet)
+const centreFor = (lat, lon, z) => map.unproject(map.project([lat, lon], z).add([0, isPhone() ? 75 : 0]), z);
+const meCentre = z => centreFor(me.lat, me.lon, z);
+
+// Search centre for "best spots near…": your position, or a point you clicked / dragged (manual).
+// jump: go to zoom NEAR_Z around it, where the drawn grid (view + margin) holds the whole 5 km circle.
+function setNearAt(lat, lon, manual, jump) {
+  nearAt = { lat, lon }; nearManual = manual; nearKey = '';
+  nearCentreLayer.clearLayers();
+  if (manual) {
+    L.circle([lat, lon], { radius: NEAR_R, color: '#147337', weight: 1.5, dashArray: '6 6', fill: false, interactive: false }).addTo(nearCentreLayer);
+    L.marker([lat, lon], { draggable: true, keyboard: false, title: 'Search centre: drag to move',
+      icon: L.divIcon({ className: '', html: '<div class="near-centre">✥</div>', iconSize: [30, 30], iconAnchor: [15, 15] }) })
+      .on('dragend', e => { const ll = e.target.getLatLng(); setNearAt(ll.lat, ll.lng, true, true); })
+      .addTo(nearCentreLayer);
+  }
+  showNear();
+  if (jump) map.setView(centreFor(lat, lon, NEAR_Z), NEAR_Z);
+  requestRender();
+}
 function onPositionError(e) {
   if (e.code === 1) {                            // permission denied: nothing more will come
     stopLocate();
@@ -1809,6 +1961,7 @@ function onPositionError(e) {
 }
 locBtn.onclick = () => {
   if (meWatch === null) { startLocate(); return; }
+  if (me && nearManual) { setNearAt(me.lat, me.lon, false, true); showHint('Best spots around you'); return; }   // back to "around me"
   // on: first tap brings you back into the middle of the map, a tap while centred turns it off
   const c = me && meCentre(map.getZoom());
   if (c && map.latLngToContainerPoint(c).distanceTo(map.latLngToContainerPoint(map.getCenter())) > 40) { map.panTo(c); return; }
@@ -1819,7 +1972,7 @@ function showNear() {
   $('#near-sec').hidden = !nearAt;
   if (nearAt && !nearKey) $('#near-list').innerHTML = '<div class="muted" style="font-size:12px">Looking for spots…</div>';
 }
-$('#near-close').onclick = () => { nearAt = null; nearKey = ''; nearLayer.clearLayers(); showNear(); };
+$('#near-close').onclick = () => { nearAt = null; nearKey = ''; nearManual = false; nearLayer.clearLayers(); nearCentreLayer.clearLayers(); showNear(); };
 
 // Scores every drawn cell within NEAR_R of nearAt and keeps the best ones at least NEAR_SEP apart.
 // Runs after each redraw, but only at zoom NEAR_Z with the whole circle drawn, so the list stays as it is
@@ -1863,7 +2016,7 @@ function findNearby() {
     return `<div class="spot-item" data-j="${j}" tabindex="0"><span class="nrank">${j + 1}</span>
       <span class="nm">${Math.round(q.s * 100)} % · ${scoreWord(q.s)}${lc >= 0 ? ` · ${LAND[lc][1]} ${esc(LAND[lc][0])}` : ''}</span>
       <span class="dd">${fmtDist(d)} ${dirName(b)}</span></div>`;
-  }).join('') + `<div class="note">Within ${fmtDist(NEAR_R)} of ${me ? 'you' : 'where you were'}. Tap a number to look closer.</div>`;
+  }).join('') + `<div class="note">Within ${fmtDist(NEAR_R)} of ${nearManual ? 'the search centre (drag ✥ to move it)' : me ? 'you' : 'where you were'}. Tap a number to look closer.</div>`;
   const go = q => { openSpot({ lat: q.lat, lon: q.lon }); if (!map.getBounds().contains([q.lat, q.lon])) map.panTo([q.lat, q.lon]); };
   list.querySelectorAll('.spot-item').forEach(el => {
     const q = picks[+el.dataset.j];
@@ -1940,7 +2093,7 @@ $('#btn-save-area').onclick = async () => {
   if (list.length > 300 && !confirm(`Store ${list.length} areas (roughly ${Math.round(list.length * 0.08)} MB)?`)) return;
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});   // ask the browser not to clear it
   const urls = [`${OFFLINE_URL}protected.json${offVersion}`];
-  for (const { x, y } of list) for (const ext of ['.bin', '.json', '.water.bin', '.land.png']) urls.push(`${OFFLINE_URL}${TILE_Z}/${x}/${y}${ext}${offVersion}`);
+  for (const { x, y } of list) for (const ext of ['.bin', '.json', '.water.bin', '.land.png', '.hide.png', '.slope.png']) urls.push(`${OFFLINE_URL}${TILE_Z}/${x}/${y}${ext}${offVersion}`);
   let done = 0, failed = 0;
   const next = async () => { while (urls.length) { const u = urls.shift(); try { const r = await fetch(u); if (!r.ok) failed++; } catch { failed++; } done++;
     if (done % 20 === 0) setStatus(`Storing offline data… ${Math.round(done / (done + urls.length) * 100)} %`, 'busy'); } };
