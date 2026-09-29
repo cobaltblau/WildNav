@@ -39,5 +39,6 @@ optionally download data from the Overpass API (off by default).
 - Base maps: [OpenStreetMap](https://www.openstreetmap.org/) (Grey and Streets),
   [OpenTopoMap](https://opentopomap.org/) (CC-BY-SA), and
   [Sentinel-2 cloudless](https://s2maps.eu) by EOX IT Services GmbH (CC BY-NC-SA 4.0).
+- Weather forecast by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0), fetched only for an opened spot.
 - Search by [Nominatim](https://nominatim.org/), optional downloads via the
   [Overpass API](https://overpass-api.de/).

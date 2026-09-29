@@ -157,9 +157,9 @@ that's already loaded, plus one small library.
 
 ## 4. Trip planning along a route (bikepacking)
 
-- **Import a GPX route** → show the best spots within X km of the route, ranked
+- ✅ **Import a GPX route** → show the best spots within X km of the route, ranked
   ("every ~80 km, a spot in the evening").
-- **Daily stages:** enter km per day → suggest one good spot near each day's end point.
+- ✅ **Daily stages:** enter km per day → suggest one good spot near each day's end point.
 - **Supply points along the route:** supermarkets, bakeries, water taps, bike shops
   (OSM `shop=*`, `amenity=drinking_water`), with opening hours if tagged.
 
@@ -198,7 +198,8 @@ that's already loaded, plus one small library.
    protection areas are only patchily mapped in OSM (106 vs. 4,641 nature reserves in NS + NRW).
 3. ✅ PWA offline + mobile layout → makes it usable on the road.
 4. ✅ Hidden score (section 1), quiet night (traffic noise) and slope (FABDEM).
-5. GPX route planning and weather. (First step done: "Find spots here" tool with a movable search centre.)
+5. ✅ GPX route planning (nights per day distance) and weather (Open-Meteo, per night in the spot card).
+   Still open: supply points along the route.
 
 ---
 

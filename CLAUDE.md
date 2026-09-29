@@ -51,10 +51,25 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
   whole page up and leaves a gap at the bottom in home-screen apps drawn under the status bar.
 
 ## Saved spots
-Clicking the map opens a spot card (`openSpot`): name, 1–5 stars, notes, score breakdown
-(`scorer(i, out)`), a compass map of what is within 2 km (`radarSVG`, from `analyseSpot` over the
-3×3 tiles around the spot) and sun/moon times (SunCalc from cdnjs). Saved spots live only in
+Clicking the map opens a spot card (`openSpot`). Compact on purpose (the owner asked for it): name,
+big score + bar (`#sc-top`), key-fact chips (`updateCardSummary`: terrain, protection, hidden, slope,
+nearest house, tonight's weather), buttons, then collapsible `<details>` sections made with
+`cardSec(key, title, body)`, each with a one-line summary (`setSum(key, html)`): "Why this score"
+(`scorer(i, out)` breakdown; summary = the limiting factor), "Around the spot" (compass map `radarSVG`
+from `analyseSpot` over the 3×3 tiles), "Weather at night", "Sun & moon" (SunCalc from cdnjs),
+"Notes & rating". Open sections are remembered in `localStorage['wn:cardOpen']`.
+Weather: Open-Meteo (free, no key, CC BY 4.0, credited in the section), fetched only when a card
+opens (`loadWeather`, cached 30 min per ~1 km), one row per night 20:00–08:00 (`weatherNights`). Saved spots live only in
 `localStorage['wn:spots']`; export as GPX or JSON backup, import GPX/JSON, share via `#spot=lat,lon,name`.
+
+## Route (GPX)
+Panel section "Route": load a GPX track (also via Import when the file has a track but no waypoints),
+stored in `localStorage['wn:route']` (thinned to ~25 m). "Find spots" (`analyseRoute`) scores the route
+off-screen in 6 km pieces: `tilesReady` waits for the offline tiles, `buildGrid` + `computeDensity(g)` +
+`scorer(g)` at `NEAR_Z`, a distance field from the track limits cells to "up to X off route"; the best
+cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best spot between 85 % and
+105 % of each day's distance) plus other good spots ≥ 3 km apart; purple numbered pins = nights.
+`buildGrid(z, S, x0, y0, gw, gh)` is the view-independent grid builder (`computeBase` uses it for the view).
 
 ## Files
 - `index.html` – the whole app in one file (Leaflet 1.9.4 from CDN + plain JavaScript, no build step).

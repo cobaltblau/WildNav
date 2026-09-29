@@ -175,6 +175,18 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .near{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:2px 8px;font-size:12.5px;align-items:baseline}
 .near>span{min-width:0}
 .spot-card{overflow-x:hidden;flex-shrink:0}
+.sc-top{margin-top:6px;font-size:16px}
+.sc-top .sc-bar{margin:3px 0 2px}
+.sc-sec{border-top:1px solid var(--line);margin-top:8px}
+.sc-sec:first-of-type{margin-top:10px}
+.sc-sec summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:8px;padding:8px 0 6px}
+.sc-sec summary::-webkit-details-marker{display:none}
+.sc-sec summary::before{content:"▸";color:var(--muted);font-size:11px;width:9px;transition:transform .15s}
+.sc-sec[open] summary::before{transform:rotate(90deg)}
+.sc-sec summary .t{font-family:"Barlow Semi Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.sc-sec summary .s{font-size:12px;margin-left:auto;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sc-sec summary:hover .t{color:var(--ink)}
+.sc-body{padding-bottom:6px}
 .near .n{color:var(--muted);font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .near b{font-weight:600;white-space:nowrap}
 .sc-date{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 6px;color-scheme:dark}
@@ -185,6 +197,13 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .spot-item .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* locate me + best spots near you */
 .tools .tool-gap{height:6px}
+.night-pin{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#6d4bd8;color:#fff;
+  font-weight:700;font-size:13px;border:2px solid #fff;box-shadow:0 1px 5px #000a;cursor:pointer}
+.night-dot{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#6d4bd8;color:#fff;font-size:11px;margin-right:2px}
+.rt-opts{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px;font-size:12.5px;color:var(--muted)}
+.rt-opts input,.rt-opts select{width:64px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px 5px;color:var(--ink)}
+.rt-opts select{width:auto}
+.rt-h{font-family:"Barlow Semi Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
 .near-centre{width:30px;height:30px;border-radius:50%;background:#147337;color:#fff;font-size:18px;line-height:28px;text-align:center;border:2px solid #fff;box-shadow:0 1px 6px #000a;cursor:grab}
 .tools button.locating svg{animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
@@ -281,6 +300,12 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
     <section class="sec" id="hover-sec">
       <h2>Under the cursor</h2>
       <div class="info" id="info"><span class="muted">Move the cursor over the map, or click it to look at a spot.</span></div>
+    </section>
+
+    <section class="sec" id="route-sec" aria-label="Route">
+      <h2><span style="color:#e8743a">🚲</span>Route</h2>
+      <div id="route-box"></div>
+      <input type="file" id="route-file" accept=".gpx,application/gpx+xml" hidden>
     </section>
 
     <section class="sec">
@@ -1002,12 +1027,19 @@ function needBase() {
 }
 
 function computeBase() {
-  const z = map.getZoom(), S = cellSize(), worldPx = 256 * 2 ** z;
+  const z = map.getZoom(), S = cellSize();
   const size = map.getSize(), pb = map.getPixelBounds();
   const mx = Math.round(size.x * MARGIN), my = Math.round(size.y * MARGIN);
   const x0 = Math.floor((pb.min.x - mx) / S) * S, y0 = Math.floor((pb.min.y - my) / S) * S;
   const gw = Math.ceil((size.x + 2 * mx) / S) + 1, gh = Math.ceil((size.y + 2 * my) / S) + 1;
-  const cellMc = S * EARTH_C * Math.cos(map.getCenter().lat * Math.PI / 180) / worldPx;
+  R = buildGrid(z, S, x0, y0, gw, gh);
+}
+
+// Score grid for any area (the view, or a piece of a route): zoom z, cell size S (px), top-left
+// x0/y0 (world px at zoom z, multiples of S), gw × gh drawn cells plus padding for distance reach.
+function buildGrid(z, S, x0, y0, gw, gh) {
+  const worldPx = 256 * 2 ** z;
+  const cellMc = S * EARTH_C * Math.cos(yToLat((y0 + gh * S / 2) / worldPx) * Math.PI / 180) / worldPx;
   const pad = Math.min(MAX_PAD, Math.ceil(neededReach() / cellMc) + 2);
   const W = gw + 2 * pad, H = gh + 2 * pad, N = W * H;
   const gx0 = x0 - pad * S, gy0 = y0 - pad * S;
@@ -1115,18 +1147,18 @@ function computeBase() {
   const fields = {};
   for (const c of CAT_KEYS) fields[c] = seeds[c] ? edtField(seeds[c], W, H, cellM) : null;
   const nw = map.unproject([x0, y0], z), se = map.unproject([x0 + gw * S, y0 + gh * S], z);
-  R = { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts, land, prot,
+  return { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts, land, prot,
         hid, hdb, hbike, hmask, slp,
         bounds: L.latLngBounds(nw, se) };
 }
 
-function computeDensity() {
-  const { W, H, counts, cellM, cellMc } = R;
+function computeDensity(g = R) {
+  const { W, H, counts, cellM, cellMc } = g;
   const r = Math.max(1, Math.round(settings.densR / cellMc / 2));
   const a = new Float32Array(counts), t = new Float32Array(W * H);
   for (let p = 0; p < 3; p++) { boxH(a, t, W, H, r); boxV(t, a, W, H, r); }
   for (let y = 0; y < H; y++) { const f = 1e6 / (cellM[y] * cellM[y]), o = y * W; for (let x = 0; x < W; x++) a[o + x] *= f; }
-  R.density = a;
+  g.density = a;
 }
 
 // Colour lookup tables (256 entries RGBA)
@@ -1170,11 +1202,11 @@ const NOISE_OK = 35, NOISE_BAD = 55;           // dB(A): no penalty below, full 
 const noisePenalty = db => Math.max(0, Math.min(1, (db - NOISE_OK) / (NOISE_BAD - NOISE_OK)));
 const hideWord = h => h >= 0.8 ? 'well hidden' : h >= 0.5 ? 'partly hidden' : h >= 0.2 ? 'easy to spot' : 'in plain view';
 const noiseWord = db => db < 30 ? 'silent' : db < 40 ? 'very quiet' : db < 45 ? 'quiet' : db < 55 ? 'some traffic noise' : 'loud traffic';
-function scorer() {
-  const f = R.fields, D = R.density, INFD = 1e9;
-  const FB = f.buildings, FH = f.hunting, wH = Math.min(1, settings.weights.hunting), LD = R.land, PR = R.prot;
-  const HM = R.hmask, HI = R.hid, HD = R.hdb, wHide = settings.hideW, wQuiet = settings.quietW;
-  const SL = R.slp, wSlope = settings.slopeW;
+function scorer(g = R) {
+  const f = g.fields, D = g.density, INFD = 1e9;
+  const FB = f.buildings, FH = f.hunting, wH = Math.min(1, settings.weights.hunting), LD = g.land, PR = g.prot;
+  const HM = g.hmask, HI = g.hid, HD = g.hdb, wHide = settings.hideW, wQuiet = settings.quietW;
+  const SL = g.slp, wSlope = settings.slopeW;
   const cutH = settings.cutH, busy = settings.busyKm2, cutA = settings.cutA;
   const ka = ATT.filter(c => f[c] && settings.weights[c] > 0);
   const A = ka.map(c => f[c]), aw = ka.map(c => Math.min(1, settings.weights[c])), m = A.length;
@@ -1190,7 +1222,7 @@ function scorer() {
       qHide = 1 - wHide * (1 - hidden);
       qNoise = 1 - wQuiet * noisePenalty(db);
     }
-    if (out) Object.assign(out, { qHouses: q, hidden, qHide, db, qNoise, bike: HM && HM[i] ? R.hbike[i] * 10 : -1 });
+    if (out) Object.assign(out, { qHouses: q, hidden, qHide, db, qNoise, bike: HM && HM[i] ? g.hbike[i] * 10 : -1 });
     q *= qHunt * qHide * qNoise;
     let miss = 1;
     for (let j = 0; j < m; j++) {
@@ -1520,13 +1552,25 @@ let cardScore = null;
 function updateCardSummary() {
   const el = $('#sc-summary'); if (!el) return;
   const parts = [];
-  if (cardScore !== null) parts.push(`<b style="color:${cardScore < 0.1 ? '#f08a8a' : cardScore < 0.3 ? 'var(--blaze)' : '#9fd4a8'}">${Math.round(cardScore * 100)} % · ${scoreWord(cardScore)}</b>`);
   const lc = landAt(cur.lat, cur.lon); if (lc >= 0) parts.push(`${LAND[lc][1]} ${esc(LAND[lc][0])}`);
   const pa = protAt(cur.lat, cur.lon); if (pa) parts.push(`${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}`);
   const hd = hideAt(cur.lat, cur.lon); if (hd) parts.push(`👁 ${hideWord(hd.h)}`);
   const sl = slopeAt(cur.lat, cur.lon); if (sl && sl.deg >= 6) parts.push(`⛰ ${Math.round(sl.deg)}°`);
   const a = cardAnalysis; if (a && a.house) parts.push(`🏠 ${fmtDist(a.house.d)} ${dirName(a.house.b)}`);
+  const wx = wxCache.get(`${cur.lat.toFixed(2)},${cur.lon.toFixed(2)}`), n0 = wx && wx.nights[0];
+  if (n0) parts.push(`${n0.rain >= 1 ? '🌧' : '🌙'} ${Math.round(n0.tmin)}°${n0.rain >= 0.1 ? `, ${n0.rain.toFixed(1)} mm` : ''}`);
   el.innerHTML = parts.map(p => `<span>${p}</span>`).join('') || '<span class="muted">Loading…</span>';
+}
+
+// Collapsible card sections (<details>); which ones are open is remembered in this browser
+const cardOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('wn:cardOpen')) || []; } catch { return []; } })());
+const cardSec = (key, title, body) => `<details class="sc-sec" data-sec="${key}"${cardOpen.has(key) ? ' open' : ''}>
+  <summary><span class="t">${title}</span><span class="s" id="sum-${key}"></span></summary><div class="sc-body">${body}</div></details>`;
+const setSum = (key, html) => { const el = $('#sum-' + key); if (el) el.innerHTML = html; };
+function updateNotesSummary() {
+  if (!cur) return;
+  const st = cur.rating ? '<span style="color:var(--blaze)">' + '★'.repeat(cur.rating) + '</span>' : '';
+  setSum('notes', [st, cur.note ? esc(cur.note.split('\n')[0].slice(0, 40)) : (cur.id ? 'no notes yet' : 'add notes, then save')].filter(Boolean).join(' · '));
 }
 
 function renderCard() {
@@ -1534,27 +1578,33 @@ function renderCard() {
   card.innerHTML = `
     <div class="sc-head"><input id="sc-name" value="${esc(s.name || '')}" placeholder="${saved ? 'Unnamed spot' : 'Name this spot'}" aria-label="Spot name">
       <button class="sc-x" id="sc-close" title="Close" aria-label="Close">×</button></div>
+    <div class="sc-top" id="sc-top"></div>
     <div class="sc-summary" id="sc-summary"></div>
-    <div class="sc-sub">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.created ? ' · saved ' + new Date(s.created).toLocaleDateString() : ''}</div>
-    <div class="sc-stars" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" class="${n <= (s.rating || 0) ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
-    <textarea id="sc-note" placeholder="Notes: access, ground, where to pitch, water, who you met…">${esc(s.note || '')}</textarea>
     <div class="sc-btns">
       ${saved ? '<button class="btn" id="sc-del">Delete</button>' : '<button class="btn primary" id="sc-save">Save spot</button>'}
       <button class="btn" id="sc-share" title="Copy a link to this spot">Copy link</button>
       <button class="btn" id="sc-zoom">Zoom to</button>
     </div>
-    <h3>Score here</h3><div id="sc-score"></div>
-    <h3>Around the spot</h3><div id="sc-radar"></div><div class="near" id="sc-near"></div>
-    <h3>Sun &amp; moon</h3>
-    <div style="font-size:12px;margin-bottom:6px"><span class="muted">Date </span><input type="date" class="sc-date" id="sc-date" value="${cardDate.getFullYear()}-${String(cardDate.getMonth() + 1).padStart(2, '0')}-${String(cardDate.getDate()).padStart(2, '0')}" aria-label="Date"></div>
-    <div class="near" id="sc-sun"></div>`;
+    ${cardSec('score', 'Why this score', '<div id="sc-score"></div>')}
+    ${cardSec('around', 'Around the spot', '<div id="sc-radar"></div><div class="near" id="sc-near"></div>')}
+    ${cardSec('wx', 'Weather at night', '<div class="near" id="sc-wx"></div>')}
+    ${cardSec('sun', 'Sun &amp; moon', `<div style="font-size:12px;margin-bottom:6px"><span class="muted">Date </span><input type="date" class="sc-date" id="sc-date" value="${cardDate.getFullYear()}-${String(cardDate.getMonth() + 1).padStart(2, '0')}-${String(cardDate.getDate()).padStart(2, '0')}" aria-label="Date"></div>
+      <div class="near" id="sc-sun"></div>`)}
+    ${cardSec('notes', 'Notes &amp; rating', `<div class="sc-stars" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" class="${n <= (s.rating || 0) ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
+      <textarea id="sc-note" placeholder="Notes: access, ground, where to pitch, water, who you met…">${esc(s.note || '')}</textarea>
+      <div class="sc-sub">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.created ? ' · saved ' + new Date(s.created).toLocaleDateString() : ''}</div>`)}`;
+  card.querySelectorAll('details.sc-sec').forEach(d => d.ontoggle = () => {
+    if (d.open) cardOpen.add(d.dataset.sec); else cardOpen.delete(d.dataset.sec);
+    try { localStorage.setItem('wn:cardOpen', JSON.stringify([...cardOpen])); } catch {}
+  });
+  updateNotesSummary();
 
   $('#sc-close').onclick = closeSpot;
   $('#sc-name').oninput = e => { s.name = e.target.value; if (saved) storeSoon(); };
-  $('#sc-note').oninput = e => { s.note = e.target.value; if (saved) storeSoon(); };
+  $('#sc-note').oninput = e => { s.note = e.target.value; if (saved) storeSoon(); updateNotesSummary(); };
   card.querySelectorAll('.sc-stars button').forEach(b => b.onclick = () => {
     s.rating = s.rating === +b.dataset.n ? 0 : +b.dataset.n;
-    card.querySelectorAll('.sc-stars button').forEach(x => x.classList.toggle('on', +x.dataset.n <= s.rating));
+    card.querySelectorAll('.sc-stars button').forEach(x => x.classList.toggle('on', +x.dataset.n <= s.rating)); updateNotesSummary();
     if (saved) storeSpots();
   });
   if (saved) $('#sc-del').onclick = () => {
@@ -1571,8 +1621,65 @@ function renderCard() {
     try { await navigator.clipboard.writeText(url); setStatus('Link copied', 'ok'); } catch { prompt('Link to this spot:', url); }
   };
   $('#sc-zoom').onclick = () => map.setView([s.lat, s.lon], 15);
-  $('#sc-date').onchange = e => { if (e.target.value) { cardDate = new Date(e.target.value + 'T12:00'); updateCardAround(); } };
-  updateCardAround(); updateCardScore();
+  $('#sc-date').onchange = e => { if (e.target.value) { cardDate = new Date(e.target.value + 'T12:00'); updateCardAround(); loadWeather(s); } };
+  updateCardAround(); updateCardScore(); loadWeather(s);
+}
+
+// ── Weather at night: Open-Meteo forecast (free, no key, CC BY 4.0), fetched only when a card opens,
+// so only that spot's position is sent. One row per night (20:00 – 08:00 local time).
+const wxCache = new Map();                       // rounded position -> { t, nights }
+const WX_TTL = 30 * 60e3;
+async function loadWeather(s) {
+  const el = () => cur === s && !card.hidden ? $('#sc-wx') : null;
+  const key = `${s.lat.toFixed(2)},${s.lon.toFixed(2)}`, hit = wxCache.get(key);
+  if (hit && Date.now() - hit.t < WX_TTL) { renderWeather(el(), hit.nights); return; }
+  if (el()) el().innerHTML = '<span></span><span class="muted">Loading the forecast…</span><b></b>';
+  try {
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + s.lat.toFixed(3) + '&longitude=' + s.lon.toFixed(3) +
+      '&hourly=temperature_2m,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover' +
+      '&timezone=auto&forecast_days=7');
+    if (!r.ok) throw new Error(r.status);
+    const nights = weatherNights((await r.json()).hourly);
+    wxCache.set(key, { t: Date.now(), nights });
+    renderWeather(el(), nights);
+  } catch {
+    if (el()) el().innerHTML = '<span>📡</span><span class="muted">No forecast: the weather needs an internet connection.</span><b></b>';
+    if (el()) setSum('wx', 'offline');
+  }
+}
+function weatherNights(h) {
+  const nights = new Map();
+  h.time.forEach((t, i) => {                       // "2026-09-30T21:00", local time of the spot
+    const hr = +t.slice(11, 13);
+    if (hr >= 8 && hr < 20) return;
+    const d = new Date(t.slice(0, 10) + 'T12:00'); if (hr < 8) d.setDate(d.getDate() - 1);   // early morning belongs to the night before
+    const k = d.toDateString();
+    const n = nights.get(k) || { date: d, n: 0, tmin: 99, rain: 0, prob: 0, wind: 0, gust: 0, dir: 0, cloud: 0 };
+    n.n++; n.tmin = Math.min(n.tmin, h.temperature_2m[i]); n.rain += h.precipitation[i] || 0;
+    n.prob = Math.max(n.prob, h.precipitation_probability[i] || 0); n.wind = Math.max(n.wind, h.wind_speed_10m[i]);
+    if (h.wind_gusts_10m[i] >= n.gust) { n.gust = h.wind_gusts_10m[i]; n.dir = h.wind_direction_10m[i]; }
+    n.cloud += h.cloud_cover[i];
+    nights.set(k, n);
+  });
+  return [...nights.values()].filter(n => n.n >= 10).map(n => ({ ...n, cloud: n.cloud / n.n }));
+}
+function renderWeather(el, nights) {
+  if (!el) return;
+  const today = new Date(); today.setHours(12, 0, 0, 0);
+  const sky = c => c < 20 ? 'clear sky ✨' : c < 50 ? 'partly cloudy' : c < 85 ? 'cloudy' : 'overcast';
+  const rows = nights.slice(0, 6).map(n => {
+    const days = Math.round((n.date - today) / 864e5), on = n.date.toDateString() === new Date(cardDate).toDateString();
+    const name = days === 0 ? 'Tonight' : days === 1 ? 'Tomorrow night' : n.date.toLocaleDateString('en-GB', { weekday: 'long' }) + ' night';
+    const warn = [n.tmin <= 0 ? '❄ frost' : '', n.gust >= 60 ? '⚠ strong gusts: avoid old trees and dead branches' : ''].filter(Boolean).join(' · ');
+    const ic = n.rain >= 1 ? '🌧' : n.gust >= 50 ? '💨' : n.cloud < 20 ? '🌌' : '☁';
+    return `<span>${ic}</span><span>${on ? '<b>' + name + '</b>' : name}<span class="n">${n.rain >= 0.1 ? `rain ${n.rain.toFixed(1)} mm` : 'dry'} (${n.prob} %) · ` +
+      `wind ${Math.round(n.wind)} km/h from ${dirName(n.dir)}, gusts ${Math.round(n.gust)} · ${sky(n.cloud)}${warn ? ' · ' + warn : ''}</span></span><b>min ${Math.round(n.tmin)}°</b>`;
+  });
+  const n0 = nights[0];
+  setSum('wx', n0 ? `tonight ${Math.round(n0.tmin)}°, ${n0.rain >= 0.1 ? n0.rain.toFixed(1) + ' mm rain' : 'dry'}${n0.gust >= 50 ? ', gusty' : ''}` : '');
+  updateCardSummary();
+  el.innerHTML = (rows.join('') || '<span></span><span class="muted">No forecast available.</span><b></b>') +
+    '<span></span><span class="n" style="grid-column:2/4">Weather data by <a href="https://open-meteo.com/" style="color:inherit">Open-Meteo.com</a> (CC BY 4.0)</span>';
 }
 
 function updateCardAround() {
@@ -1598,18 +1705,22 @@ function updateCardAround() {
   for (const k of ATT) { const n = a.near[k];
     rows.push(row(CATS[k].icon, CATS[k].label, n ? `${fmtDist(n.d)} ${dirName(n.b)}` : '—', n && n.n)); }
   $('#sc-near').innerHTML = rows.join('');
+  setSum('around', ATT.map(k => a.near[k] ? { k, d: a.near[k].d } : null).filter(Boolean).sort((u, v) => u.d - v.d).slice(0, 3)
+    .map(n => `${CATS[n.k].icon} ${fmtDist(n.d)}`).join(' · ') || 'nothing useful within 2 km');
   $('#sc-sun').innerHTML = !sun ? row('☀', '<span class="muted">Sun times unavailable (SunCalc did not load)</span>', '') : [
     row('🌅', 'Sunrise', sun.rise ? `${fmtTime(sun.rise.t)} ${dirName(sun.rise.b)}` : '—', `first light ${fmtTime(sun.dawn)}, golden hour until ${fmtTime(sun.goldenMorn)}`),
     row('🌇', 'Sunset', sun.set ? `${fmtTime(sun.set.t)} ${dirName(sun.set.b)}` : '—', `golden hour from ${fmtTime(sun.goldenEve)}, dark ${fmtTime(sun.dusk)}`),
     row(sun.moonPhase < 0.5 ? '🌔' : '🌖', 'Moon', Math.round(sun.moonFrac * 100) + ' % lit', `${moonName(sun.moonPhase)} · rises ${fmtTime(sun.moonRise)}, sets ${fmtTime(sun.moonSet)}`),
   ].join('');
+  if (sun) setSum('sun', `🌇 ${fmtTime(sun.set && sun.set.t)} · ${sun.moonPhase < 0.5 ? '🌔' : '🌖'} ${Math.round(sun.moonFrac * 100)} %`);
   updateCardSummary();
 }
 
 function updateCardScore() {
   if (!cur || card.hidden) return;
   const el = $('#sc-score'), i = gridIndex(L.latLng(cur.lat, cur.lon));
-  if (i < 0) { el.innerHTML = '<span class="muted" style="font-size:12px">Move the map so the spot is in view (with data) to see its score.</span>'; cardScore = null; updateCardSummary(); return; }
+  if (i < 0) { $('#sc-top').innerHTML = '<span class="muted" style="font-size:12px">Move the map so the spot is in view (with data) to see its score.</span>';
+    el.innerHTML = ''; setSum('score', ''); cardScore = null; updateCardSummary(); return; }
   const p = { cats: [] }, pct = v => Math.round(v * 100) + ' %';
   let s = scorer()(i, p);
   // The map grid is coarse (tens of metres); for the card use the exact terrain and protection at the spot.
@@ -1632,9 +1743,12 @@ function updateCardScore() {
   if (p.qDist < 1) lim.push(`nearest house ${fmtDist(houseD)} (want ${fmtDist(settings.cutH)})`);
   if (p.qDens < 1) lim.push(`${Math.round(p.dens)} houses/km² (limit ${settings.busyKm2})`);
   if (p.qHunt < 1) lim.push(`hunting stand ${fmtDist(p.dh)} away`);
+  const col = s < 0.1 ? '#f08a8a' : s < 0.3 ? 'var(--blaze)' : '#9fd4a8';
+  $('#sc-top').innerHTML = `<b style="color:${col}">${pct(s)} · ${scoreWord(s)}</b>${bar(s, s < 0.1 ? '#d64545' : s < 0.3 ? '#e0b24e' : '#4caf6a')}`;
+  const parts = [['terrain', p.qLand], ['protected area', p.qProt], ['slope', p.slope >= 0 ? p.qSlope : 1], ['houses', p.qHouses * p.qHunt],
+    ['hidden', p.hidden >= 0 ? p.qHide : 1], ['traffic noise', p.hidden >= 0 ? p.qNoise : 1]].sort((u, v) => u[1] - v[1]);
+  setSum('score', parts[0][1] < 0.7 ? `limited by ${parts[0][0]} (${pct(parts[0][1])})` : `no big problems · useful places ${pct(p.bonus)}`);
   el.innerHTML = `<div class="near">
-      <span></span><span><b style="font-size:15px">${pct(s)} · ${scoreWord(s)}</b></span><b></b></div>${bar(s, s < 0.1 ? '#d64545' : s < 0.3 ? '#e0b24e' : '#4caf6a')}
-    <div class="near">
       ${p.prot ? `<span>${p.prot === 2 ? '⛔' : '⚠'}</span><span>Protected area<span class="n">${p.prot === 2 ? 'nature reserve or national park: no camping' : 'landscape protection / Natura 2000: check the rules'}</span></span><b>${pct(p.qProt)}</b>` : ''}
       ${p.land >= 0 ? `<span>${LAND[p.land][1]}</span><span>Terrain: ${esc(LAND[p.land][0])}<span class="n">${p.qLand < 1 ? LAND_WHY[p.land] || '' : 'fine for a tent'}</span></span><b>${pct(p.qLand)}</b>` : ''}
       ${p.slope >= 0 ? `<span>⛰</span><span>Slope: about ${Math.round(p.slope)}°<span class="n">${slopeWord(p.slope)}${p.slope >= 3 && p.faces !== undefined ? ` · faces ${dirName(p.faces)}` : ''}${p.elev !== undefined ? ` · ${p.elev} m above sea level` : ''}</span></span><b>${pct(p.qSlope)}</b>` : ''}
@@ -1684,6 +1798,9 @@ $('#spot-file').onchange = async e => {
     const txt = await f.text();
     if (txt.trimStart().startsWith('<')) {
       const doc = new DOMParser().parseFromString(txt, 'application/xml');
+      if (!doc.getElementsByTagName('wpt').length && doc.querySelector('trkpt, rtept')) {   // a track: load it as the route
+        const r = parseRoute(txt, f.name); if (r) { setRoute(r); setStatus(`Loaded as a route: ${fmtDist(r.len)}`, 'ok'); } return;
+      }
       found = [...doc.getElementsByTagName('wpt')].map(w => ({ lat: +w.getAttribute('lat'), lon: +w.getAttribute('lon'),
         name: w.getElementsByTagName('name')[0]?.textContent || '', note: w.getElementsByTagName('desc')[0]?.textContent || '' }));
     } else {
@@ -2025,6 +2142,186 @@ function findNearby() {
   picks.forEach((q, j) => L.marker([q.lat, q.lon], { icon: L.divIcon({ className: '', html: `<div class="near-pin">${j + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
     title: `Spot ${j + 1}: ${Math.round(q.s * 100)} %`, keyboard: false }).on('click', () => go(q)).addTo(nearLayer));
 }
+
+// ════════════════════════════════════════════════════════════════════
+// ROUTE: GPX track → best spots along it, one per night (distance per day)
+// Scored piece by piece off-screen (buildGrid at NEAR_Z), so it works for long routes.
+// ════════════════════════════════════════════════════════════════════
+const ROUTE_KEY = 'wn:route', ROUTE_STEP = 6000, ROUTE_BIN = 2000, ROUTE_MIN = 0.25;
+const routeLayer = L.layerGroup().addTo(map), routePins = L.layerGroup().addTo(map);
+let route = (() => { try { const r = JSON.parse(localStorage.getItem(ROUTE_KEY)); return r && Array.isArray(r.pts) ? withCum(r) : null; } catch { return null; } })();
+let routeRes = null, routeRun = 0;
+if (settings.routeDay === undefined) settings.routeDay = 80;
+if (settings.routeOff === undefined) settings.routeOff = 2000;
+
+function withCum(r) {                           // cumulative distance (m) along the route
+  const cum = [0];
+  for (let i = 1; i < r.pts.length; i++) cum.push(cum[i - 1] + hdist(r.pts[i - 1][0], r.pts[i - 1][1], r.pts[i][0], r.pts[i][1]));
+  return { ...r, cum, len: cum[cum.length - 1] };
+}
+function parseRoute(txt, fileName) {
+  const doc = new DOMParser().parseFromString(txt, 'application/xml');
+  const pts = [];
+  for (const p of doc.querySelectorAll('trkpt, rtept')) {
+    const lat = +p.getAttribute('lat'), lon = +p.getAttribute('lon');
+    if (!isFinite(lat) || !isFinite(lon)) continue;
+    const q = pts[pts.length - 1];
+    if (!q || hdist(q[0], q[1], lat, lon) >= 25) pts.push([+lat.toFixed(5), +lon.toFixed(5)]);   // thin out to ~25 m
+  }
+  if (pts.length < 2) return null;
+  const nm = doc.querySelector('trk > name, rte > name, metadata > name');
+  return withCum({ name: (nm && nm.textContent.trim()) || fileName.replace(/\.gpx$/i, ''), pts });
+}
+function setRoute(r) {
+  route = r; routeRes = null; routeRun++;
+  try { r ? localStorage.setItem(ROUTE_KEY, JSON.stringify({ name: r.name, pts: r.pts })) : localStorage.removeItem(ROUTE_KEY); }
+  catch { setStatus('Route too large to remember in this browser', 'error'); }
+  drawRoute(); renderRoute();
+  if (r) map.fitBounds(L.latLngBounds(r.pts), { paddingBottomRight: [0, isPhone() ? 150 : 0] });
+}
+function drawRoute() {
+  routeLayer.clearLayers(); routePins.clearLayers();
+  if (!route) return;
+  L.polyline(route.pts, { color: '#20282a', weight: 7, opacity: 0.5, interactive: false }).addTo(routeLayer);
+  L.polyline(route.pts, { color: '#e8743a', weight: 4, opacity: 0.95, interactive: false }).addTo(routeLayer);
+  const end = (ll, t) => L.circleMarker(ll, { radius: 6, color: '#fff', weight: 2, fillColor: '#e8743a', fillOpacity: 1 }).bindTooltip(t).addTo(routeLayer);
+  end(route.pts[0], 'Start'); end(route.pts[route.pts.length - 1], 'Finish');
+  if (!routeRes || !routeRes.nights) return;
+  for (const c of routeRes.others) L.circleMarker([c.lat, c.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#147337', fillOpacity: 1 })
+    .bindTooltip(`km ${Math.round(c.km / 1000)} · ${Math.round(c.s * 100)} %`).on('click', () => goSpot(c)).addTo(routePins);
+  routeRes.nights.forEach((c, j) => { if (c) L.marker([c.lat, c.lon], { keyboard: false, title: `Night ${j + 1}`,
+    icon: L.divIcon({ className: '', html: `<div class="night-pin">${j + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) })
+    .on('click', () => goSpot(c)).addTo(routePins); });
+}
+const goSpot = c => { openSpot({ lat: c.lat, lon: c.lon }); map.setView([c.lat, c.lon], Math.max(map.getZoom(), 14)); };
+
+function renderRoute() {
+  const box = $('#route-box');
+  if (!route) {
+    box.innerHTML = `<div class="note" style="margin-top:0">Load a GPX track (from Komoot, Strava, Garmin …) to find spots along it, one for each night.</div>
+      <div class="btns"><button class="btn primary" id="rt-load">Load GPX route</button></div>`;
+    $('#rt-load').onclick = () => $('#route-file').click();
+    return;
+  }
+  const offs = [500, 1000, 2000, 3000, 5000];
+  box.innerHTML = `<div class="irow"><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(route.name)}</span><b>${fmtDist(route.len)}</b></div>
+    <div class="rt-opts"><label>Per day <input type="number" id="rt-day" min="0" max="400" step="5" value="${settings.routeDay}"> km</label>
+      <label>up to <select id="rt-off">${offs.map(o => `<option value="${o}"${o === settings.routeOff ? ' selected' : ''}>${fmtDist(o)}</option>`).join('')}</select> off route</label></div>
+    <div class="btns"><button class="btn primary" id="rt-find">Find spots</button><button class="btn" id="rt-zoom">Show</button>
+      <button class="btn icon" id="rt-del" title="Remove the route" aria-label="Remove the route">✕</button></div>
+    <div id="route-res"></div>`;
+  $('#rt-day').onchange = e => { settings.routeDay = Math.max(0, +e.target.value || 0); saveSettings(); if (routeRes) showRouteRes(); };
+  $('#rt-off').onchange = e => { settings.routeOff = +e.target.value; saveSettings(); };
+  $('#rt-find').onclick = () => analyseRoute();
+  $('#rt-zoom').onclick = () => map.fitBounds(L.latLngBounds(route.pts), { paddingBottomRight: [0, isPhone() ? 150 : 0] });
+  $('#rt-del').onclick = () => { if (confirm(`Remove the route “${route.name}”?`)) setRoute(null); };
+  if (routeRes) showRouteRes();
+}
+$('#route-file').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const r = parseRoute(await f.text(), f.name);
+  if (!r) { setStatus('No track or route found in that file', 'error'); showHint('No track or route found in that file', 4000); return; }
+  setRoute(r); setStatus(`Route loaded: ${fmtDist(r.len)}`, 'ok');
+};
+
+// wait (polling) until the offline tiles of a list are loaded, including terrain/hide/slope maps
+async function tilesReady(list, ms = 20000) {
+  const want = list.filter(t => offline.has(tkey(t.x, t.y))), t0 = Date.now();
+  ensureTiles(want, false);
+  while (Date.now() - t0 < ms) {
+    const loaded = want.map(t => tiles.get(tkey(t.x, t.y))).filter(Boolean);
+    ensureLand(want);
+    if (loaded.length === want.length && loaded.every(t => t.land !== undefined)) return want.length;
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return want.length;
+}
+
+async function analyseRoute() {
+  const run = ++routeRun, r = route, off = settings.routeOff, z = NEAR_Z, S = cellSize();
+  const bins = new Map(), msg = t => { const el = $('#route-res'); if (el) el.innerHTML = `<div class="note">${t}</div>`; };
+  let noData = 0;
+  for (let a = 0; a < r.len; a += ROUTE_STEP) {
+    if (run !== routeRun) return;                // route changed or analysis restarted
+    msg(`Scoring the route… km ${Math.round(a / 1000)} of ${Math.round(r.len / 1000)}`);
+    // route points of this piece (plus one on each side, so segments are complete)
+    let i0 = r.cum.findIndex(c => c >= a); i0 = Math.max(0, i0 - 1);
+    let i1 = r.cum.findIndex(c => c > a + ROUTE_STEP); i1 = i1 < 0 ? r.pts.length - 1 : i1;
+    const seg = r.pts.slice(i0, i1 + 1), segCum = r.cum.slice(i0, i1 + 1);
+    const b = L.latLngBounds(seg), lat0 = b.getCenter().lat;
+    const dLat = m => m / 110574, dLon = m => m / (111320 * Math.cos(lat0 * Math.PI / 180));
+    const bb = L.latLngBounds([b.getSouth() - dLat(off + 100), b.getWest() - dLon(off + 100)], [b.getNorth() + dLat(off + 100), b.getEast() + dLon(off + 100)]);
+    const reach = neededReach() + 500;          // tiles around, for distances and density at the edges
+    const list = tilesInBounds(L.latLngBounds([bb.getSouth() - dLat(reach), bb.getWest() - dLon(reach)], [bb.getNorth() + dLat(reach), bb.getEast() + dLon(reach)]), 200) || [];
+    if (!(await tilesReady(list))) { noData++; continue; }
+    if (run !== routeRun) return;
+    const p0 = map.project(bb.getNorthWest(), z), p1 = map.project(bb.getSouthEast(), z);
+    const x0 = Math.floor(p0.x / S) * S, y0 = Math.floor(p0.y / S) * S;
+    const g = buildGrid(z, S, x0, y0, Math.ceil((p1.x - x0) / S) + 1, Math.ceil((p1.y - y0) / S) + 1);
+    computeDensity(g);
+    const sc = scorer(g), { W, H, pad, gw, gh, gx0, gy0, cov } = g;
+    // distance of every cell to this piece of the route (distance field seeded along the track)
+    const seeds = new Uint8Array(W * H);
+    for (let k = 1; k < seg.length; k++) {
+      const q0 = map.project(seg[k - 1], z), q1 = map.project(seg[k], z), n = Math.ceil(q0.distanceTo(q1) / (S / 2)) + 1;
+      for (let t = 0; t <= n; t++) {
+        const cx = ((q0.x + (q1.x - q0.x) * t / n) - gx0) / S | 0, cy = ((q0.y + (q1.y - q0.y) * t / n) - gy0) / S | 0;
+        if (cx >= 0 && cy >= 0 && cx < W && cy < H) seeds[cy * W + cx] = 1;
+      }
+    }
+    const dR = edtField(seeds, W, H, g.cellM), kx = Math.cos(lat0 * Math.PI / 180) ** 2;
+    for (let y = pad; y < pad + gh; y++) for (let x = pad; x < pad + gw; x++) {
+      const i = y * W + x;
+      if (!cov[i] || dR[i] > off) continue;
+      const s = sc(i);
+      if (s < ROUTE_MIN) continue;
+      const ll = map.unproject([gx0 + (x + 0.5) * S, gy0 + (y + 0.5) * S], z);
+      let best = 0, bd = Infinity;                // nearest route point -> distance along the route
+      for (let k = 0; k < seg.length; k++) { const d = (seg[k][0] - ll.lat) ** 2 + (seg[k][1] - ll.lng) ** 2 * kx; if (d < bd) { bd = d; best = k; } }
+      const km = segCum[best], bin = Math.floor(km / ROUTE_BIN), old = bins.get(bin);
+      if (!old || s > old.s) bins.set(bin, { s, lat: ll.lat, lon: ll.lng, km, off: dR[i] });
+    }
+    await new Promise(r2 => setTimeout(r2));    // let the page breathe between pieces
+  }
+  if (run !== routeRun) return;
+  routeRes = { cands: [...bins.values()].sort((u, v) => u.km - v.km), noData, pieces: Math.ceil(r.len / ROUTE_STEP) };
+  showRouteRes();
+}
+
+// nights: best spot between 85 % and 105 % of each day's distance; others: best spots ≥ 3 km apart
+function showRouteRes() {
+  const res = $('#route-res'); if (!res || !routeRes) return;
+  const c = routeRes.cands, day = settings.routeDay * 1000, nights = [];
+  if (day > 0) for (let n = 1; n * day < route.len - day * 0.1; n++) {
+    const lo = n * day - 0.15 * day, hi = n * day + 0.05 * day;
+    const inRange = c.filter(x => x.km >= lo && x.km <= hi);
+    nights.push(inRange.length ? inRange.reduce((u, v) => v.s > u.s + 0.02 || (Math.abs(v.s - u.s) <= 0.02 && Math.abs(v.km - n * day) < Math.abs(u.km - n * day)) ? v : u) : null);
+  }
+  const others = [];
+  for (const x of [...c].sort((u, v) => v.s - u.s)) {
+    if (x.s < 0.5 || others.length >= 12) break;
+    if (nights.includes(x) || [...others, ...nights.filter(Boolean)].some(o => Math.abs(o.km - x.km) < 3000)) continue;
+    others.push(x);
+  }
+  others.sort((u, v) => u.km - v.km);
+  routeRes.nights = nights; routeRes.others = others;
+  const row = (label, x) => `<div class="spot-item rt-item" data-k="${x.km}" tabindex="0"><span class="nm">${label} · km ${Math.round(x.km / 1000)}</span>
+    <span class="dd">${Math.round(x.s * 100)} % · ${fmtDist(x.off)} off</span></div>`;
+  const nightRows = nights.map((x, j) => x ? row(`<span class="night-dot">${j + 1}</span> <b>Night ${j + 1}</b>`, x)
+    : `<div class="spot-item"><span class="nm muted">Night ${j + 1} · no good spot near km ${Math.round((j + 1) * day / 1000)}</span></div>`).join('');
+  res.innerHTML = (nights.length ? `<h3 class="rt-h">Where to sleep</h3>${nightRows}` : '') +
+    (others.length ? `<h3 class="rt-h">Other good spots on the way</h3>${others.map(x => row('<span style="color:#4caf6a">●</span>', x)).join('')}` : '') +
+    (!c.length ? `<div class="note">No usable spots within ${fmtDist(settings.routeOff)} of the route with the current settings.</div>` : '') +
+    (routeRes.noData ? `<div class="note">${routeRes.noData} of ${routeRes.pieces} route pieces are outside the offline data (only Niedersachsen and NRW so far).</div>` : '') +
+    `<div class="note">Scores use your current settings; press “Find spots” again after changing them.</div>`;
+  res.querySelectorAll('.rt-item').forEach(el => {
+    const x = c.find(v => String(v.km) === el.dataset.k);
+    el.onclick = () => goSpot(x); el.onkeydown = e => { if (e.key === 'Enter') goSpot(x); };
+  });
+  drawRoute();
+}
+drawRoute(); renderRoute();
 
 // Buttons
 $('#btn-load').onclick = () => {
