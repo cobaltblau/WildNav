@@ -18,6 +18,11 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
   layer dropdown (`#layer-select`), status, Settings button.
 - Map: tool strip (`.tools`, `setTool`: `inspect` = click opens the spot card, saving happens
   from the card; `off` = clicks ignored; add future tools here) and a legend box.
+  Below the tools: the locate button (`#btn-locate`, not a click mode). It starts `watchPosition`
+  (blue dot); the first fix jumps to zoom `NEAR_Z` (12), where the drawn grid holds the whole 5 km circle.
+  `findNearby()` runs after each redraw at that zoom and lists the best `NEAR_N` cells ≥ `NEAR_SEP`
+  apart as numbered pins + "Best spots near you" in the panel. Tap again: back to you, then off.
+  Messages for phones go through `showHint()` (the status text is hidden there).
 - Side panel (`#panel`): spot card (when open), "Under the cursor" (hidden on touch devices), your spots.
   On phones (≤720 px) it is a bottom sheet: 150 px showing the card summary, tap/swipe the
   handle for 75 %.

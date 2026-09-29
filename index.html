@@ -183,6 +183,14 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .spot-item:hover{background:var(--surface)}
 .spot-item .st{color:var(--blaze);font-size:11px;white-space:nowrap}
 .spot-item .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* locate me + best spots near you */
+.tools .tool-gap{height:6px}
+.tools button.locating svg{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.near-pin{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#147337;color:#fff;
+  font-weight:700;font-size:13px;border:2px solid #fff;box-shadow:0 1px 5px #000a;cursor:pointer}
+.nrank{flex:0 0 20px;height:20px;border-radius:50%;background:#147337;color:#fff;font-weight:700;font-size:11.5px;display:flex;align-items:center;justify-content:center}
+.spot-item .dd{color:var(--muted);font-size:11.5px;white-space:nowrap}
 @media (hover:none){#hover-sec{display:none}
   /* iOS zooms into text fields below 16 px and may leave the page shifted afterwards */
   input,textarea,select{font-size:16px!important}}
@@ -245,6 +253,9 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></button>
     <button data-tool="off" title="Click off: clicks on the map do nothing (just move and zoom)" aria-label="Clicks off">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></button>
+    <div class="tool-gap"></div>
+    <button id="btn-locate" title="Show where I am and the best spots within 5 km" aria-label="Locate me" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5"/></svg></button>
   </div>
   <div class="tool-hint" id="tool-hint" role="status"></div>
 
@@ -257,6 +268,12 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
   <aside class="panel" id="panel">
     <div class="sheet-handle" id="sheet-handle" role="button" tabindex="0" aria-label="Show more or less"></div>
     <section class="sec spot-card" id="spot-card" hidden aria-label="Spot details"></section>
+
+    <section class="sec" id="near-sec" hidden aria-label="Best spots near you">
+      <div class="sc-head"><h2 style="flex:1;margin:0">Best spots near you</h2>
+        <button class="sc-x" id="near-close" title="Close the list" aria-label="Close the list">×</button></div>
+      <div class="spot-list" id="near-list"></div>
+    </section>
 
     <section class="sec" id="hover-sec">
       <h2>Under the cursor</h2>
@@ -1152,6 +1169,7 @@ function render() {
   const tc = performance.now() - t2;
   $('#perf').textContent = `${fmtN(R.pts)} points · fields ${tb | 0} ms · density ${td | 0} ms · draw ${tc | 0} ms`;
   if (cur) updateCardScore();
+  if (nearAt) findNearby();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1734,15 +1752,126 @@ $('#sheet-handle').addEventListener('touchend', e => {
 let tool = 'inspect';
 const TOOL_HINTS = { inspect: 'Click the map to look at a spot', off: 'Map clicks are off' };
 let hintT;
+// short message next to the tool strip (also visible on phones, where the status text is hidden); ms = 0 keeps it
+function showHint(text, ms = 1800) {
+  const h = $('#tool-hint'); h.textContent = text; h.classList.toggle('show', !!text);
+  clearTimeout(hintT); if (ms) hintT = setTimeout(() => h.classList.remove('show'), ms);
+}
 function setTool(t, quiet) {
   tool = t;
-  document.querySelectorAll('.tools button').forEach(b => { b.classList.toggle('on', b.dataset.tool === t); b.setAttribute('aria-pressed', b.dataset.tool === t); });
+  document.querySelectorAll('.tools button[data-tool]').forEach(b => { b.classList.toggle('on', b.dataset.tool === t); b.setAttribute('aria-pressed', b.dataset.tool === t); });
   $('#map').style.cursor = t === 'off' ? '' : 'crosshair';
-  if (quiet) return;
-  const h = $('#tool-hint'); h.textContent = TOOL_HINTS[t]; h.classList.add('show');
-  clearTimeout(hintT); hintT = setTimeout(() => h.classList.remove('show'), 1800);
+  if (!quiet) showHint(TOOL_HINTS[t]);
 }
-document.querySelectorAll('.tools button').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+document.querySelectorAll('.tools button[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+
+// ── Locate me: GPS position (blue dot) and the best spots within NEAR_R of it
+const NEAR_R = 5000, NEAR_N = 5, NEAR_SEP = 1000;  // radius, number of spots, min. distance between them (m)
+const NEAR_Z = 12;                                  // zoom the search is done at (same result on phone and desktop)
+const meLayer = L.layerGroup().addTo(map), nearLayer = L.layerGroup().addTo(map), locBtn = $('#btn-locate');
+let me = null, meWatch = null, meFirst = false, nearAt = null, nearKey = '';
+const isPhone = () => matchMedia('(max-width:720px)').matches;
+
+function startLocate() {
+  if (!navigator.geolocation) { showHint('Location is not available in this browser', 4000); return; }
+  meFirst = true; locBtn.classList.add('on', 'locating'); locBtn.setAttribute('aria-pressed', true);
+  showHint('Finding your position…', 0);
+  meWatch = navigator.geolocation.watchPosition(onPosition, onPositionError, { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 });
+}
+function stopLocate() {
+  if (meWatch !== null) navigator.geolocation.clearWatch(meWatch);
+  meWatch = null; me = null; meLayer.clearLayers();
+  locBtn.classList.remove('on', 'locating'); locBtn.setAttribute('aria-pressed', false);
+}
+function onPosition(p) {
+  me = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy };
+  locBtn.classList.remove('locating');
+  meLayer.clearLayers();
+  L.circle([me.lat, me.lon], { radius: me.acc, color: '#3b82f6', weight: 1, fillOpacity: 0.1, interactive: false }).addTo(meLayer);
+  L.circleMarker([me.lat, me.lon], { radius: 7, color: '#fff', weight: 2.5, fillColor: '#3b82f6', fillOpacity: 1 })
+    .bindTooltip(`You are here (± ${fmtDist(me.acc)})`).addTo(meLayer);
+  // search again when you've moved more than 1 km from where the list was made
+  if (!nearAt || hdist(nearAt.lat, nearAt.lon, me.lat, me.lon) > 1000) { nearAt = { lat: me.lat, lon: me.lon }; nearKey = ''; showNear(); }
+  if (meFirst) {                                 // first fix: zoom 12, where the drawn grid (view + margin) holds the
+    meFirst = false; showHint(`Found you (± ${fmtDist(me.acc)})`);   // whole 5 km circle at a useful resolution
+    map.setView(meCentre(NEAR_Z), NEAR_Z);
+  }
+  requestRender();
+}
+// map centre that puts you in the middle of the visible map (phones: above the 150 px bottom sheet)
+const meCentre = z => map.unproject(map.project([me.lat, me.lon], z).add([0, isPhone() ? 75 : 0]), z);
+function onPositionError(e) {
+  if (e.code === 1) {                            // permission denied: nothing more will come
+    stopLocate();
+    showHint(/iPhone|iPad/.test(navigator.userAgent) ? 'Location is blocked. Allow it under Settings → Privacy → Location Services → Safari Websites.'
+      : 'Location is blocked. Allow it for this site in the browser settings.', 7000);
+  } else if (!me) showHint('Can’t find your position yet (no GPS signal?). Still trying…', 5000);
+}
+locBtn.onclick = () => {
+  if (meWatch === null) { startLocate(); return; }
+  // on: first tap brings you back into the middle of the map, a tap while centred turns it off
+  const c = me && meCentre(map.getZoom());
+  if (c && map.latLngToContainerPoint(c).distanceTo(map.latLngToContainerPoint(map.getCenter())) > 40) { map.panTo(c); return; }
+  stopLocate(); showHint('Location off');
+};
+
+function showNear() {
+  $('#near-sec').hidden = !nearAt;
+  if (nearAt && !nearKey) $('#near-list').innerHTML = '<div class="muted" style="font-size:12px">Looking for spots…</div>';
+}
+$('#near-close').onclick = () => { nearAt = null; nearKey = ''; nearLayer.clearLayers(); showNear(); };
+
+// Scores every drawn cell within NEAR_R of nearAt and keeps the best ones at least NEAR_SEP apart.
+// Runs after each redraw, but only at zoom NEAR_Z with the whole circle drawn, so the list stays as it is
+// while you zoom in on a spot (and updates as tiles, terrain or settings change).
+function findNearby() {
+  if (!nearAt || !R.valid || R.z !== NEAR_Z) return;
+  const { W, S, gx0, gy0, pad, gw, gh, cellM, cov } = R;
+  const p = map.project([nearAt.lat, nearAt.lon], R.z), cx = (p.x - gx0) / S, cy = (p.y - gy0) / S;
+  const rc = NEAR_R / (R.cellMc * 0.97);
+  if (cx - rc < pad || cy - rc < pad || cx + rc > pad + gw || cy + rc > pad + gh) return;
+  const score = scorer(), cand = [], R2 = NEAR_R * NEAR_R;
+  let covered = 0;
+  for (let y = Math.floor(cy - rc); y <= Math.ceil(cy + rc); y++) {
+    const m = cellM[y], dy = (y + 0.5 - cy) * m;
+    for (let x = Math.floor(cx - rc); x <= Math.ceil(cx + rc); x++) {
+      const dx = (x + 0.5 - cx) * m, d2 = dx * dx + dy * dy, i = y * W + x;
+      if (d2 > R2 || !cov[i]) continue;
+      covered++;
+      const s = score(i);
+      if (s >= 0.1) cand.push([Math.round(s * 100), d2, x, y, s]);
+    }
+  }
+  cand.sort((a, b) => b[0] - a[0] || a[1] - b[1]);  // best first; among equal scores the closer one
+  const picks = [];
+  for (const [, , x, y, s] of cand) {
+    const ll = map.unproject([gx0 + (x + 0.5) * S, gy0 + (y + 0.5) * S], R.z);
+    if (picks.some(q => hdist(q.lat, q.lon, ll.lat, ll.lng) < NEAR_SEP)) continue;
+    picks.push({ lat: ll.lat, lon: ll.lng, s });
+    if (picks.length === NEAR_N) break;
+  }
+  const key = picks.map(q => `${q.lat.toFixed(4)},${q.lon.toFixed(4)},${Math.round(q.s * 100)}`).join(';') + '|' + covered;
+  if (key === nearKey) return;                   // nothing changed: leave the list and pins alone
+  nearKey = key;
+
+  nearLayer.clearLayers();
+  const list = $('#near-list'), frame = localFrame(nearAt.lat, nearAt.lon);
+  if (!covered) { list.innerHTML = '<div class="muted" style="font-size:12px">No map data around here. Offline data covers Niedersachsen and NRW; elsewhere turn on “Download other areas” in Settings.</div>'; return; }
+  if (!picks.length) { list.innerHTML = `<div class="muted" style="font-size:12px">No usable spots within ${fmtDist(NEAR_R)} with the current settings.</div>`; return; }
+  list.innerHTML = picks.map((q, j) => {
+    const [d, b] = frame(q.lat, q.lon), lc = landAt(q.lat, q.lon);
+    return `<div class="spot-item" data-j="${j}" tabindex="0"><span class="nrank">${j + 1}</span>
+      <span class="nm">${Math.round(q.s * 100)} % · ${scoreWord(q.s)}${lc >= 0 ? ` · ${LAND[lc][1]} ${esc(LAND[lc][0])}` : ''}</span>
+      <span class="dd">${fmtDist(d)} ${dirName(b)}</span></div>`;
+  }).join('') + `<div class="note">Within ${fmtDist(NEAR_R)} of ${me ? 'you' : 'where you were'}. Tap a number to look closer.</div>`;
+  const go = q => { openSpot({ lat: q.lat, lon: q.lon }); if (!map.getBounds().contains([q.lat, q.lon])) map.panTo([q.lat, q.lon]); };
+  list.querySelectorAll('.spot-item').forEach(el => {
+    const q = picks[+el.dataset.j];
+    el.onclick = () => go(q); el.onkeydown = e => { if (e.key === 'Enter') go(q); };
+  });
+  picks.forEach((q, j) => L.marker([q.lat, q.lon], { icon: L.divIcon({ className: '', html: `<div class="near-pin">${j + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
+    title: `Spot ${j + 1}: ${Math.round(q.s * 100)} %`, keyboard: false }).on('click', () => go(q)).addTo(nearLayer));
+}
 
 // Buttons
 $('#btn-load').onclick = () => {

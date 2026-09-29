@@ -174,7 +174,7 @@ that's already loaded, plus one small library.
 - **Works offline (PWA):** a service worker caches the app and the tiles you've viewed, so the
   map works without mobile signal in the forest. It stays a static site, so it works on GitHub Pages.
 - **Mobile layout:** the panel as a drawer that slides up from the bottom, with bigger buttons.
-- **Locate me:** GPS button, "best spots within 5 km of here".
+- ✅ **Locate me:** GPS button, "best spots within 5 km of here".
 - **Search:** also search saved spots.
 
 ### Suggested order
