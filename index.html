@@ -32,7 +32,9 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Barlow,system-ui,sans-serif;font-size:13px;color:var(--ink);background:var(--slate);
-  height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums}
+  display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums;
+  position:fixed;inset:0;overscroll-behavior:none}  /* pinned to the screen: iOS can't scroll or mis-size the page */
+html{overflow:hidden;height:100%}
 button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--blaze);outline-offset:2px}
 
@@ -180,7 +182,9 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .spot-item:hover{background:var(--surface)}
 .spot-item .st{color:var(--blaze);font-size:11px;white-space:nowrap}
 .spot-item .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (hover:none){#hover-sec{display:none}}
+@media (hover:none){#hover-sec{display:none}
+  /* iOS zooms into text fields below 16 px and may leave the page shifted afterwards */
+  input,textarea,select{font-size:16px!important}}
 @media (max-width:720px){
   header{gap:8px;padding:6px 8px}
   .brand span,#status,.hbtn .lbl{display:none}
