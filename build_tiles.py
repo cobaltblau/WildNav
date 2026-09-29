@@ -14,10 +14,13 @@ Writes (default out_dir = "data"):
     data/12/<x>/<y>.json         points of interest [{c, lat, lon, n}]
     data/12/<x>/<y>.water.bin    rivers, streams and lake shores sampled every ~40 m,
                                  Uint16 pairs (tile-relative Mercator x, y scaled to 0..65535)
+    data/12/<x>/<y>.land.png     terrain map, 512x512 greyscale PNG (~12 m per pixel);
+                                 each pixel value is a LAND class code (0 = not mapped)
 
 Same tile scheme and categories as index.html (zoom-12 tiles).
-Requires: pip install "osmium>=4"
+Requires: pip install "osmium>=4" pillow
 """
+import io
 import json
 import math
 import os
@@ -28,10 +31,21 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
 import osmium
+from PIL import Image, ImageDraw
 
 TILE_Z = 12
 N = 1 << TILE_Z
-KEYS = ('building', 'amenity', 'tourism', 'natural', 'leisure', 'man_made', 'waterway')
+KEYS = ('building', 'amenity', 'tourism', 'natural', 'leisure', 'man_made', 'waterway', 'landuse')
+AREA_KEYS = ('landuse', 'natural', 'waterway', 'leisure')   # areas that can become terrain
+
+# Terrain classes. The code is also the drawing order: higher codes are drawn on top
+# (a pond inside a forest ends up as water). Mirror of LAND in index.html.
+LAND = {1: 'Field / farmland', 2: 'Meadow / grassland', 3: 'Orchard, vineyard or allotments',
+        4: 'Heath', 5: 'Scrub', 6: 'Forest (broadleaved)', 7: 'Forest (conifer)', 8: 'Forest (mixed)',
+        9: 'Park or sports ground', 10: 'Sand, beach or rock', 11: 'Quarry, landfill or construction',
+        12: 'Built-up area / farmyard', 13: 'Cemetery', 14: 'Wetland / marsh', 15: 'Military area', 16: 'Water'}
+LAND_PX = 512                                # terrain pixels per tile side
+LAND_WATER = 16
 
 # Surface water. Ditches/drains are left out: very common, often dry or polluted.
 WATERWAYS = {'river', 'stream', 'canal'}
@@ -60,6 +74,89 @@ def classify(t):
     if b and b not in ('no', 'ruins'):
         return 'buildings'
     return None
+
+
+def land_class(t):
+    """Terrain class code of an area (see LAND), or 0."""
+    lu, nat, ww, le = t.get('landuse'), t.get('natural'), t.get('waterway'), t.get('leisure')
+    if nat == 'water' or ww == 'riverbank' or lu in ('reservoir', 'basin'):
+        return 16
+    if lu == 'military':
+        return 15
+    if nat == 'wetland':
+        return 14
+    if lu == 'cemetery':
+        return 13
+    if lu in ('residential', 'industrial', 'commercial', 'retail', 'farmyard', 'railway', 'garages'):
+        return 12
+    if lu in ('quarry', 'landfill', 'construction', 'brownfield'):
+        return 11
+    if nat in ('sand', 'beach', 'bare_rock', 'scree', 'shingle'):
+        return 10
+    if le in ('park', 'pitch', 'golf_course', 'sports_centre', 'playground') or lu == 'recreation_ground':
+        return 9
+    if lu == 'forest' or nat == 'wood':
+        return {'broadleaved': 6, 'needleleaved': 7}.get(t.get('leaf_type'), 8)
+    if nat == 'scrub':
+        return 5
+    if nat == 'heath':
+        return 4
+    if lu in ('orchard', 'vineyard', 'allotments', 'plant_nursery'):
+        return 3
+    if lu in ('meadow', 'grass', 'village_green') or nat == 'grassland':
+        return 2
+    if lu == 'farmland':
+        return 1
+    return 0
+
+
+def ring_merc(nodes):
+    """Node list -> flat array('d') of Mercator x, y in zoom-12 tile units."""
+    a = array('d')
+    for n in nodes:
+        if n.location.valid():
+            a.extend(merc(n.location.lat, n.location.lon))
+    return a
+
+
+def add_land(land, owner, ri, key, code, rings, is_line=False):
+    """Register a terrain area (outer ring + inner rings) or a river line with every
+    covered tile it touches. Shared border tiles keep the OSM id for de-duplication."""
+    outer = rings[0]
+    if len(outer) < 4:
+        return
+    xs, ys = outer[0::2], outer[1::2]
+    for tx in range(int(min(xs)), int(max(xs)) + 1):
+        for ty in range(int(min(ys)), int(max(ys)) + 1):
+            own = owner.get((tx, ty))
+            if own == ri or own == -1:
+                land[(tx, ty)].append((code, is_line, rings, key if own == -1 else None))
+
+
+def draw_land(tx, ty, items):
+    """Rasterise terrain items of one tile into a PNG (bytes)."""
+    img = Image.new('L', (LAND_PX, LAND_PX), 0)
+    draw = ImageDraw.Draw(img)
+    px = lambda a: [((a[i] - tx) * LAND_PX, (a[i + 1] - ty) * LAND_PX) for i in range(0, len(a), 2)]
+    for code, is_line, rings, _ in sorted(items, key=lambda it: it[0]):
+        if is_line:
+            draw.line(px(rings[0]), fill=code, width=1)
+        elif len(rings) == 1:
+            draw.polygon(px(rings[0]), fill=code)
+        else:                                          # holes: draw through a mask limited to the bounding box
+            pts = [px(r) for r in rings]
+            x0 = max(0, int(min(p[0] for p in pts[0]))); x1 = min(LAND_PX, int(max(p[0] for p in pts[0])) + 1)
+            y0 = max(0, int(min(p[1] for p in pts[0]))); y1 = min(LAND_PX, int(max(p[1] for p in pts[0])) + 1)
+            if x1 <= x0 or y1 <= y0:
+                continue
+            mask = Image.new('1', (x1 - x0, y1 - y0), 0)
+            md = ImageDraw.Draw(mask)
+            for j, p in enumerate(pts):
+                md.polygon([(x - x0, y - y0) for x, y in p], fill=0 if j else 1)
+            img.paste(code, (x0, y0, x1, y1), mask)
+    buf = io.BytesIO()
+    img.save(buf, format='PNG', optimize=True)
+    return buf.getvalue()
 
 
 def is_water_line(t):
@@ -192,24 +289,31 @@ def read_region(ri, pbf, owner):
     name = os.path.basename(pbf)
     print(f'Reading {name}', flush=True)
 
+    land = defaultdict(list)                       # (tx, ty) -> [(code, is_line, rings, id or None)]
+
     # with_locations() stores node positions so way centres can be computed;
-    # with_areas() assembles lake polygons (also multipolygon relations) for water areas only;
-    # the key filter drops everything that is not relevant before it reaches Python.
-    water_tags = (('natural', 'water'), ('waterway', 'riverbank'))
+    # with_areas() assembles polygons (also multipolygon relations) for terrain and lakes;
+    # the key filters drop everything that is not relevant before it reaches Python.
     fp = (osmium.FileProcessor(pbf)
           .with_locations()
-          .with_areas(osmium.filter.TagFilter(*water_tags))
+          .with_areas(osmium.filter.KeyFilter(*AREA_KEYS))
           .with_filter(osmium.filter.KeyFilter(*KEYS))
-          .with_filter(osmium.filter.TagFilter(*water_tags).enable_for(osmium.osm.AREA)))
+          .with_filter(osmium.filter.KeyFilter(*AREA_KEYS).enable_for(osmium.osm.AREA)))
 
     for o in fp:
         if o.is_area():
-            if is_water_area(o.tags):
+            tags = o.tags
+            if is_water_area(tags):
                 for outer in o.outer_rings():
                     sample_line(outer, water)
                     for inner in o.inner_rings(outer):
                         sample_line(inner, water)
                 n_areas += 1
+            code = land_class(tags)
+            if code:
+                for outer in o.outer_rings():
+                    rings = [ring_merc(outer)] + [ring_merc(inner) for inner in o.inner_rings(outer)]
+                    add_land(land, owner, ri, ('a', o.id), code, rings)
             continue
         if o.is_node():
             if not o.location.valid():
@@ -219,6 +323,10 @@ def read_region(ri, pbf, owner):
             if is_water_line(o.tags):
                 sample_line(o.nodes, water)
                 n_lines += 1
+                if o.tags.get('waterway') in ('river', 'canal'):     # wide enough to show on the terrain map
+                    add_land(land, owner, ri, ('w', o.id), LAND_WATER, [ring_merc(o.nodes)], is_line=True)
+                continue
+            if not classify(o.tags):                   # e.g. landuse ways: only needed as areas
                 continue
             s_lat = s_lon = 0.0
             k = 0
@@ -259,9 +367,18 @@ def read_region(ri, pbf, owner):
         if count % 1_000_000 == 0:
             print(f'{name}: {count:,} objects  {time.time() - t0:.0f} s', flush=True)
 
-    print(f'{name}: finished in {time.time() - t0:.0f} s', flush=True)
+    # Terrain: owned tiles are drawn here (in this worker); shared border tiles are returned
+    # as raw items, because the parent has to merge them with the other extract first.
+    land_png, land_shared = {}, {}
+    for t, items in land.items():
+        if owner.get(t) == ri:
+            land_png[t] = draw_land(t[0], t[1], items)
+        else:
+            land_shared[t] = items
+    print(f'{name}: finished in {time.time() - t0:.0f} s (terrain for {len(land_png)} tiles)', flush=True)
     return {'b': dict(b), 'p': dict(p), 'sb': dict(sb), 'sp': dict(sp),
-            'w': {t: s for t, s in water.items() if t in owner}, 'lines': n_lines, 'areas': n_areas}
+            'w': {t: s for t, s in water.items() if t in owner}, 'lines': n_lines, 'areas': n_areas,
+            'land': land_png, 'land_shared': land_shared}
 
 
 def main():
@@ -285,7 +402,14 @@ def main():
     water = defaultdict(set)
     seen = defaultdict(set)                        # shared tiles: ids already taken from an earlier extract
     n_lines = n_areas = 0
+    land_png, land_shared, land_seen = {}, defaultdict(list), defaultdict(set)
     for res in results:                            # in region order, so the output does not depend on timing
+        land_png.update(res['land'])
+        for t, items in res['land_shared'].items():
+            for it in items:
+                if it[3] not in land_seen[t]:
+                    land_seen[t].add(it[3])
+                    land_shared[t].append(it)
         for t, a in res['b'].items():
             buildings[t].extend(a)
         for t, lst in res['p'].items():
@@ -306,8 +430,11 @@ def main():
         n_areas += res['areas']
 
     covered = sorted(owner)
+    for t, items in land_shared.items():
+        land_png[t] = draw_land(t[0], t[1], items)
+    empty_png = draw_land(0, 0, [])
 
-    total_b = total_w = total_p = 0
+    total_b = total_w = total_p = land_bytes = 0
     for tx, ty in covered:
         d = os.path.join(out, str(TILE_Z), str(tx))
         os.makedirs(d, exist_ok=True)
@@ -326,6 +453,10 @@ def main():
         total_w += len(wa) // 2
         with open(os.path.join(d, f'{ty}.water.bin'), 'wb') as f:
             wa.tofile(f)
+        png = land_png.get((tx, ty), empty_png)
+        land_bytes += len(png)
+        with open(os.path.join(d, f'{ty}.land.png'), 'wb') as f:
+            f.write(png)
 
     # Merge with an existing index so several regions can share one data folder.
     idx_path = os.path.join(out, 'index.json')
@@ -340,7 +471,7 @@ def main():
 
     print(f'Done in {time.time() - t0:.0f} s: {len(covered)} tiles, {total_b:,} buildings, '
           f'{total_p:,} points of interest, {total_w:,} water points '
-          f'({n_lines:,} rivers/streams, {n_areas:,} lakes) -> {out}/')
+          f'({n_lines:,} rivers/streams, {n_areas:,} lakes), terrain {land_bytes / 1e6:.1f} MB -> {out}/')
 
 
 if __name__ == '__main__':
