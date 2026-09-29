@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WildNav</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<!-- Barlow (SIL Open Font License) from jsDelivr/Fontsource instead of Google Fonts -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5/latin-400.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5/latin-500.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5/latin-600.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow-semi-condensed@5/latin-600.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow-semi-condensed@5/latin-700.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -35,7 +39,7 @@ header{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(
 
 .wrap{display:flex;flex:1;overflow:hidden}
 #map{flex:1;background:#cfd6d3}
-body.grey .leaflet-tile-pane{filter:grayscale(1) brightness(1.06) contrast(.88)}
+body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) contrast(.88)}
 .field-canvas{position:absolute;left:0;top:0;pointer-events:none;image-rendering:auto}
 
 /* panel */
@@ -118,33 +122,30 @@ body.grey .leaflet-tile-pane{filter:grayscale(1) brightness(1.06) contrast(.88)}
   <aside class="panel">
     <section class="sec">
       <h2>Map data</h2>
+      <div class="stats" id="stats" style="margin-top:0"></div>
+      <div class="note">Regions with offline data load instantly at any zoom.</div>
       <div id="data-toggles"></div>
-      <div id="data-sliders"></div>
-      <div class="btns">
-        <button class="btn primary" id="btn-load">Load visible area</button>
-        <button class="btn icon" id="btn-clear" title="Delete cached data" aria-label="Delete cached data">🗑</button>
+      <div id="overpass-opts">
+        <div id="data-sliders"></div>
+        <div class="btns">
+          <button class="btn primary" id="btn-load">Load visible area</button>
+          <button class="btn icon" id="btn-clear" title="Delete downloaded data" aria-label="Delete downloaded data">🗑</button>
+        </div>
+        <div class="note">Outside the offline regions, data is downloaded from the Overpass API (slow, shared service) automatically from zoom 13 and stays cached in the browser. Cells above the built-up threshold are counted instead of downloaded; the threshold applies to areas loaded from now on.</div>
       </div>
-      <div class="stats" id="stats"></div>
-      <div class="note">Regions with offline data load instantly at any zoom. Elsewhere, data loads from OpenStreetMap automatically from zoom 13 and stays cached in the browser, so you can zoom out afterwards to see the whole region. Cells above the built-up threshold are counted instead of downloaded; the threshold applies to areas loaded from now on.</div>
     </section>
 
     <section class="sec">
       <h2>Display</h2>
-      <div class="seg" id="seg-mode">
-        <button data-mode="distance">Distance to houses</button>
-        <button data-mode="density">House density</button>
-      </div>
-      <div class="slider-row"><label>Base map</label></div>
+      <div class="slider-row" style="margin-top:0"><label>Base map</label></div>
       <div class="seg" id="seg-base" style="margin-top:4px"></div>
       <div id="display-toggles"></div>
       <div id="display-sliders"></div>
     </section>
 
     <section class="sec">
-      <h2><span class="sw" style="background:var(--haz)"></span>Places to avoid</h2>
-      <div id="haz-cut"></div>
+      <h2><span class="sw" style="background:var(--haz)"></span>Building density</h2>
       <div id="haz-dens"></div>
-      <div id="rows-hazard"></div>
       <div class="legend"><canvas id="leg-h" width="256" height="1"></canvas><div class="leg-labels" id="leg-h-labels"></div></div>
     </section>
 
@@ -161,7 +162,11 @@ body.grey .leaflet-tile-pane{filter:grayscale(1) brightness(1.06) contrast(.88)}
     </section>
 
     <div class="spacer"></div>
-    <div class="foot"><span id="perf"></span><span>Map data © OpenStreetMap contributors</span></div>
+    <div class="foot">
+      <span>Wild camping is not allowed everywhere — check local rules and respect private land.</span>
+      <span id="perf"></span>
+      <span>Map data © <a href="https://www.openstreetmap.org/copyright" style="color:inherit">OpenStreetMap contributors</a>, available under the <a href="https://opendatacommons.org/licenses/odbl/" style="color:inherit">ODbL</a></span>
+    </div>
   </aside>
 </div>
 
@@ -248,8 +253,8 @@ out center qt;`;
 // ════════════════════════════════════════════════════════════════════
 // SETTINGS (persisted)
 // ════════════════════════════════════════════════════════════════════
-const DEFAULTS = { basemap: 'grey', denseKm2: 1000, mode: 'distance', showHaz: true, showAtt: true, markers: true, grey: false, auto: true,
-  opacity: 0.7, cellIdx: 2, cutH: 400, cutA: 1500, densR: 300, weights: {} };
+const DEFAULTS = { basemap: 'grey', denseKm2: 1000, showHaz: true, showAtt: true, markers: true, grey: false,
+  overpass: false, auto: true, opacity: 0.7, cellIdx: 2, cutA: 1500, densR: 300, weights: {} };
 CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
 const settings = (() => {
   try {
@@ -257,6 +262,7 @@ const settings = (() => {
     return { ...DEFAULTS, ...s, weights: { ...DEFAULTS.weights, ...(s.weights || {}) } };
   } catch { return JSON.parse(JSON.stringify(DEFAULTS)); }
 })();
+HAZ.forEach(k => settings.weights[k] = CATS[k].weight);   // no weight sliders for these any more
 let saveT;
 function saveSettings() { clearTimeout(saveT); saveT = setTimeout(() => localStorage.setItem('wn:settings', JSON.stringify(settings)), 300); }
 
@@ -356,18 +362,18 @@ const FieldLayer = L.Layer.extend({
 const savedView = (() => { try { return JSON.parse(localStorage.getItem('wn:view')); } catch { return null; } })();
 const map = L.map('map', { zoomControl: true }).setView(savedView ? [savedView.lat, savedView.lng] : [52.272, 8.047], savedView ? savedView.z : 13);
 const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+// Only base maps that are free to use without an API key (with attribution, for non-commercial use).
 const BASEMAPS = {
-  grey:      { label: 'Grey',      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-               opts: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors' } },
-  streets:   { label: 'Streets',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-               opts: { maxZoom: 19, attribution: 'Tiles © Esri, HERE, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors' } },
+  grey:      { label: 'Grey',      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+               opts: { maxZoom: 19, className: 'tiles-grey', attribution: OSM_ATTR } },
+  streets:   { label: 'Streets',   url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+               opts: { maxZoom: 19, attribution: OSM_ATTR } },
   topo:      { label: 'Topo',      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
                opts: { subdomains: 'abc', maxZoom: 17, attribution: OSM_ATTR + ', SRTM | © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)' } },
-  satellite: { label: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-               opts: { maxZoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' } },
-  osm:       { label: 'OSM',       url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-               opts: { maxZoom: 19, attribution: OSM_ATTR } },
+  satellite: { label: 'Satellite', url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg',
+               opts: { maxZoom: 19, maxNativeZoom: 15, attribution: '<a href="https://s2maps.eu">Sentinel-2 cloudless</a> by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2020, CC BY-NC-SA 4.0)' } },
 };
+if (settings.basemap === 'osm') settings.basemap = 'streets';
 if (!BASEMAPS[settings.basemap]) settings.basemap = 'grey';
 let baseLayer = null;
 function setBasemap(key) {
@@ -487,7 +493,7 @@ async function overpass(q) {
     const i = (mirrorIdx + attempt) % MIRRORS.length;
     try {
       const res = await fetch(MIRRORS[i] + '?data=' + encodeURIComponent(q));
-      if (res.status === 429 || res.status === 504) { await sleep(3000 + attempt * 2000); throw new Error('server busy ' + res.status); }
+      if (res.status === 429 || res.status === 504) { await sleep(10000 * (attempt + 1)); throw new Error('server busy ' + res.status); }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const txt = await res.text();
       if (txt.trimStart().startsWith('<') || txt.includes('runtime error')) throw new Error('query error');
@@ -657,7 +663,7 @@ function boxV(src, dst, W, H, r) {
 // ════════════════════════════════════════════════════════════════════
 let R = { valid: false }, baseDirty = true, densDirty = true, rafId = 0;
 const cellSize = () => CELL_SIZES[settings.cellIdx];
-const neededReach = () => Math.max(settings.cutH, settings.cutA, 3 * settings.densR);
+const neededReach = () => Math.max(settings.cutA, 3 * settings.densR);
 
 function requestRender() { if (!rafId) rafId = requestAnimationFrame(render); }
 
@@ -759,8 +765,6 @@ function lut(stops) {
   }
   return out;
 }
-// distance to houses: red (close) → orange → yellow → green (≥ cutoff, lighter)
-const LUT_H = lut([[0, 190, 30, 30, 255], [0.3, 226, 64, 52, 245], [0.6, 240, 128, 40, 225], [0.85, 238, 200, 60, 200], [1, 60, 170, 90, 130]]);
 // house density (log scale): green (none) → yellow → orange → red → dark red
 const LUT_D = lut([[0, 60, 170, 90, 110], [0.22, 238, 200, 60, 190], [0.45, 240, 128, 40, 225], [0.7, 214, 50, 45, 245], [1, 110, 20, 25, 255]]);
 // good-to-have: solid blue (close) → transparent (far)
@@ -773,30 +777,15 @@ function composite() {
   if (!R.valid) { hazLayer.clear(); attLayer.clear(); return; }
   const { W, gw, gh, pad, fields, cov } = R;
 
-  if (settings.showHaz) {
+  if (settings.showHaz && R.density) {
     const img = getImg('h', gw, gh), px = img.data;
-    if (settings.mode === 'density' && R.density) {
-      const D = R.density, sc = 255 / Math.log1p(DMAX);
-      for (let y = 0; y < gh; y++) {
-        let i = (y + pad) * W + pad, o = y * gw * 4;
-        for (let x = 0; x < gw; x++, i++, o += 4) {
-          if (!cov[i]) { px[o + 3] = 0; continue; }
-          let li = Math.log1p(Math.max(0, D[i])) * sc | 0; if (li > 255) li = 255; li <<= 2;
-          px[o] = LUT_D[li]; px[o + 1] = LUT_D[li + 1]; px[o + 2] = LUT_D[li + 2]; px[o + 3] = LUT_D[li + 3];
-        }
-      }
-    } else {
-      const ks = HAZ.filter(c => fields[c] && settings.weights[c] > 0);
-      const A = ks.map(c => fields[c]), iw = ks.map(c => 1 / settings.weights[c]), m = A.length, sc = 255 / settings.cutH;
-      for (let y = 0; y < gh; y++) {
-        let i = (y + pad) * W + pad, o = y * gw * 4;
-        for (let x = 0; x < gw; x++, i++, o += 4) {
-          if (!cov[i]) { px[o + 3] = 0; continue; }
-          let d = 1e30;
-          for (let j = 0; j < m; j++) { const v = A[j][i] * iw[j]; if (v < d) d = v; }
-          let li = d * sc; li = li > 255 ? 255 : li | 0; li <<= 2;
-          px[o] = LUT_H[li]; px[o + 1] = LUT_H[li + 1]; px[o + 2] = LUT_H[li + 2]; px[o + 3] = LUT_H[li + 3];
-        }
+    const D = R.density, sc = 255 / Math.log1p(DMAX);
+    for (let y = 0; y < gh; y++) {
+      let i = (y + pad) * W + pad, o = y * gw * 4;
+      for (let x = 0; x < gw; x++, i++, o += 4) {
+        if (!cov[i]) { px[o + 3] = 0; continue; }
+        let li = Math.log1p(Math.max(0, D[i])) * sc | 0; if (li > 255) li = 255; li <<= 2;
+        px[o] = LUT_D[li]; px[o + 1] = LUT_D[li + 1]; px[o + 2] = LUT_D[li + 2]; px[o + 3] = LUT_D[li + 3];
       }
     }
     hazLayer.update(R.bounds, img);
@@ -869,7 +858,8 @@ function updateHover() {
     const cx = Math.floor((p.x - R.gx0) / R.S), cy = Math.floor((p.y - R.gy0) / R.S);
     if (cx >= 0 && cy >= 0 && cx < R.W && cy < R.H && R.cov[cy * R.W + cx]) i = cy * R.W + cx;
   }
-  if (i < 0) { $('#info').innerHTML = '<span class="muted">No data here yet. Zoom in to 13 or press “Load visible area”.</span>'; return; }
+  if (i < 0) { $('#info').innerHTML = (settings.overpass ? '<span class="muted">No data here yet. Zoom in to 13 or press “Load visible area”.</span>'
+    : '<span class="muted">No offline data here. Turn on “Download other areas from OpenStreetMap” to load it.</span>'); return; }
   const reach = R.pad * R.cellMc, rows = [];
   for (const k of HAZ) {
     const f = R.fields[k], d = f ? f[i] : Infinity;
@@ -920,7 +910,11 @@ function makeToggle(parent, label, key, onChange) {
 }
 
 // Map data
-makeToggle($('#data-toggles'), 'Load data automatically', 'auto', v => v && autoLoad());
+const syncOverpass = () => { $('#overpass-opts').style.display = settings.overpass ? '' : 'none'; };
+makeToggle($('#data-toggles'), 'Download other areas from OpenStreetMap', 'overpass', v => { syncOverpass(); if (v) autoLoad(); });
+makeToggle($('#overpass-opts'), 'Download automatically from zoom 13', 'auto', v => v && autoLoad());
+$('#overpass-opts').prepend($('#overpass-opts').lastElementChild);   // put that toggle first
+syncOverpass();
 makeSlider($('#data-sliders'), { label: 'Treat as built-up above', min: 200, max: 3000, step: 100, value: settings.denseKm2,
   fmt: v => v + ' houses/km²', onInput: v => { settings.denseKm2 = v; saveSettings(); } });
 
@@ -938,8 +932,8 @@ makeSlider($('#data-sliders'), { label: 'Treat as built-up above', min: 200, max
   }
   seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.key === settings.basemap));
 })();
-makeToggle($('#display-toggles'), 'Show places to avoid', 'showHaz', requestRender);
-makeToggle($('#display-toggles'), 'Show good-to-have places', 'showAtt', requestRender);
+makeToggle($('#display-toggles'), 'Show building density', 'showHaz', requestRender);
+makeToggle($('#display-toggles'), 'Show useful places nearby', 'showAtt', requestRender);
 makeToggle($('#display-toggles'), 'Show point markers', 'markers', rebuildMarkers);
 makeToggle($('#display-toggles'), 'Grey base map', 'grey', v => document.body.classList.toggle('grey', v));
 document.body.classList.toggle('grey', settings.grey);
@@ -953,9 +947,7 @@ makeSlider($('#display-sliders'), { label: 'Overlay detail', min: 0, max: 4, ste
 
 function reachChanged() { if (R.valid && R.pad < MAX_PAD && neededReach() > R.pad * R.cellMc) baseDirty = true; }
 
-// Places to avoid
-makeSlider($('#haz-cut'), { label: 'Safe distance from houses', min: 50, max: 3000, step: 50, value: settings.cutH, fmt: fmtDist,
-  onInput: v => { settings.cutH = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
+// Building density
 makeSlider($('#haz-dens'), { label: 'Density smoothing', min: 100, max: 2000, step: 50, value: settings.densR, fmt: fmtDist,
   onInput: v => { settings.densR = v; reachChanged(); densDirty = true; requestRender(); saveSettings(); } });
 
@@ -964,7 +956,7 @@ makeSlider($('#att-cut'), { label: 'Worth walking up to', min: 100, max: 10000, 
   onInput: v => { settings.cutA = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
 
 function buildCatRows() {
-  for (const [grp, keys] of [['hazard', HAZ], ['attract', ATT]]) {
+  for (const [grp, keys] of [['attract', ATT]]) {
     const box = $('#rows-' + grp);
     for (const k of keys) {
       const c = CATS[k], row = document.createElement('div');
@@ -983,28 +975,13 @@ function buildCatRows() {
 }
 buildCatRows();
 
-function setMode(m) {
-  settings.mode = m; saveSettings();
-  document.querySelectorAll('#seg-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
-  $('#haz-cut').style.display = m === 'distance' ? '' : 'none';
-  $('#haz-dens').style.display = m === 'density' ? '' : 'none';
-  $('#rows-hazard').style.display = m === 'distance' ? '' : 'none';
-  updateLegends(); requestRender();
-}
-document.querySelectorAll('#seg-mode button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
-
 // Legends
 function drawLegend(sel, table) { const c = $(sel), ctx = c.getContext('2d'), im = ctx.createImageData(256, 1); im.data.set(table); ctx.putImageData(im, 0, 0); }
 function setLabels(sel, items) { $(sel).innerHTML = items.map(([t, s]) => `<span style="left:${t * 100}%">${s}</span>`).join(''); }
 function updateLegends() {
-  if (settings.mode === 'density') {
-    drawLegend('#leg-h', LUT_D);
-    const L1 = Math.log1p(DMAX), at = v => Math.log1p(v) / L1;
-    setLabels('#leg-h-labels', [[0, '0'], [at(10), '10'], [at(100), '100'], [at(1000), '1000'], [1, 'houses/km²']]);
-  } else {
-    drawLegend('#leg-h', LUT_H);
-    setLabels('#leg-h-labels', [[0, 'next to a house'], [0.5, fmtDist(settings.cutH / 2)], [1, fmtDist(settings.cutH) + '+']]);
-  }
+  drawLegend('#leg-h', LUT_D);
+  const L1 = Math.log1p(DMAX), at = v => Math.log1p(v) / L1;
+  setLabels('#leg-h-labels', [[0, '0'], [at(10), '10'], [at(100), '100'], [1, `${DMAX}+ houses/km²`]]);
   drawLegend('#leg-a', LUT_A);
   setLabels('#leg-a-labels', [[0, 'right here'], [0.5, fmtDist(settings.cutA / 2)], [1, fmtDist(settings.cutA)]]);
 }
@@ -1055,7 +1032,7 @@ function autoLoad() {
   if (!offlineChecked) return;
   const list = tilesInBounds(map.getBounds().pad(0.15), 4000);
   if (!list) return;
-  ensureTiles(list, settings.auto && map.getZoom() >= AUTO_MIN_Z);
+  ensureTiles(list, settings.overpass && settings.auto && map.getZoom() >= AUTO_MIN_Z);
 }
 map.on('moveend', () => {
   requestRender(); rebuildMarkers(); autoLoad(); reorderQueue();
@@ -1064,7 +1041,7 @@ map.on('moveend', () => {
 });
 window.addEventListener('resize', () => { baseDirty = true; requestRender(); });
 
-setMode(settings.mode);
+updateLegends();
 updateStats();
 requestRender();
 offlineReady.then(() => { offlineChecked = true; autoLoad(); });
