@@ -23,6 +23,18 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
   handle for 75 %.
 - All sliders live in the Settings sheet (`#settings`), over the panel on desktop, full screen on phones.
 
+## Offline / installable app
+- `sw.js` (service worker, registered from index.html): app files network-first, CDN files
+  cache-first (`wn-lib`), `data/12/*` cache-first (`wn-data`, URLs carry `?v=<build>`; the app
+  posts the current build and older tiles are deleted), map images network-first with offline
+  fallback (`wn-map`, capped at 3000; no bulk downloads — OSM tile policy).
+  **Bump `VERSION` in sw.js when its caching rules change.**
+- CDN tags and base-map tiles use CORS (`crossorigin`) so responses can be cached;
+  opaque responses are never cached (they inflate the storage quota).
+- Settings → "Offline use": "Save this area" stores the data files of the visible tiles.
+- `manifest.webmanifest` + `icons/` (PNG, made from the logo shapes with Pillow; iPhone needs
+  `apple-touch-icon.png`). iOS keeps storage for home-screen apps; plain Safari may clear it.
+
 ## Saved spots
 Clicking the map opens a spot card (`openSpot`): name, 1–5 stars, notes, score breakdown
 (`scorer(i, out)`), a compass map of what is within 2 km (`radarSVG`, from `analyseSpot` over the
@@ -83,6 +95,8 @@ http://localhost:8765/ (opening index.html directly as a file will not load `dat
 
 ## Rules for all work
 - Keep the app static: it must run from any static host (GitHub Pages). No server code.
-- Keep `index.html` self-contained apart from CDN libraries and the `data/` folder.
+- Keep `index.html` self-contained apart from CDN libraries, the `data/` folder and the
+  installable-app files (`sw.js`, `manifest.webmanifest`, `icons/`), which browsers require as
+  separate files.
 - After every change: test in the preview, check the browser console, then tell the owner
   what to look at. Commit with a clear message only after they say it looks good, then push.

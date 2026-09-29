@@ -8,6 +8,11 @@ Live version: https://cobaltblau.github.io/WildNav/
 
 Wild camping is not allowed everywhere. Check the local rules and respect private land.
 
+## On your phone
+Open the live version in Safari (iPhone) or Chrome (Android) and add it to the home screen.
+It then works offline for everything you've viewed; under Settings → "Offline use" you can
+store a whole area before a trip.
+
 ## Run locally
 Double-click `start.bat`, or run `python -m http.server 8765` and open http://localhost:8765/.
 
