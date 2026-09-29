@@ -1,0 +1,6 @@
+# Geofabrik downloads (large)
+raw/
+
+# Python cache
+__pycache__/
+*.py[cod]

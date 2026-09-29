@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WildNav</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --slate:#20282a; --surface:#2a3437; --line:#3a4749;
+  --ink:#e6ebe8; --muted:#93a3a0; --blaze:#f2c14e;
+  --haz:#d64545; --att:#3b82f6;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Barlow,system-ui,sans-serif;font-size:13px;color:var(--ink);background:var(--slate);
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--blaze);outline-offset:2px}
+
+/* header */
+header{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--slate);border-bottom:1px solid var(--line);position:relative;z-index:1001}
+.brand{font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;font-size:19px;letter-spacing:.01em;display:flex;align-items:center;gap:8px}
+.brand::before{content:"";width:14px;height:14px;background:var(--blaze);border-radius:2px;transform:rotate(45deg)}
+#search{display:flex;flex:0 1 320px}
+#search input{flex:1;background:var(--surface);border:1px solid var(--line);border-right:0;border-radius:6px 0 0 6px;padding:5px 9px;min-width:0}
+#search button{background:var(--surface);border:1px solid var(--line);border-radius:0 6px 6px 0;padding:0 10px;cursor:pointer;color:var(--muted)}
+#status{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+#status.busy{color:var(--blaze)} #status.error{color:#f08a8a} #status.ok{color:#9fd4a8}
+#progress{position:absolute;left:0;right:0;bottom:-1px;height:2px;opacity:0;transition:opacity .2s}
+#progress.on{opacity:1}
+#progress-fill{height:100%;width:0;background:var(--blaze);transition:width .3s}
+
+.wrap{display:flex;flex:1;overflow:hidden}
+#map{flex:1;background:#cfd6d3}
+body.grey .leaflet-tile-pane{filter:grayscale(1) brightness(1.06) contrast(.88)}
+.field-canvas{position:absolute;left:0;top:0;pointer-events:none;image-rendering:auto}
+
+/* panel */
+.panel{width:278px;background:var(--slate);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.sec{padding:12px 14px 13px;border-bottom:1px solid var(--line)}
+.sec h2{font-family:"Barlow Semi Condensed",sans-serif;font-size:15px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.sec h2 .sw{width:10px;height:10px;border-radius:2px}
+.note{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:6px}
+
+.btns{display:flex;gap:6px;margin-top:8px}
+.btn{flex:1;padding:7px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--blaze);border-color:var(--blaze);color:#1d1a10}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.icon{flex:0 0 36px}
+.stats{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+.stats b{color:var(--ink);font-weight:600}
+
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:2px;gap:2px}
+.seg button{flex:1;padding:5px 0;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;font-weight:500}
+#seg-base button{font-size:11.5px;padding:5px 0}
+.seg button.on{background:var(--slate);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:7px;font-size:12.5px}
+.tog{width:32px;height:18px;border-radius:9px;background:var(--line);border:0;cursor:pointer;position:relative;flex-shrink:0}
+.tog::after{content:"";position:absolute;left:3px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--muted);transition:transform .15s}
+.tog.on{background:#57703a}.tog.on::after{transform:translateX(14px);background:var(--ink)}
+
+.slider-row{margin-top:8px}
+.slider-row>label{font-size:12px;color:var(--muted)}
+.slider-wrap{position:relative;padding-top:19px}
+.slider-wrap input{width:100%;accent-color:var(--blaze);display:block;cursor:pointer}
+.tip{position:absolute;top:0;transform:translateX(-50%);background:var(--surface);border:1px solid var(--line);
+  font-size:11px;padding:0 5px;border-radius:4px;white-space:nowrap;pointer-events:none;line-height:16px}
+
+.cat-row{display:grid;grid-template-columns:10px 1fr auto 78px;align-items:end;gap:7px;margin-top:4px}
+.cat-row .dot{width:9px;height:9px;border-radius:50%;margin-bottom:5px}
+.cat-row .name{font-size:12.5px;margin-bottom:2px}
+.cat-row .cnt{font-size:11px;color:var(--muted);margin-bottom:3px}
+.cat-row .slider-row{margin-top:0}
+.cat-row .slider-wrap{padding-top:16px}
+.cat-row .tip{font-size:10px;line-height:13px}
+
+.legend{margin-top:10px}
+.legend canvas{width:100%;height:10px;display:block;border-radius:3px;
+  background:repeating-conic-gradient(#3a4749 0 25%,#2a3437 0 50%) 0 0/8px 8px}
+.leg-labels{position:relative;height:15px;font-size:10.5px;color:var(--muted);margin-top:2px}
+.leg-labels span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.leg-labels span:first-child{transform:none}
+.leg-labels span:last-child{transform:translateX(-100%)}
+
+.info{font-size:12.5px;min-height:40px}
+.irow{display:flex;justify-content:space-between;gap:8px;padding:1.5px 0}
+.irow i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.irow b{font-weight:600;white-space:nowrap}
+.isub{font-size:11px;color:var(--muted);margin:-2px 0 2px 14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.isep{border-top:1px solid var(--line);margin:6px 0}
+.muted{color:var(--muted)}
+.spacer{flex:1}
+.foot{padding:8px 14px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+
+.leaflet-tooltip{background:var(--slate);color:var(--ink);border:1px solid var(--line);font-family:Barlow,sans-serif;font-size:12px;box-shadow:0 3px 12px #0006}
+.leaflet-tooltip-top::before{border-top-color:var(--line)}
+@media (max-width:720px){.panel{width:240px}#search{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body class="grey">
+
+<header>
+  <div class="brand">WildNav</div>
+  <form id="search"><input id="q" placeholder="Go to a place…" aria-label="Search place"><button type="submit" aria-label="Search">⌕</button></form>
+  <div id="status">Ready</div>
+  <div id="progress"><div id="progress-fill"></div></div>
+</header>
+
+<div class="wrap">
+  <div id="map"></div>
+
+  <aside class="panel">
+    <section class="sec">
+      <h2>Map data</h2>
+      <div id="data-toggles"></div>
+      <div id="data-sliders"></div>
+      <div class="btns">
+        <button class="btn primary" id="btn-load">Load visible area</button>
+        <button class="btn icon" id="btn-clear" title="Delete cached data" aria-label="Delete cached data">🗑</button>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="note">Regions with offline data load instantly at any zoom. Elsewhere, data loads from OpenStreetMap automatically from zoom 13 and stays cached in the browser, so you can zoom out afterwards to see the whole region. Cells above the built-up threshold are counted instead of downloaded; the threshold applies to areas loaded from now on.</div>
+    </section>
+
+    <section class="sec">
+      <h2>Display</h2>
+      <div class="seg" id="seg-mode">
+        <button data-mode="distance">Distance to houses</button>
+        <button data-mode="density">House density</button>
+      </div>
+      <div class="slider-row"><label>Base map</label></div>
+      <div class="seg" id="seg-base" style="margin-top:4px"></div>
+      <div id="display-toggles"></div>
+      <div id="display-sliders"></div>
+    </section>
+
+    <section class="sec">
+      <h2><span class="sw" style="background:var(--haz)"></span>Places to avoid</h2>
+      <div id="haz-cut"></div>
+      <div id="haz-dens"></div>
+      <div id="rows-hazard"></div>
+      <div class="legend"><canvas id="leg-h" width="256" height="1"></canvas><div class="leg-labels" id="leg-h-labels"></div></div>
+    </section>
+
+    <section class="sec">
+      <h2><span class="sw" style="background:var(--att)"></span>Good to have nearby</h2>
+      <div id="att-cut"></div>
+      <div id="rows-attract"></div>
+      <div class="legend"><canvas id="leg-a" width="256" height="1"></canvas><div class="leg-labels" id="leg-a-labels"></div></div>
+    </section>
+
+    <section class="sec">
+      <h2>Under the cursor</h2>
+      <div class="info" id="info"><span class="muted">Move the cursor over the map.</span></div>
+    </section>
+
+    <div class="spacer"></div>
+    <div class="foot"><span id="perf"></span><span>Map data © OpenStreetMap contributors</span></div>
+  </aside>
+</div>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════════════════
+const TILE_Z = 12, N12 = 1 << TILE_Z;        // data tiles: ~6×6 km at 52°N
+const DB_PREFIX = 'v3/';
+const CACHE_TTL = 30 * 864e5;                 // 30 days
+const AUTO_MIN_Z = 13;
+const MANUAL_MAX_TILES = 150;
+const CONCURRENCY = 2;
+const OFFLINE_URL = 'data/';                  // offline tiles made by build_tiles.py
+const OFFLINE_CONCURRENCY = 6;
+const MARGIN = 0.35;                          // render this much beyond the view
+const MAX_PAD = 220;                          // max padding cells for distance reach
+const MARKER_MIN_Z = 11;
+const DMAX = 3000;                            // density scale top, buildings/km²
+const EARTH_C = 40075016.686;
+const CELL_SIZES = [8, 6, 4, 3, 2];
+const CELL_LABELS = ['coarse', 'low', 'medium', 'high', 'sharp'];
+const MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
+
+const CATS = {
+  buildings:  { label: 'Buildings',       icon: '🏠', color: '#d64545', group: 'hazard',  weight: 1   },
+  hunting:    { label: 'Hunting stands',  icon: '🎯', color: '#e0902f', group: 'hazard',  weight: 0.5 },
+  water:      { label: 'Water sources',   icon: '💧', color: '#22b8d6', group: 'attract', weight: 1   },
+  shelters:   { label: 'Shelters & huts', icon: '🛖', color: '#4caf6a', group: 'attract', weight: 1   },
+  campsites:  { label: 'Camp sites',      icon: '⛺', color: '#2f9e8f', group: 'attract', weight: 0.8 },
+  viewpoints: { label: 'Viewpoints',      icon: '🔭', color: '#9b7fe0', group: 'attract', weight: 0.5 },
+  firepits:   { label: 'Fire pits',       icon: '🔥', color: '#e8743a', group: 'attract', weight: 0.6 },
+};
+const CAT_KEYS = Object.keys(CATS);
+const HAZ = CAT_KEYS.filter(k => CATS[k].group === 'hazard');
+const ATT = CAT_KEYS.filter(k => CATS[k].group === 'attract');
+
+function classify(bld, am, tour, nat, leis, mm) {
+  if (am === 'hunting_stand') return 'hunting';
+  if (am === 'shelter' || tour === 'wilderness_hut' || tour === 'alpine_hut') return 'shelters';
+  if (nat === 'spring' || am === 'drinking_water' || mm === 'water_well') return 'water';
+  if (tour === 'camp_site') return 'campsites';
+  if (tour === 'viewpoint') return 'viewpoints';
+  if (leis === 'firepit' || am === 'bbq') return 'firepits';
+  if (bld && bld !== 'no' && bld !== 'ruins') return 'buildings';
+  return null;
+}
+
+// Each data tile is split into SUB×SUB cells (~750 m at 52°N).
+// Step 1 counts buildings per cell (cheap: no geometry).
+// Step 2 downloads building positions only for sparse cells; dense cells are stored as "built-up" with their count.
+const SUB = 8;
+const bbStr = b => [b.s, b.w, b.n, b.e].map(v => v.toFixed(6)).join(',');
+function tileBoundsZ(x, y, z) { const n = 2 ** z; return { w: x / n * 360 - 180, e: (x + 1) / n * 360 - 180, n: yToLat(y / n), s: yToLat((y + 1) / n) }; }
+function subCells(x, y) {
+  const out = [];
+  for (let r = 0; r < SUB; r++) for (let c = 0; c < SUB; c++) out.push(tileBoundsZ(x * SUB + c, y * SUB + r, TILE_Z + 3));
+  return out;
+}
+function cellAreaKm2(b) { const mid = (b.n + b.s) / 2 * Math.PI / 180; return (b.e - b.w) * 111.32 * Math.cos(mid) * (b.n - b.s) * 110.574; }
+function countQuery(cells) {
+  return '[out:csv(::count;false)][timeout:120];\n' + cells.map(b => `nwr["building"](${bbStr(b)});out count;`).join('\n');
+}
+function dataQuery(tile, buildingBoxes) {
+  const tb = bbStr(tile);
+  const bl = buildingBoxes.map(b => `  nwr["building"](${bbStr(b)});`).join('\n');
+  return `[out:csv(::lat,::lon,building,amenity,tourism,natural,leisure,man_made,name;false)][timeout:120];
+(
+${bl}
+  nwr["amenity"~"^(hunting_stand|shelter|drinking_water|bbq)$"](${tb});
+  nwr["tourism"~"^(wilderness_hut|alpine_hut|viewpoint|camp_site)$"](${tb});
+  nwr["natural"="spring"](${tb});
+  nwr["man_made"="water_well"](${tb});
+  nwr["leisure"="firepit"](${tb});
+);
+out center qt;`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SETTINGS (persisted)
+// ════════════════════════════════════════════════════════════════════
+const DEFAULTS = { basemap: 'grey', denseKm2: 1000, mode: 'distance', showHaz: true, showAtt: true, markers: true, grey: false, auto: true,
+  opacity: 0.7, cellIdx: 2, cutH: 400, cutA: 1500, densR: 300, weights: {} };
+CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
+const settings = (() => {
+  try {
+    const s = JSON.parse(localStorage.getItem('wn:settings') || '{}');
+    return { ...DEFAULTS, ...s, weights: { ...DEFAULTS.weights, ...(s.weights || {}) } };
+  } catch { return JSON.parse(JSON.stringify(DEFAULTS)); }
+})();
+let saveT;
+function saveSettings() { clearTimeout(saveT); saveT = setTimeout(() => localStorage.setItem('wn:settings', JSON.stringify(settings)), 300); }
+
+// ════════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════════
+const $ = s => document.querySelector(s);
+const mercX = lon => (Math.max(-180, Math.min(180, lon)) + 180) / 360;
+const mercY = lat => { const r = Math.max(-85, Math.min(85, lat)) * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2; };
+const yToLat = my => Math.atan(Math.sinh(Math.PI * (1 - 2 * my))) * 180 / Math.PI;
+const tkey = (x, y) => x + '/' + y;
+const clampT = v => Math.max(0, Math.min(N12 - 1, v));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function fmtDist(m) { if (!isFinite(m)) return '—'; return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' km'; }
+function fmtN(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : String(n); }
+function hdist(a1, o1, a2, o2) {
+  const R = 6371000, r = Math.PI / 180, dA = (a2 - a1) * r, dO = (o2 - o1) * r;
+  const h = Math.sin(dA / 2) ** 2 + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(dO / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function setStatus(t, cls = '') { const el = $('#status'); el.textContent = t; el.className = cls; }
+function tileBounds(x, y) { return { w: x / N12 * 360 - 180, e: (x + 1) / N12 * 360 - 180, n: yToLat(y / N12), s: yToLat((y + 1) / N12) }; }
+function tileLatLngBounds(x, y) { const b = tileBounds(x, y); return L.latLngBounds([b.s, b.w], [b.n, b.e]); }
+function tilesInBounds(b, limit = 5000) {
+  const x0 = clampT(Math.floor(mercX(b.getWest()) * N12)), x1 = clampT(Math.floor(mercX(b.getEast()) * N12));
+  const y0 = clampT(Math.floor(mercY(b.getNorth()) * N12)), y1 = clampT(Math.floor(mercY(b.getSouth()) * N12));
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > limit) return null;
+  const out = [];
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push({ x, y });
+  return out;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// INDEXEDDB (tile cache — much larger than localStorage, stores typed arrays)
+// ════════════════════════════════════════════════════════════════════
+const db = (() => {
+  let p;
+  const open = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open('wildnav', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('tiles');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (mode, fn) => {
+    const d = await open();
+    return new Promise((res, rej) => {
+      const t = d.transaction('tiles', mode), req = fn(t.objectStore('tiles'));
+      t.oncomplete = () => res(req && req.result); t.onerror = () => rej(t.error);
+    });
+  };
+  return {
+    get: k => tx('readonly', s => s.get(k)),
+    put: (k, v) => tx('readwrite', s => s.put(v, k)),
+    count: () => tx('readonly', s => s.count()),
+    clear: () => tx('readwrite', s => s.clear()),
+  };
+})();
+
+// ════════════════════════════════════════════════════════════════════
+// MAP + STICKY FIELD LAYER
+// The overlay canvas lives inside a Leaflet pane, so it moves with the map
+// while panning and scales with the zoom animation until the next render.
+// ════════════════════════════════════════════════════════════════════
+const FieldLayer = L.Layer.extend({
+  initialize(pane) { L.setOptions(this, { pane }); this._bounds = null; },
+  onAdd() {
+    this._c = L.DomUtil.create('canvas', 'field-canvas leaflet-zoom-animated');
+    this._ctx = this._c.getContext('2d');
+    this.getPane().appendChild(this._c);
+    this._reset();
+  },
+  onRemove() { L.DomUtil.remove(this._c); },
+  getEvents() { return { zoom: this._reset, viewreset: this._reset, zoomanim: this._animateZoom }; },
+  update(bounds, img) {
+    if (this._c.width !== img.width || this._c.height !== img.height) { this._c.width = img.width; this._c.height = img.height; }
+    this._ctx.putImageData(img, 0, 0);
+    this._bounds = bounds; this._c.style.display = ''; this._reset();
+  },
+  clear() { this._bounds = null; if (this._c) this._c.style.display = 'none'; },
+  setOpacity(o) { if (this._c) this._c.style.opacity = o; },
+  _reset() {
+    if (!this._bounds || !this._map) return;
+    const tl = this._map.latLngToLayerPoint(this._bounds.getNorthWest());
+    const br = this._map.latLngToLayerPoint(this._bounds.getSouthEast());
+    L.DomUtil.setPosition(this._c, tl);
+    this._c.style.width = (br.x - tl.x) + 'px';
+    this._c.style.height = (br.y - tl.y) + 'px';
+  },
+  _animateZoom(e) {
+    if (!this._bounds) return;
+    const scale = this._map.getZoomScale(e.zoom);
+    const offset = this._map._latLngBoundsToNewLayerBounds(this._bounds, e.zoom, e.center).min;
+    L.DomUtil.setTransform(this._c, offset, scale);
+  },
+});
+
+const savedView = (() => { try { return JSON.parse(localStorage.getItem('wn:view')); } catch { return null; } })();
+const map = L.map('map', { zoomControl: true }).setView(savedView ? [savedView.lat, savedView.lng] : [52.272, 8.047], savedView ? savedView.z : 13);
+const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const BASEMAPS = {
+  grey:      { label: 'Grey',      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+               opts: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors' } },
+  streets:   { label: 'Streets',   url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+               opts: { maxZoom: 19, attribution: 'Tiles © Esri, HERE, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors' } },
+  topo:      { label: 'Topo',      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+               opts: { subdomains: 'abc', maxZoom: 17, attribution: OSM_ATTR + ', SRTM | © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)' } },
+  satellite: { label: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+               opts: { maxZoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' } },
+  osm:       { label: 'OSM',       url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+               opts: { maxZoom: 19, attribution: OSM_ATTR } },
+};
+if (!BASEMAPS[settings.basemap]) settings.basemap = 'grey';
+let baseLayer = null;
+function setBasemap(key) {
+  const b = BASEMAPS[key] || BASEMAPS.grey;
+  if (baseLayer) map.removeLayer(baseLayer);
+  baseLayer = L.tileLayer(b.url, { ...b.opts, referrerPolicy: 'strict-origin-when-cross-origin' }).addTo(map);
+  baseLayer.bringToBack();
+}
+setBasemap(settings.basemap);
+map.createPane('hazPane').style.zIndex = 350;
+map.createPane('attPane').style.zIndex = 360;
+const hazLayer = new FieldLayer('hazPane').addTo(map);
+const attLayer = new FieldLayer('attPane').addTo(map);
+const poiRenderer = L.canvas({ padding: 0.3 });
+const markerLayer = L.layerGroup().addTo(map);
+
+// ════════════════════════════════════════════════════════════════════
+// TILE STORE + LOADER
+// ════════════════════════════════════════════════════════════════════
+const tiles = new Map();          // "x/y" → { b: Float32Array (tile-relative x,y pairs), pois: [...] }
+const busy = new Set(), idbMiss = new Set(), failed = new Set(), queued = new Set();
+const queue = []; let active = 0, mirrorIdx = 0;
+let jobsTotal = 0, jobsDone = 0, jobsFailed = 0;
+const catCount = Object.fromEntries(CAT_KEYS.map(k => [k, 0]));
+const pendingRects = new Map();
+let denseCells = 0;
+
+// Offline data: tiles listed in data/index.json are read from static files instead of Overpass.
+// They hold every building as a point, so they need no built-up shortcut and no IndexedDB cache.
+const offline = new Set();
+const offQueue = []; let offActive = 0;
+const offlineReady = fetch(OFFLINE_URL + 'index.json')
+  .then(r => r.ok ? r.json() : { tiles: [] })
+  .then(j => { if (j.z === TILE_Z) j.tiles.forEach(k => offline.add(k)); })
+  .catch(() => {});                           // no offline data (or opened as a file): Overpass only
+
+function enqueueOffline(x, y) {
+  busy.add(tkey(x, y)); offQueue.push({ x, y }); jobsTotal++;
+  pumpOffline();
+}
+function pumpOffline() {
+  while (offActive < OFFLINE_CONCURRENCY && offQueue.length) {
+    const { x, y } = offQueue.shift(), k = tkey(x, y), base = `${OFFLINE_URL}${TILE_Z}/${k}`;
+    offActive++;
+    Promise.all([
+      fetch(base + '.bin').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }),
+      fetch(base + '.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
+    ]).then(([buf, pois]) => { busy.delete(k); addTile(x, y, { b: new Float32Array(buf), pois }); })
+      .catch(err => { console.warn('offline tile failed, using Overpass', k, err); busy.delete(k); offline.delete(k); autoLoad(); })
+      .finally(() => { offActive--; jobsDone++; pumpOffline(); });
+  }
+  updateProgress();
+}
+
+function ensureTiles(list, allowFetch) {
+  const c = map.getCenter(), cx = mercX(c.lng) * N12, cy = mercY(c.lat) * N12;
+  list.sort((a, b) => ((a.x + .5 - cx) ** 2 + (a.y + .5 - cy) ** 2) - ((b.x + .5 - cx) ** 2 + (b.y + .5 - cy) ** 2));
+  for (const { x, y } of list) {
+    const k = tkey(x, y);
+    if (tiles.has(k) || busy.has(k) || queued.has(k)) continue;
+    if (offline.has(k)) { enqueueOffline(x, y); continue; }
+    if (idbMiss.has(k)) { if (allowFetch && !failed.has(k)) enqueue(x, y); continue; }
+    busy.add(k);
+    db.get(DB_PREFIX + k).then(rec => {
+      busy.delete(k);
+      if (rec && Date.now() - rec.ts < CACHE_TTL) addTile(x, y, rec);
+      else { idbMiss.add(k); if (allowFetch && !failed.has(k)) enqueue(x, y); }
+    }).catch(() => { busy.delete(k); idbMiss.add(k); });
+  }
+}
+
+function enqueue(x, y) {
+  const k = tkey(x, y);
+  if (queued.has(k)) return;
+  queued.add(k); queue.push({ x, y }); jobsTotal++;
+  const r = L.rectangle(tileLatLngBounds(x, y), { color: '#f2c14e', weight: 1.5, dashArray: '5 5', fillOpacity: 0.05, interactive: false }).addTo(map);
+  pendingRects.set(k, r);
+  pump();
+}
+
+function pump() {
+  while (active < CONCURRENCY && queue.length) {
+    const { x, y } = queue.shift(), k = tkey(x, y);
+    active++;
+    fetchTile(x, y)
+      .then(() => { const r = pendingRects.get(k); if (r) r.remove(); })
+      .catch(err => {
+        console.warn('tile failed', k, err); failed.add(k); jobsFailed++;
+        const r = pendingRects.get(k); if (r) { r.setStyle({ color: '#d64545', dashArray: null }); setTimeout(() => r.remove(), 4000); }
+      })
+      .finally(() => { pendingRects.delete(k); queued.delete(k); active--; jobsDone++; pump(); });
+  }
+  updateProgress();
+}
+
+function reorderQueue() {
+  const c = map.getCenter(), cx = mercX(c.lng) * N12, cy = mercY(c.lat) * N12;
+  queue.sort((a, b) => ((a.x + .5 - cx) ** 2 + (a.y + .5 - cy) ** 2) - ((b.x + .5 - cx) ** 2 + (b.y + .5 - cy) ** 2));
+}
+
+function updateProgress() {
+  const pending = queue.length + active + offQueue.length + offActive, bar = $('#progress');
+  if (pending === 0) {
+    bar.classList.remove('on');
+    if (jobsTotal) setStatus(jobsFailed ? `${jobsFailed} area${jobsFailed > 1 ? 's' : ''} failed to load — try again` : 'Up to date', jobsFailed ? 'error' : 'ok');
+    jobsTotal = jobsDone = jobsFailed = 0;
+    return;
+  }
+  bar.classList.add('on');
+  $('#progress-fill').style.width = (jobsDone / jobsTotal * 100) + '%';
+  setStatus(`Loading area ${Math.min(jobsDone + 1, jobsTotal)} of ${jobsTotal}`, 'busy');
+}
+
+async function overpass(q) {
+  let err;
+  for (let attempt = 0; attempt < MIRRORS.length * 2; attempt++) {
+    const i = (mirrorIdx + attempt) % MIRRORS.length;
+    try {
+      const res = await fetch(MIRRORS[i] + '?data=' + encodeURIComponent(q));
+      if (res.status === 429 || res.status === 504) { await sleep(3000 + attempt * 2000); throw new Error('server busy ' + res.status); }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const txt = await res.text();
+      if (txt.trimStart().startsWith('<') || txt.includes('runtime error')) throw new Error('query error');
+      mirrorIdx = i;
+      return txt;
+    } catch (e) { err = e; }
+  }
+  throw err;
+}
+
+let lastTiming = '';
+async function fetchTile(x, y) {
+  const k = tkey(x, y), cells = subCells(x, y);
+  const t0 = performance.now();
+  const counts = (await overpass(countQuery(cells))).split('\n').map(v => v.trim()).filter(Boolean).map(Number);
+  if (counts.length !== cells.length || counts.some(n => !isFinite(n))) throw new Error('unexpected count response');
+  const t1 = performance.now();
+
+  const dense = [], denseSet = new Set();
+  counts.forEach((n, i) => { if (n > settings.denseKm2 * cellAreaKm2(cells[i])) { dense.push([i, n]); denseSet.add(i); } });
+
+  // Building boxes: whole tile if nothing is dense, else row-runs of sparse, non-empty cells
+  let boxes = [];
+  if (!dense.length) { if (counts.some(n => n > 0)) boxes = [tileBoundsZ(x, y, TILE_Z)]; }
+  else {
+    for (let r = 0; r < SUB; r++) {
+      let run = null;
+      for (let c = 0; c < SUB; c++) {
+        const i = r * SUB + c;
+        if (!denseSet.has(i) && counts[i] > 0) { if (run) run.e = cells[i].e; else run = { ...cells[i] }; }
+        else if (run) { boxes.push(run); run = null; }
+      }
+      if (run) boxes.push(run);
+    }
+  }
+
+  const txt = await overpass(dataQuery(tileBoundsZ(x, y, TILE_Z), boxes));
+  const t2 = performance.now();
+  const rec = parseCSV(txt, x, y, denseSet);
+  rec.dense = dense; rec.ts = Date.now();
+  lastTiming = `Last area: counting ${((t1 - t0) / 1000).toFixed(1)} s, loading ${((t2 - t1) / 1000).toFixed(1)} s, ${dense.length} of ${cells.length} cells built-up`;
+  db.put(DB_PREFIX + k, rec).then(updateCacheCount).catch(() => {});
+  idbMiss.delete(k);
+  addTile(x, y, rec);
+}
+
+function parseCSV(txt, x, y, denseSet) {
+  const b = [], pois = [];
+  for (const line of txt.split('\n')) {
+    if (!line) continue;
+    const c = line.split('\t');
+    if (c[0] === '' || c[1] === '') continue;
+    const lat = +c[0], lon = +c[1];
+    if (!isFinite(lat) || !isFinite(lon)) continue;
+    const cat = classify(c[2], c[3], c[4], c[5], c[6], c[7]);
+    if (!cat) continue;
+    if (cat === 'buildings') {
+      const fx = mercX(lon) * N12 - x, fy = mercY(lat) * N12 - y;
+      // skip buildings that belong to a built-up cell (they were caught by a neighbouring box)
+      if (denseSet && denseSet.size && fx >= 0 && fx < 1 && fy >= 0 && fy < 1 &&
+          denseSet.has(Math.floor(fy * SUB) * SUB + Math.floor(fx * SUB))) continue;
+      b.push(fx, fy);
+    }
+    else pois.push({ c: cat, lat, lon, n: c[8] || '' });
+  }
+  return { b: new Float32Array(b), pois };
+}
+
+let dataT;
+function addTile(x, y, rec) {
+  const k = tkey(x, y);
+  if (tiles.has(k)) return;
+  const pois = rec.pois.map(p => ({ ...p, mx: mercX(p.lon), my: mercY(p.lat) }));
+  const dense = rec.dense || [];
+  tiles.set(k, { x, y, b: rec.b, pois, dense });
+  catCount.buildings += rec.b.length / 2 + dense.reduce((s, d) => s + d[1], 0);
+  denseCells += dense.length;
+  pois.forEach(p => catCount[p.c]++);
+  clearTimeout(dataT);
+  dataT = setTimeout(() => { baseDirty = true; requestRender(); rebuildMarkers(); updateStats(); }, 150);
+}
+
+function updateStats() {
+  const poi = CAT_KEYS.filter(k => k !== 'buildings').reduce((s, k) => s + catCount[k], 0);
+  $('#stats').innerHTML = `<b>${fmtN(catCount.buildings)}</b> buildings and <b>${fmtN(poi)}</b> points of interest loaded from <b>${tiles.size}</b> areas<span id="cache-count"></span>`
+    + (denseCells ? `<br><b>${denseCells}</b> built-up cells shown as solid` : '')
+    + (lastTiming ? `<br>${lastTiming}` : '');
+  CAT_KEYS.forEach(k => { const el = $('#cnt-' + k); if (el) el.textContent = catCount[k] ? fmtN(catCount[k]) : ''; });
+  updateCacheCount();
+}
+let ccT;
+function updateCacheCount() {
+  clearTimeout(ccT);
+  ccT = setTimeout(() => db.count().then(n => { const el = $('#cache-count'); if (el) el.textContent = ` · ${n} cached`; }).catch(() => {}), 400);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// DISTANCE FIELDS — exact Euclidean distance transform (Felzenszwalb)
+// Linear in grid size, independent of how many buildings there are.
+// ════════════════════════════════════════════════════════════════════
+const INF = 1e20;
+let bf, bd, bv, bz;
+function ensureBufs(n) { if (!bf || bf.length < n) { bf = new Float64Array(n); bd = new Float64Array(n); bv = new Int32Array(n); bz = new Float64Array(n + 1); } }
+function edt1d(n) {
+  let k = 0; bv[0] = 0; bz[0] = -Infinity; bz[1] = Infinity;
+  for (let q = 1; q < n; q++) {
+    const fq = bf[q] + q * q;
+    let s = (fq - (bf[bv[k]] + bv[k] * bv[k])) / (2 * (q - bv[k]));
+    while (s <= bz[k]) { k--; s = (fq - (bf[bv[k]] + bv[k] * bv[k])) / (2 * (q - bv[k])); }
+    k++; bv[k] = q; bz[k] = s; bz[k + 1] = Infinity;
+  }
+  k = 0;
+  for (let q = 0; q < n; q++) { while (bz[k + 1] < q) k++; const d = q - bv[k]; bd[q] = d * d + bf[bv[k]]; }
+}
+function edtField(seed, W, H, cellM) {
+  const N = W * H, g = new Float32Array(N);
+  for (let x = 0; x < W; x++) {                // vertical pass: distance to nearest seed in column
+    let last = -INF;
+    for (let y = 0, i = x; y < H; y++, i += W) { if (seed[i]) last = y; g[i] = y - last; }
+    last = INF;
+    for (let y = H - 1, i = x + (H - 1) * W; y >= 0; y--, i -= W) { if (seed[i]) last = y; const d = last - y; if (d < g[i]) g[i] = d; }
+  }
+  for (let i = 0; i < N; i++) { const v = g[i]; g[i] = v >= 1e19 ? INF : v * v; }
+  ensureBufs(Math.max(W, H));
+  const out = new Float32Array(N);
+  for (let y = 0; y < H; y++) {                // horizontal pass: exact squared distance
+    const o = y * W;
+    for (let x = 0; x < W; x++) bf[x] = g[o + x];
+    edt1d(W);
+    const m = cellM[y];
+    for (let x = 0; x < W; x++) out[o + x] = Math.sqrt(bd[x]) * m;
+  }
+  return out;
+}
+
+// Separable box blur (3 passes ≈ Gaussian) for density
+function boxH(src, dst, W, H, r) {
+  const inv = 1 / (2 * r + 1);
+  for (let y = 0; y < H; y++) {
+    const o = y * W; let acc = 0;
+    for (let x = 0; x <= r && x < W; x++) acc += src[o + x];
+    for (let x = 0; x < W; x++) {
+      dst[o + x] = acc * inv;
+      if (x + r + 1 < W) acc += src[o + x + r + 1];
+      if (x - r >= 0) acc -= src[o + x - r];
+    }
+  }
+}
+function boxV(src, dst, W, H, r) {
+  const inv = 1 / (2 * r + 1);
+  for (let x = 0; x < W; x++) {
+    let acc = 0;
+    for (let y = 0; y <= r && y < H; y++) acc += src[y * W + x];
+    for (let y = 0; y < H; y++) {
+      dst[y * W + x] = acc * inv;
+      if (y + r + 1 < H) acc += src[(y + r + 1) * W + x];
+      if (y - r >= 0) acc -= src[(y - r) * W + x];
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RENDER PIPELINE
+//  base      (view/data/resolution change): rasterize points → distance fields
+//  density   (base or smoothing change):    blur building counts → per km²
+//  composite (cutoff/weight/mode change):   colour lookup → canvas
+// ════════════════════════════════════════════════════════════════════
+let R = { valid: false }, baseDirty = true, densDirty = true, rafId = 0;
+const cellSize = () => CELL_SIZES[settings.cellIdx];
+const neededReach = () => Math.max(settings.cutH, settings.cutA, 3 * settings.densR);
+
+function requestRender() { if (!rafId) rafId = requestAnimationFrame(render); }
+
+function needBase() {
+  if (baseDirty || !R.valid || map.getZoom() !== R.z || cellSize() !== R.S) return true;
+  const pb = map.getPixelBounds();
+  return pb.min.x < R.x0 || pb.min.y < R.y0 || pb.max.x > R.x0 + R.gw * R.S || pb.max.y > R.y0 + R.gh * R.S;
+}
+
+function computeBase() {
+  const z = map.getZoom(), S = cellSize(), worldPx = 256 * 2 ** z;
+  const size = map.getSize(), pb = map.getPixelBounds();
+  const mx = Math.round(size.x * MARGIN), my = Math.round(size.y * MARGIN);
+  const x0 = Math.floor((pb.min.x - mx) / S) * S, y0 = Math.floor((pb.min.y - my) / S) * S;
+  const gw = Math.ceil((size.x + 2 * mx) / S) + 1, gh = Math.ceil((size.y + 2 * my) / S) + 1;
+  const cellMc = S * EARTH_C * Math.cos(map.getCenter().lat * Math.PI / 180) / worldPx;
+  const pad = Math.min(MAX_PAD, Math.ceil(neededReach() / cellMc) + 2);
+  const W = gw + 2 * pad, H = gh + 2 * pad, N = W * H;
+  const gx0 = x0 - pad * S, gy0 = y0 - pad * S;
+
+  const cellM = new Float32Array(H);           // metres per cell, per row (Mercator scale)
+  for (let r = 0; r < H; r++) {
+    const lat = yToLat((gy0 + (r + 0.5) * S) / worldPx);
+    cellM[r] = S * EARTH_C * Math.cos(lat * Math.PI / 180) / worldPx;
+  }
+
+  const seeds = {}, counts = new Float32Array(N), cov = new Uint8Array(N), dmask = new Uint8Array(N);
+  const span = worldPx / N12, k = span / S;
+  const tx0 = clampT(Math.floor(gx0 / span)), tx1 = clampT(Math.floor((gx0 + W * S) / span));
+  const ty0 = clampT(Math.floor(gy0 / span)), ty1 = clampT(Math.floor((gy0 + H * S) / span));
+  const inRange = t => t.x >= tx0 && t.x <= tx1 && t.y >= ty0 && t.y <= ty1;
+  const list = (tx1 - tx0 + 1) * (ty1 - ty0 + 1) > tiles.size
+    ? [...tiles.values()].filter(inRange)
+    : (() => { const a = []; for (let x = tx0; x <= tx1; x++) for (let y = ty0; y <= ty1; y++) { const t = tiles.get(tkey(x, y)); if (t) a.push(t); } return a; })();
+
+  let pts = 0;
+  for (const t of list) {
+    const ox = (t.x * span - gx0) / S, oy = (t.y * span - gy0) / S;
+    // coverage mask: only loaded areas get coloured
+    const cx0 = Math.max(0, Math.floor(ox)), cx1 = Math.min(W, Math.ceil(ox + k));
+    const cy0 = Math.max(0, Math.floor(oy)), cy1 = Math.min(H, Math.ceil(oy + k));
+    for (let yy = cy0; yy < cy1; yy++) cov.fill(1, yy * W + cx0, yy * W + cx1);
+
+    const b = t.b;
+    if (b.length) {
+      const sb = seeds.buildings || (seeds.buildings = new Uint8Array(N));
+      for (let i = 0; i < b.length; i += 2) {
+        const fx = ox + b[i] * k, fy = oy + b[i + 1] * k;
+        if (fx < 0 || fy < 0 || fx >= W || fy >= H) continue;
+        const idx = (fy | 0) * W + (fx | 0);
+        sb[idx] = 1; counts[idx]++; pts++;
+      }
+    }
+    if (t.dense.length) {                      // built-up cells: solid houses, count spread evenly
+      const sb = seeds.buildings || (seeds.buildings = new Uint8Array(N)), sk = k / SUB;
+      for (const [ci, n] of t.dense) {
+        const r = (ci / SUB) | 0, c = ci % SUB;
+        const ux0 = Math.floor(ox + c * sk), ux1 = Math.max(ux0 + 1, Math.ceil(ox + (c + 1) * sk));
+        const uy0 = Math.floor(oy + r * sk), uy1 = Math.max(uy0 + 1, Math.ceil(oy + (r + 1) * sk));
+        const per = n / ((ux1 - ux0) * (uy1 - uy0));
+        const xa = Math.max(0, ux0), xb = Math.min(W, ux1), ya = Math.max(0, uy0), yb = Math.min(H, uy1);
+        for (let yy = ya; yy < yb; yy++) for (let xx = xa; xx < xb; xx++) {
+          const idx = yy * W + xx; sb[idx] = 1; counts[idx] += per; dmask[idx] = 1;
+        }
+        pts += n;
+      }
+    }
+    for (const p of t.pois) {
+      const fx = (p.mx * worldPx - gx0) / S, fy = (p.my * worldPx - gy0) / S;
+      if (fx < 0 || fy < 0 || fx >= W || fy >= H) continue;
+      (seeds[p.c] || (seeds[p.c] = new Uint8Array(N)))[(fy | 0) * W + (fx | 0)] = 1; pts++;
+    }
+  }
+
+  const fields = {};
+  for (const c of CAT_KEYS) fields[c] = seeds[c] ? edtField(seeds[c], W, H, cellM) : null;
+  const nw = map.unproject([x0, y0], z), se = map.unproject([x0 + gw * S, y0 + gh * S], z);
+  R = { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts,
+        bounds: L.latLngBounds(nw, se) };
+}
+
+function computeDensity() {
+  const { W, H, counts, cellM, cellMc } = R;
+  const r = Math.max(1, Math.round(settings.densR / cellMc / 2));
+  const a = new Float32Array(counts), t = new Float32Array(W * H);
+  for (let p = 0; p < 3; p++) { boxH(a, t, W, H, r); boxV(t, a, W, H, r); }
+  for (let y = 0; y < H; y++) { const f = 1e6 / (cellM[y] * cellM[y]), o = y * W; for (let x = 0; x < W; x++) a[o + x] *= f; }
+  R.density = a;
+}
+
+// Colour lookup tables (256 entries RGBA)
+function lut(stops) {
+  const out = new Uint8ClampedArray(1024);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255; let j = 0;
+    while (j < stops.length - 2 && t > stops[j + 1][0]) j++;
+    const a = stops[j], b = stops[j + 1], s = Math.max(0, Math.min(1, (t - a[0]) / (b[0] - a[0])));
+    for (let c = 1; c <= 4; c++) out[i * 4 + c - 1] = a[c] + s * (b[c] - a[c]);
+  }
+  return out;
+}
+// distance to houses: red (close) → orange → yellow → green (≥ cutoff, lighter)
+const LUT_H = lut([[0, 190, 30, 30, 255], [0.3, 226, 64, 52, 245], [0.6, 240, 128, 40, 225], [0.85, 238, 200, 60, 200], [1, 60, 170, 90, 130]]);
+// house density (log scale): green (none) → yellow → orange → red → dark red
+const LUT_D = lut([[0, 60, 170, 90, 110], [0.22, 238, 200, 60, 190], [0.45, 240, 128, 40, 225], [0.7, 214, 50, 45, 245], [1, 110, 20, 25, 255]]);
+// good-to-have: solid blue (close) → transparent (far)
+const LUT_A = lut([[0, 29, 78, 216, 235], [0.5, 59, 130, 246, 130], [1, 96, 165, 250, 0]]);
+
+const imgs = {};
+function getImg(key, w, h) { let im = imgs[key]; if (!im || im.width !== w || im.height !== h) im = imgs[key] = new ImageData(w, h); return im; }
+
+function composite() {
+  if (!R.valid) { hazLayer.clear(); attLayer.clear(); return; }
+  const { W, gw, gh, pad, fields, cov } = R;
+
+  if (settings.showHaz) {
+    const img = getImg('h', gw, gh), px = img.data;
+    if (settings.mode === 'density' && R.density) {
+      const D = R.density, sc = 255 / Math.log1p(DMAX);
+      for (let y = 0; y < gh; y++) {
+        let i = (y + pad) * W + pad, o = y * gw * 4;
+        for (let x = 0; x < gw; x++, i++, o += 4) {
+          if (!cov[i]) { px[o + 3] = 0; continue; }
+          let li = Math.log1p(Math.max(0, D[i])) * sc | 0; if (li > 255) li = 255; li <<= 2;
+          px[o] = LUT_D[li]; px[o + 1] = LUT_D[li + 1]; px[o + 2] = LUT_D[li + 2]; px[o + 3] = LUT_D[li + 3];
+        }
+      }
+    } else {
+      const ks = HAZ.filter(c => fields[c] && settings.weights[c] > 0);
+      const A = ks.map(c => fields[c]), iw = ks.map(c => 1 / settings.weights[c]), m = A.length, sc = 255 / settings.cutH;
+      for (let y = 0; y < gh; y++) {
+        let i = (y + pad) * W + pad, o = y * gw * 4;
+        for (let x = 0; x < gw; x++, i++, o += 4) {
+          if (!cov[i]) { px[o + 3] = 0; continue; }
+          let d = 1e30;
+          for (let j = 0; j < m; j++) { const v = A[j][i] * iw[j]; if (v < d) d = v; }
+          let li = d * sc; li = li > 255 ? 255 : li | 0; li <<= 2;
+          px[o] = LUT_H[li]; px[o + 1] = LUT_H[li + 1]; px[o + 2] = LUT_H[li + 2]; px[o + 3] = LUT_H[li + 3];
+        }
+      }
+    }
+    hazLayer.update(R.bounds, img);
+    hazLayer.setOpacity(settings.opacity);
+  } else hazLayer.clear();
+
+  const ka = ATT.filter(c => fields[c] && settings.weights[c] > 0);
+  if (settings.showAtt && ka.length) {
+    const img = getImg('a', gw, gh), px = img.data;
+    const A = ka.map(c => fields[c]), iw = ka.map(c => 1 / settings.weights[c]), m = A.length, sc = 255 / settings.cutA;
+    for (let y = 0; y < gh; y++) {
+      let i = (y + pad) * W + pad, o = y * gw * 4;
+      for (let x = 0; x < gw; x++, i++, o += 4) {
+        if (!cov[i]) { px[o + 3] = 0; continue; }
+        let d = 1e30;
+        for (let j = 0; j < m; j++) { const v = A[j][i] * iw[j]; if (v < d) d = v; }
+        let li = d * sc; li = li > 255 ? 255 : li | 0; li <<= 2;
+        px[o] = LUT_A[li]; px[o + 1] = LUT_A[li + 1]; px[o + 2] = LUT_A[li + 2]; px[o + 3] = LUT_A[li + 3];
+      }
+    }
+    attLayer.update(R.bounds, img);
+    attLayer.setOpacity(Math.min(1, settings.opacity + 0.15));
+  } else attLayer.clear();
+}
+
+function render() {
+  rafId = 0;
+  const t0 = performance.now(); let tb = 0, td = 0;
+  if (needBase()) { computeBase(); baseDirty = false; densDirty = true; tb = performance.now() - t0; }
+  const t1 = performance.now();
+  if (densDirty) { computeDensity(); densDirty = false; td = performance.now() - t1; }
+  const t2 = performance.now();
+  composite();
+  const tc = performance.now() - t2;
+  $('#perf').textContent = `${fmtN(R.pts)} points · fields ${tb | 0} ms · density ${td | 0} ms · draw ${tc | 0} ms`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MARKERS (points of interest only — buildings are shown by the overlay)
+// ════════════════════════════════════════════════════════════════════
+function rebuildMarkers() {
+  markerLayer.clearLayers();
+  if (!settings.markers || map.getZoom() < MARKER_MIN_Z) return;
+  const b = map.getBounds().pad(0.2), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast();
+  for (const t of tiles.values()) for (const p of t.pois) {
+    if (p.lat < s || p.lat > n || p.lon < w || p.lon > e || settings.weights[p.c] === 0) continue;
+    const c = CATS[p.c];
+    L.circleMarker([p.lat, p.lon], { renderer: poiRenderer, radius: 5, weight: 1.5, color: '#fff', fillColor: c.color, fillOpacity: 1 })
+      .bindTooltip(`${c.icon} ${esc(p.n || c.label)}`, { direction: 'top', offset: [0, -5] })
+      .addTo(markerLayer);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CURSOR INFO — reads straight from the computed fields (O(1))
+// ════════════════════════════════════════════════════════════════════
+let hoverLL = null, hoverRaf = 0;
+map.on('mousemove', e => { hoverLL = e.latlng; if (!hoverRaf) hoverRaf = requestAnimationFrame(updateHover); });
+map.on('mouseout', () => { hoverLL = null; $('#info').innerHTML = '<span class="muted">Move the cursor over the map.</span>'; });
+
+function infoRow(c, val, sub) {
+  return `<div class="irow"><span><i style="background:${c.color}"></i>${c.label}</span><b>${val}</b></div>` + (sub ? `<div class="isub">${esc(sub)}</div>` : '');
+}
+function updateHover() {
+  hoverRaf = 0;
+  if (!hoverLL) return;
+  let i = -1;
+  if (R.valid && map.getZoom() === R.z) {
+    const p = map.project(hoverLL, R.z);
+    const cx = Math.floor((p.x - R.gx0) / R.S), cy = Math.floor((p.y - R.gy0) / R.S);
+    if (cx >= 0 && cy >= 0 && cx < R.W && cy < R.H && R.cov[cy * R.W + cx]) i = cy * R.W + cx;
+  }
+  if (i < 0) { $('#info').innerHTML = '<span class="muted">No data here yet. Zoom in to 13 or press “Load visible area”.</span>'; return; }
+  const reach = R.pad * R.cellMc, rows = [];
+  for (const k of HAZ) {
+    const f = R.fields[k], d = f ? f[i] : Infinity;
+    rows.push(infoRow(CATS[k], d > reach ? 'over ' + fmtDist(reach) : fmtDist(d)));
+  }
+  if (R.density) rows.push(`<div class="irow"><span class="muted">House density</span><b>${Math.round(Math.max(0, R.density[i]))} per km²</b></div>`);
+  if (R.dmask[i]) rows.push('<div class="isub" style="margin-left:0">Built-up area: houses counted, not loaded one by one</div>');
+  rows.push('<div class="isep"></div>');
+  const best = {};
+  for (const t of tiles.values()) for (const p of t.pois) {
+    if (CATS[p.c].group !== 'attract') continue;
+    const d = hdist(hoverLL.lat, hoverLL.lng, p.lat, p.lon);
+    if (!best[p.c] || d < best[p.c].d) best[p.c] = { d, n: p.n };
+  }
+  for (const k of ATT) { const b = best[k]; rows.push(infoRow(CATS[k], b ? fmtDist(b.d) : '—', b && b.n)); }
+  $('#info').innerHTML = rows.join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// UI
+// ════════════════════════════════════════════════════════════════════
+function makeSlider(parent, { label, min, max, step, value, fmt, onInput }) {
+  const row = document.createElement('div'); row.className = 'slider-row';
+  if (label) { const l = document.createElement('label'); l.textContent = label; row.appendChild(l); }
+  const wrap = document.createElement('div'); wrap.className = 'slider-wrap';
+  const tip = document.createElement('div'); tip.className = 'tip';
+  const inp = document.createElement('input');
+  inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = value;
+  if (label) inp.setAttribute('aria-label', label);
+  wrap.append(tip, inp); row.appendChild(wrap); parent.appendChild(row);
+  const pos = () => {
+    const p = (+inp.value - min) / (max - min);
+    tip.textContent = fmt(+inp.value);
+    tip.style.left = (7 + p * (inp.clientWidth - 14)) + 'px';
+  };
+  inp.addEventListener('input', () => { pos(); onInput(+inp.value); });
+  new ResizeObserver(pos).observe(inp);
+  pos();
+  return inp;
+}
+function makeToggle(parent, label, key, onChange) {
+  const row = document.createElement('div'); row.className = 'toggle-row';
+  row.innerHTML = `<span>${label}</span><button class="tog" role="switch" aria-label="${label}"></button>`;
+  const b = row.querySelector('button');
+  const sync = () => { b.classList.toggle('on', !!settings[key]); b.setAttribute('aria-checked', !!settings[key]); };
+  b.onclick = () => { settings[key] = !settings[key]; sync(); saveSettings(); onChange && onChange(settings[key]); };
+  sync(); parent.appendChild(row);
+}
+
+// Map data
+makeToggle($('#data-toggles'), 'Load data automatically', 'auto', v => v && autoLoad());
+makeSlider($('#data-sliders'), { label: 'Treat as built-up above', min: 200, max: 3000, step: 100, value: settings.denseKm2,
+  fmt: v => v + ' houses/km²', onInput: v => { settings.denseKm2 = v; saveSettings(); } });
+
+// Display — base map switcher
+(() => {
+  const seg = $('#seg-base');
+  for (const [k, b] of Object.entries(BASEMAPS)) {
+    const btn = document.createElement('button');
+    btn.textContent = b.label; btn.dataset.key = k;
+    btn.onclick = () => {
+      settings.basemap = k; saveSettings(); setBasemap(k);
+      seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.key === k));
+    };
+    seg.appendChild(btn);
+  }
+  seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.key === settings.basemap));
+})();
+makeToggle($('#display-toggles'), 'Show places to avoid', 'showHaz', requestRender);
+makeToggle($('#display-toggles'), 'Show good-to-have places', 'showAtt', requestRender);
+makeToggle($('#display-toggles'), 'Show point markers', 'markers', rebuildMarkers);
+makeToggle($('#display-toggles'), 'Grey base map', 'grey', v => document.body.classList.toggle('grey', v));
+document.body.classList.toggle('grey', settings.grey);
+
+makeSlider($('#display-sliders'), { label: 'Overlay opacity', min: 0.2, max: 1, step: 0.05, value: settings.opacity,
+  fmt: v => Math.round(v * 100) + '%',
+  onInput: v => { settings.opacity = v; hazLayer.setOpacity(v); attLayer.setOpacity(Math.min(1, v + 0.15)); saveSettings(); } });
+makeSlider($('#display-sliders'), { label: 'Overlay detail', min: 0, max: 4, step: 1, value: settings.cellIdx,
+  fmt: v => CELL_LABELS[v],
+  onInput: v => { settings.cellIdx = v; baseDirty = true; requestRender(); saveSettings(); } });
+
+function reachChanged() { if (R.valid && R.pad < MAX_PAD && neededReach() > R.pad * R.cellMc) baseDirty = true; }
+
+// Places to avoid
+makeSlider($('#haz-cut'), { label: 'Safe distance from houses', min: 50, max: 3000, step: 50, value: settings.cutH, fmt: fmtDist,
+  onInput: v => { settings.cutH = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
+makeSlider($('#haz-dens'), { label: 'Density smoothing', min: 100, max: 2000, step: 50, value: settings.densR, fmt: fmtDist,
+  onInput: v => { settings.densR = v; reachChanged(); densDirty = true; requestRender(); saveSettings(); } });
+
+// Good to have
+makeSlider($('#att-cut'), { label: 'Worth walking up to', min: 100, max: 10000, step: 100, value: settings.cutA, fmt: fmtDist,
+  onInput: v => { settings.cutA = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
+
+function buildCatRows() {
+  for (const [grp, keys] of [['hazard', HAZ], ['attract', ATT]]) {
+    const box = $('#rows-' + grp);
+    for (const k of keys) {
+      const c = CATS[k], row = document.createElement('div');
+      row.className = 'cat-row';
+      row.innerHTML = `<span class="dot" style="background:${c.color}"></span><span class="name">${c.label}</span><span class="cnt" id="cnt-${k}"></span>`;
+      box.appendChild(row);
+      const cell = document.createElement('div'); row.appendChild(cell);
+      makeSlider(cell, { min: 0, max: 2, step: 0.1, value: settings.weights[k], fmt: v => v === 0 ? 'off' : Math.round(v * 100) + '%',
+        onInput: v => {
+          const wasOff = settings.weights[k] === 0;
+          settings.weights[k] = v; requestRender(); saveSettings();
+          if (wasOff !== (v === 0)) rebuildMarkers();
+        } }).setAttribute('aria-label', c.label + ' weight');
+    }
+  }
+}
+buildCatRows();
+
+function setMode(m) {
+  settings.mode = m; saveSettings();
+  document.querySelectorAll('#seg-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('#haz-cut').style.display = m === 'distance' ? '' : 'none';
+  $('#haz-dens').style.display = m === 'density' ? '' : 'none';
+  $('#rows-hazard').style.display = m === 'distance' ? '' : 'none';
+  updateLegends(); requestRender();
+}
+document.querySelectorAll('#seg-mode button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+
+// Legends
+function drawLegend(sel, table) { const c = $(sel), ctx = c.getContext('2d'), im = ctx.createImageData(256, 1); im.data.set(table); ctx.putImageData(im, 0, 0); }
+function setLabels(sel, items) { $(sel).innerHTML = items.map(([t, s]) => `<span style="left:${t * 100}%">${s}</span>`).join(''); }
+function updateLegends() {
+  if (settings.mode === 'density') {
+    drawLegend('#leg-h', LUT_D);
+    const L1 = Math.log1p(DMAX), at = v => Math.log1p(v) / L1;
+    setLabels('#leg-h-labels', [[0, '0'], [at(10), '10'], [at(100), '100'], [at(1000), '1000'], [1, 'houses/km²']]);
+  } else {
+    drawLegend('#leg-h', LUT_H);
+    setLabels('#leg-h-labels', [[0, 'next to a house'], [0.5, fmtDist(settings.cutH / 2)], [1, fmtDist(settings.cutH) + '+']]);
+  }
+  drawLegend('#leg-a', LUT_A);
+  setLabels('#leg-a-labels', [[0, 'right here'], [0.5, fmtDist(settings.cutA / 2)], [1, fmtDist(settings.cutA)]]);
+}
+
+// Buttons
+$('#btn-load').onclick = () => {
+  const list = tilesInBounds(map.getBounds(), MANUAL_MAX_TILES * 4);
+  const missing = list ? list.filter(t => !tiles.has(tkey(t.x, t.y)) && !offline.has(tkey(t.x, t.y))) : null;
+  if (!missing || missing.length > MANUAL_MAX_TILES) {
+    setStatus(`This view is too large to load at once — zoom in a little (max ${MANUAL_MAX_TILES} areas)`, 'error'); return;
+  }
+  if (!missing.length) { setStatus('Everything in view is already loaded', 'ok'); return; }
+  if (missing.length > 30 && !confirm(`Load ${missing.length} areas from OpenStreetMap? Dense regions can take several minutes.`)) return;
+  missing.forEach(t => failed.delete(tkey(t.x, t.y)));
+  ensureTiles(missing, true);
+};
+$('#btn-clear').onclick = async () => {
+  if (!confirm('Delete all cached map data from this browser?')) return;
+  queue.length = 0; queued.clear();
+  pendingRects.forEach(r => r.remove()); pendingRects.clear();
+  await db.clear().catch(() => {});
+  tiles.clear(); idbMiss.clear(); failed.clear();
+  CAT_KEYS.forEach(k => catCount[k] = 0); denseCells = 0;
+  baseDirty = true; requestRender(); rebuildMarkers(); updateStats();
+  setStatus('Cached data deleted');
+};
+
+// Search
+$('#search').onsubmit = async e => {
+  e.preventDefault();
+  const q = $('#q').value.trim(); if (!q) return;
+  setStatus('Searching…', 'busy');
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+    const j = await r.json();
+    if (!j.length) { setStatus(`No place found for “${q}”`, 'error'); return; }
+    const [s, n, w, ea] = j[0].boundingbox.map(Number);
+    map.fitBounds([[s, w], [n, ea]], { maxZoom: 14 });
+    setStatus(j[0].display_name.split(',').slice(0, 2).join(','), 'ok');
+  } catch { setStatus('Search failed — check your connection', 'error'); }
+};
+
+// ════════════════════════════════════════════════════════════════════
+// MAP EVENTS + START
+// ════════════════════════════════════════════════════════════════════
+let offlineChecked = false;                   // don't touch Overpass/IndexedDB before we know the offline tiles
+function autoLoad() {
+  if (!offlineChecked) return;
+  const list = tilesInBounds(map.getBounds().pad(0.15), 4000);
+  if (!list) return;
+  ensureTiles(list, settings.auto && map.getZoom() >= AUTO_MIN_Z);
+}
+map.on('moveend', () => {
+  requestRender(); rebuildMarkers(); autoLoad(); reorderQueue();
+  const c = map.getCenter();
+  localStorage.setItem('wn:view', JSON.stringify({ lat: c.lat, lng: c.lng, z: map.getZoom() }));
+});
+window.addEventListener('resize', () => { baseDirty = true; requestRender(); });
+
+setMode(settings.mode);
+updateStats();
+requestRender();
+offlineReady.then(() => { offlineChecked = true; autoLoad(); });
+</script>
+</body>
+</html>
