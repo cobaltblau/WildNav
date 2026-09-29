@@ -32,6 +32,7 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
     and culverted water are excluded on purpose.
 - `raw/` – Geofabrik downloads. Large – never commit (in `.gitignore`).
 - `start.bat` – starts a local server on port 8765 and opens the app.
+- `IDEAS.md` – planned features (e.g. the "hidden spot" score) with research notes and algorithm sketches.
 
 ## How data loading works
 - Data is organised in zoom-12 tiles (~6×6 km at 52°N).
