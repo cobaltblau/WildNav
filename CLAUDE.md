@@ -170,6 +170,11 @@ cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best
     each tile by sweeping 16 directions: observers = roads/paths (`WAYS`, weighted by how busy) and
     houses; forest, scrub, hedges and buildings block sight/sound (`K_SIGHT`, `K_HEAR`, `K_NOISE`);
     tunables `L_SIGHT`, `L_HEAR`, `E0` etc. at the top of build_tiles.py (see IDEAS.md 1.3 for the idea).
+    Road noise levels per road type (`WAYS`, night dB at 10 m) are calibrated against the DLR Noise2NAKO AI
+    road noise map (Lden 2017, CC BY 4.0, Lden = night + 8 dB) with `calibrate_noise.py` (needs `tifffile`,
+    `imagecodecs`, `pyproj` and `raw/dlr/RF_RoadLden_DE_2017.tif`; only for calibration, the app never uses it):
+    motorway 72, trunk 66, primary 59, secondary 50 fitted; tertiary 44, unclassified 37, residential 35 continue
+    the steps (DLR's 55 dB Lden threshold only gives an upper bound there). Railways are not calibrated.
     Hills: with FABDEM (`--dem`, default `raw/fabdem`) each ray also tracks the terrain between the
     observer (eyes 1.7 m) and a tent (1.2 m); a rise must stick out `DEM_TOL` = 2 m to block (DEM errors),
     voices carry 30 % over a ridge, traffic noise −8 dB behind one.
@@ -184,6 +189,8 @@ cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best
     (skips existing, `--redo` for all). `--slope` and `--resume` update `built` in index.json
     (`bump_version`), otherwise browsers keep serving their cached old tiles. **Licence: non-commercial only** (credit in the app footer,
     README and data/LICENSE.md). Loaded with the terrain maps (`decodeSlope`, `slopeAt`).
+- `calibrate_noise.py` – recalibrates the road noise levels in `WAYS` against the DLR road noise map
+  (`collect` samples per region from a .osm.pbf, `fit` prints the shift per road type). Run after a build.
 - `raw/` – Geofabrik downloads. Large – never commit (in `.gitignore`).
 - `start.bat` – starts a local server on port 8765 and opens the app.
 - `IDEAS.md` – planned features (e.g. the "hidden spot" score) with research notes and algorithm sketches.

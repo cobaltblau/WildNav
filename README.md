@@ -41,5 +41,8 @@ Several regions can be built into the same `data/` folder. Outside those regions
 - Base maps: [OpenStreetMap](https://www.openstreetmap.org/) (Grey and Streets),
   [OpenTopoMap](https://opentopomap.org/) (CC-BY-SA), and
   [Sentinel-2 cloudless](https://s2maps.eu) by EOX IT Services GmbH (CC BY-NC-SA 4.0).
+- Road noise levels calibrated against the DLR *Road Traffic Noise (AI Prediction) - Germany, 2017*
+  ([Noise2NAKO](https://geoservice.dlr.de/web/datasets/n2nnoise_ai), Staab et al. 2025, CC BY 4.0);
+  the DLR data itself is not included.
 - Weather forecast by [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0), fetched only for an opened spot.
 - Search by [Nominatim](https://nominatim.org/).

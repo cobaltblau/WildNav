@@ -68,9 +68,13 @@ HP = 256                     # pixels per tile side (~24 m)
 #                   noise = night-time traffic noise in dB(A) at 10 m (0 = none), bike = usable to get to a spot)
 #   Quiet forest tracks and paths count less than village streets and footways (calibrated so a spot
 #   ~70 m from the tracks of a typical forest is ~80 % hidden, and a meadow 500 m from a path ~20 %).
+#   Noise levels calibrated (2026-09-30, calibrate_noise.py) against the DLR Noise2NAKO AI road noise map
+#   (Lden 2017, CC BY 4.0) at ~10,000 open-country points in Niedersachsen and NRW, with Lden = night + 8 dB:
+#   motorway..secondary fitted directly (agree within 1-2 dB between the two states); tertiary and smaller never
+#   reach DLR's 55 dB Lden threshold, so they continue the ~7 dB steps per road class (an upper bound fits).
 WAYS = {
-    'motorway': (0.3, 75, 0), 'trunk': (0.5, 70, 0), 'primary': (0.5, 67, 1), 'secondary': (0.6, 63, 1),
-    'tertiary': (0.6, 59, 1), 'unclassified': (0.8, 52, 1), 'residential': (0.8, 50, 1), 'living_street': (1, 0, 1),
+    'motorway': (0.3, 72, 0), 'trunk': (0.5, 66, 0), 'primary': (0.5, 59, 1), 'secondary': (0.6, 50, 1),
+    'tertiary': (0.6, 44, 1), 'unclassified': (0.8, 37, 1), 'residential': (0.8, 35, 1), 'living_street': (1, 0, 1),
     'service': (0.5, 0, 1), 'track': (0.4, 0, 1), 'pedestrian': (1, 0, 1), 'footway': (0.8, 0, 1), 'path': (0.6, 0, 1),
     'cycleway': (0.8, 0, 1), 'bridleway': (0.5, 0, 1), 'steps': (0.6, 0, 0),
 }

@@ -192,6 +192,11 @@ that's already loaded, plus one small library.
   agglomerations. Idea: take the louder of the two (official map where it exists, our estimate
   elsewhere), and add aircraft noise, which we don't have at all. To check: download formats per
   state (NRW, Niedersachsen, Eisenbahn-Bundesamt for railways) and licences.
+  ✅ Partly done (2026-09-30): our road noise levels per road type are **calibrated** against the DLR
+  Noise2NAKO AI road noise map (all roads in Germany, Lden 2017, 10 m, CC BY 4.0) with `calibrate_noise.py`
+  (~10,000 open-country points, Niedersachsen + NRW: loud/quiet agreement 57-59 % -> 88 %). The model stays
+  OSM-only, so it works in every country. Still open: railway levels (DLR has no rail; Eisenbahn-Bundesamt
+  maps), aircraft noise, and optionally using official maps directly where they exist.
 - **Light pollution:** how dark the night sky is at the spot (e.g. the *World Atlas of Artificial
   Night Sky Brightness* or VIIRS satellite night lights). Could be a small score factor ("dark spot":
   fewer people around at night, your headlamp stands out less) or just bonus info in the spot card
