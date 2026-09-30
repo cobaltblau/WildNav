@@ -3374,7 +3374,7 @@ async function planNights(run) {                // fixed (ticked) nights split t
   const day = settings.routeDay * 1000, fixed = tickedSpots('camp').filter(s => s.km > 2000 && s.km < route.len - 2000), anchors = [0, ...fixed.map(s => s.km), route.len], nights = [];
   for (let i = 0; i < anchors.length - 1; i++) {
     if (i > 0) nights.push(spotStop(fixed[i - 1], 'night'));
-    const a = anchors[i], b = anchors[i + 1], n = day > 0 ? Math.max(1, Math.round((b - a) / day)) : 1;
+    const a = anchors[i], b = anchors[i + 1], n = day > 0 ? Math.max(1, Math.ceil((b - a) / day - 0.15)) : 1;   // up to 15 % over the day distance is still one day
     for (let j = 1; j < n; j++) {
       const t = a + j * (b - a) / n, id = 'n' + Math.round(t / 1000), moved = routePlan && routePlan.moved && routePlan.moved[id];
       const c = moved || t, lo = Math.max(a + 10000, c - (moved ? 3000 : 0.15 * day)), hi = Math.min(b - 10000, c + (moved ? 3000 : 0.1 * day));
