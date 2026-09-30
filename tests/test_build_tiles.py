@@ -204,8 +204,6 @@ class TestBumpVersion(unittest.TestCase):
         shutil.rmtree(d, ignore_errors=True)
 
 
-if __name__ == '__main__':
-    unittest.main()
 
 
 class TestFormats(unittest.TestCase):
@@ -223,3 +221,50 @@ class TestFormats(unittest.TestCase):
         a = rng.integers(0, 17, (64, 64, 3)).astype(np.uint8); a[..., 1:] = 0; a[5:9, 5:9, 2] = 7
         back = np.asarray(Image.open(__import__('io').BytesIO(bt.palette_png(a))).convert('RGB'))
         self.assertTrue((back == a).all())
+
+
+class TestDayPoints(unittest.TestCase):
+    """Resupply points and sights: read from a tiny OSM file, a shop in a building counts twice."""
+
+    def test_read_region(self):
+        lon0 = bt.tile_lon(TX) + 0.01
+        lat0 = bt.tile_lat(TY) - 0.01
+        nodes = [  # id, dlon, dlat, tags
+            (1, 0, 0, {'shop': 'supermarket', 'name': 'Markt', 'opening_hours': 'Mo-Sa 07:00-21:00'}),
+            (2, .001, 0, {'natural': 'peak'}),                        # unnamed peak: left out
+            (3, .002, 0, {'natural': 'peak', 'name': 'Berg'}),
+            (4, .003, 0, {'amenity': 'drinking_water'}),              # night category 'water' only
+            (5, .004, 0, {'amenity': 'fuel', 'name': 'Tanke'}),
+        ] + [(10 + k, .005 + dx, dy, {}) for k, (dx, dy) in enumerate([(0, 0), (.0002, 0), (.0002, .0002), (0, .0002)])]
+        xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<osm version="0.6">']
+        for i, dx, dy, tags in nodes:
+            xml.append(f'<node id="{i}" version="1" lat="{lat0 + dy:.7f}" lon="{lon0 + dx:.7f}">'
+                       + ''.join(f'<tag k="{k}" v="{v}"/>' for k, v in tags.items()) + '</node>')
+        xml.append('<way id="100" version="1">' + ''.join(f'<nd ref="{i}"/>' for i in (10, 11, 12, 13, 10))
+                   + '<tag k="building" v="yes"/><tag k="shop" v="bakery"/></way>')
+        xml.append('</osm>')
+        tmp = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmp, 'a.osm')
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(xml))
+            res = bt.read_region(0, path, {(TX, TY): 0}, tmp, part='items')
+        finally:
+            shutil.rmtree(tmp)
+        pois = res['p'][(TX, TY)]
+        got = sorted((p['c'], p.get('t'), p['n']) for p in pois)
+        self.assertEqual(got, [('groceries', 'bakery', ''), ('groceries', 'fuel', 'Tanke'),
+                               ('groceries', 'supermarket', 'Markt'), ('sights', 'peak', 'Berg'), ('water', None, '')])
+        self.assertEqual(next(p for p in pois if p['n'] == 'Markt')['o'], 'Mo-Sa 07:00-21:00')
+        self.assertNotIn('o', next(p for p in pois if p['c'] == 'water'))
+        self.assertEqual(len(res['b'][(TX, TY)]), 2)             # the bakery building is still a house
+
+    def test_day_class(self):
+        self.assertEqual(bt.day_class({'amenity': 'cafe'}), ('food', 'cafe'))
+        self.assertEqual(bt.day_class({'shop': 'bicycle'}), ('bike', 'bicycle'))
+        self.assertIsNone(bt.day_class({'shop': 'clothes'}))
+        self.assertEqual(bt.poi_cats({'building': 'yes', 'amenity': 'toilets'}), [('buildings', None), ('toilets', 'toilets')])
+
+
+if __name__ == '__main__':
+    unittest.main()

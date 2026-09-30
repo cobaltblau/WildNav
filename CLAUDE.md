@@ -3,9 +3,25 @@
 A static web map for planning wild camping and bikepacking trips. The owner is not a
 developer: explain changes briefly and ask before anything destructive.
 
-## What it shows
+## Two modes: Night and Day
+The switch in the top bar (`#mode-seg`, `setMode`, `settings.mode`, `isDay()`) picks the planning mode (owner's idea):
+- **Night** (where to sleep): everything below about the score, hidden, quiet night, terrain …
+- **Day** (riding): layers `supply` ("Resupply": groceries incl. petrol stations, cafés & food, water, bike shops & repair,
+  toilets = `DAY_SUPPLY`) and `sights` ("Sights & views": castles, ruins, museums, attractions, named peaks + viewpoints =
+  `DAY_SIGHTS`), both distance maps like "Useful places" (`NEAREST`, cut-off "Worth a detour" `settings.cutS`); plus `topo`
+  and `quiet` under riding names (`DAY_NAMES`: "Hills", "Busy roads"). Layers per mode: `MODE_LAYERS`; each mode remembers its
+  layer (`settings.nightLayer` / `settings.dayLayer`); a card row linking to a night layer switches back to Night.
+- Per mode: markers (`NIGHT_CATS` / `DAY_CATS`), "Here" (`updateHoverDay`: nearest place of each kind with name, type and
+  open/closed now), "Near you" (`findNearbyDay`: nearest of each resupply kind within 5 km) and the route section
+  (`renderRouteDay`: "Find supplies").
+- Day categories have `group: 'day'` in `CATS` and are not part of the night score; their distance fields are only computed
+  in Day mode (`buildGrid`). Types (`p.t`) are shown in words via `DAY_TYPES`; opening hours (`p.o`) are read by `ohState()`
+  ('open' / 'closed' / null when not understood: months, sunrise, "+" …; later rules replace earlier ones, PH ignored).
+- The spot card stays the same in both modes (it is about a place to sleep).
+
+## What it shows (Night)
 One overlay at a time, chosen with the layer picker in the top bar (`#layer-btn` / `#layer-menu`, `LAYERS`, `settings.layer`),
-grouped as "Plan" (Best spots) and "Why a spot scores" (the factors behind the score):
+grouped as "Night: where to sleep" (Best spots) and "Why a spot scores" (the factors behind the score):
 - **Hidden** (`hidden`), **Quiet night** (`quiet`, road/rail dB), **Topography** (`topo`, slope + cold hollows in blue) and
   **Terrain & rules** (`terrain`, ground for a tent by `LAND_FACTOR` class + protected areas hatched red/orange):
   `FACTOR_LAYERS`, drawn in `composite()` from the grid (`R.hid/hdb/slp/hol/land/prot`, only from zoom `LAND_MIN_Z`),
@@ -115,6 +131,11 @@ off-screen in 6 km pieces: `tilesReady` waits for the offline tiles, `buildGrid`
 cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best spot between 85 % and
 105 % of each day's distance) plus other good spots ≥ 3 km apart; purple numbered pins = nights.
 `buildGrid(z, S, x0, y0, gw, gh)` is the view-independent grid builder (`computeBase` uses it for the view).
+Day mode: "Find supplies" (`analyseSupplies`) loads only the place files along the track (`jsonReady`), finds every
+day place within "up to X off route" (`settings.routeOffS`, spatial index of the track segments) with its km;
+`showSupplies` groups places ≤ 1.5 km apart along the route into stops (amber pins, hidden from zoom 13 where the badges
+show), lists the longest stretch without groceries / water / food (orange > 25 km, red > 40 km), sights on the way, and
+the nights found in Night mode between the stops.
 
 ## Files
 - `index.html` – the whole app in one file (Leaflet 1.9.4 from CDN + plain JavaScript, no build step).
@@ -124,7 +145,7 @@ cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best
   Usage: `python build_tiles.py raw/a.osm.pbf raw/a.poly [raw/b.osm.pbf raw/b.poly ...] [data]`
   Build neighbouring regions **in one run**: each extract is read by two parallel processes
   (`read_region(part='areas')`: terrain, protected areas, lakes, rivers; `part='items'`: points of
-  interest, buildings, roads/paths/hedges; merged by `merge_parts`), and tiles on shared borders are
+  interest incl. shops/cafés/sights, buildings, roads/paths/hedges; merged by `merge_parts`), and tiles on shared borders are
   filled from both extracts with duplicates removed by OSM id.
   Tiles inside no region are left out. Merges into an existing `data/index.json`.
   **Safety:** the owner's PC powered off at full load on all 24 cores. The build therefore uses half
@@ -145,7 +166,10 @@ cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best
   - `data/index.json` – `{z: 12, built, bfmt: "u16", tiles: ["x/y", ...]}` (`built` = cache version)
   - `data/12/<x>/<y>.b16` – building centres, Uint16 pairs (tile-relative Mercator x,y × 65535, ~10 cm).
     Older data had `.bin` with Float32 pairs; the app reads `.b16` when index.json says `bfmt: "u16"`.
-  - `data/12/<x>/<y>.json` – points of interest `[{c, lat, lon, n}]`
+  - `data/12/<x>/<y>.json` – points of interest `[{c, lat, lon, n}]`; day places (`day_class()`: groceries, food, bike,
+    toilets, sights) also have `t` (OSM type, e.g. `bakery`, `fuel`) and `o` (opening_hours, if tagged). A shop in a
+    building is stored twice: as a house (for the night score) and as a place (`poi_cats()`). The app ignores
+    categories it doesn't know, but older app versions fail on them: publish app and data together.
   - `data/12/<x>/<y>.water.bin` – rivers/streams/canals and lake shores sampled every ~40 m,
     Uint16 pairs (tile-relative Mercator x,y × 65535). Category `rivers` ("Open water") in the
     app; no markers. Ditches, drains, intermittent

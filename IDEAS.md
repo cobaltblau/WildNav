@@ -126,7 +126,7 @@ a small number of directions** gives the same answer in linear time.
 
 ---
 
-## 2. Saved spots
+## 2. ✅ Saved spots
 
 - **Click on the map → "Save spot"**, with a name, a note and a star rating. Stored in the
   browser (`localStorage`/IndexedDB), so no server is needed.
@@ -138,7 +138,7 @@ a small number of directions** gives the same answer in linear time.
 - Note: browser storage can be lost (clearing browser data, private window) → remind people to
   export regularly.
 
-## 3. Spot detail card ("breakdown")
+## 3. ✅ Spot detail card ("breakdown")
 
 Opens when you click a spot (saved or not). Everything is computed in the browser from the data
 that's already loaded, plus one small library.
@@ -172,10 +172,20 @@ that's already loaded, plus one small library.
     there and can be exported as GPX. To check: bikerouter.de is based on brouter-web, whose URL hash
     takes `lonlats=lon,lat;lon,lat;…` for the route points and `pois=lon,lat,name;…` for markers —
     verify the exact format and length limits before building.
-  - Needs: amenity data in the build (new categories in `classify()` + the tiles), and a simple
-    "straight line / corridor" search for the direction-of-travel mode before the real route exists.
-- **Supply points along the route:** supermarkets, bakeries, water taps, bike shops
-  (OSM `shop=*`, `amenity=drinking_water`), with opening hours if tagged.
+  - Needs: a simple "straight line / corridor" search for the direction-of-travel mode before the real
+    route exists. The amenity data is there now (Day mode, below).
+- ✅ **Supply points along the route** (Day mode): groceries (incl. petrol stations), cafés & food, water,
+  bike shops & repair, toilets, sights, with opening hours; stops per village, longest stretch without
+  groceries / water, nights from Night mode in between.
+- ✅ **Day / Night modes:** Night = where to sleep (the score), Day = riding (resupply, sights & views,
+  hills, busy roads). Ideas for the Day map next:
+  - "Open at …": pick a day and time (e.g. Sunday 10:00) instead of "now", so a route can be checked in advance;
+    also show "closed Sundays" in the stop list.
+  - Nearest shop / water in the spot card ("last shop before tonight's spot").
+  - More places: swimming spots (`leisure=bathing_place`, `leisure=swimming_area`), bakeries' vending machines,
+    train stations (for bailing out), campsites with showers.
+  - Riding quality: surface of tracks (`surface`, `tracktype`) and cycle routes (`route=bicycle` relations) as a
+    "Good riding" layer; would need new maps in the build.
 
 ## 5. More factors for the score
 
@@ -205,6 +215,7 @@ that's already loaded, plus one small library.
 - **Mobile layout:** the panel as a drawer that slides up from the bottom, with bigger buttons.
 - ✅ **Locate me:** GPS button, "best spots within 5 km of here".
 - **Search:** also search saved spots.
+- ✅ Mobile layout (bottom sheet) and PWA offline use.
 
 ### Suggested order
 1. ✅ Saved spots + detail card (distances, directions, sun), plus terrain at the spot.
@@ -213,7 +224,8 @@ that's already loaded, plus one small library.
 3. ✅ PWA offline + mobile layout → makes it usable on the road.
 4. ✅ Hidden score (section 1), quiet night (traffic noise) and slope (FABDEM).
 5. ✅ GPX route planning (nights per day distance) and weather (Open-Meteo, per night in the spot card).
-   Still open: supply points along the route.
+   Supply points along the route: done as the Day mode (6).
+6. ✅ Day mode (riding): resupply with opening hours, sights, hills, busy roads; supplies along a GPX route.
 
 ---
 
