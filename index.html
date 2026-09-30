@@ -49,6 +49,12 @@ header{display:flex;align-items:center;gap:12px;padding:7px 12px;background:var(
 .logo{width:28px;height:28px;display:block}
 #search{display:flex;flex:0 1 300px;min-width:0}
 .layer-pick{position:relative;flex-shrink:0}
+/* Night / Day switch (planning modes): each mode has its own map layers, markers and panel rows */
+.mode-seg{display:flex;flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:2px;gap:2px}
+.mode-seg button{display:flex;align-items:center;gap:5px;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;font-weight:500;padding:3px 8px}
+.mode-seg button .ic{width:16px;height:16px}
+.mode-seg button.on{background:var(--slate);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.mode-seg button[data-mode="night"].on .ic{color:#b39ddb}.mode-seg button[data-mode="day"].on .ic{color:var(--blaze)}
 #layer-btn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-weight:500;cursor:pointer}
 #layer-btn:hover,#layer-btn[aria-expanded="true"]{border-color:var(--muted)}
 #layer-btn .ic{width:17px;height:17px}
@@ -56,6 +62,9 @@ header{display:flex;align-items:center;gap:12px;padding:7px 12px;background:var(
 #layer-menu{position:absolute;top:calc(100% + 6px);left:0;width:300px;max-width:calc(100vw - 16px);z-index:1005;background:var(--slate);border:1px solid var(--line);
   border-radius:10px;box-shadow:0 6px 24px #0008;padding:6px}
 .lm-h{font-size:11.5px;color:var(--muted);padding:6px 8px 3px}
+.lm-more summary{cursor:pointer;list-style:none}
+.lm-more summary::-webkit-details-marker{display:none}
+.lm-more summary::before{content:"▸ "}.lm-more[open] summary::before{content:"▾ "}
 .lm-item{display:grid;grid-template-columns:24px 1fr;gap:1px 8px;align-items:center;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:6px 8px;cursor:pointer}
 .lm-item:hover{background:var(--surface)}
 .lm-item.on{background:var(--surface);box-shadow:inset 3px 0 0 var(--blaze)}
@@ -217,6 +226,19 @@ details.more summary::-webkit-details-marker{display:none}
   color:#fff;box-shadow:0 1px 4px #0008;filter:saturate(.75) brightness(.95)}
 .poi-badge .ic{width:14px;height:14px;filter:none}
 .spot-pin.on{transform:scale(1.2)}
+.spot-pin.pt-break{background:#3fa89a;color:#fff}.spot-pin.pt-shop{background:#e0a030}
+.sc-types{margin-top:8px}
+.sc-types button{display:flex;align-items:center;justify-content:center;gap:5px}
+.sc-types button .ic{width:16px;height:16px}
+.sun-strip{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin-top:-2px}
+.sun-strip i{height:14px;border-radius:2px;background:var(--surface)}
+.sun-strip i.sun{background:#e8c25a}.sun-strip i.shade{background:#4f6f9f}.sun-strip i.now{outline:2px solid var(--ink);outline-offset:1px}
+.sun-hours{display:grid;grid-template-columns:repeat(16,1fr);margin-top:1px;font-size:10.5px;color:var(--muted)}
+.spot-filter{display:flex;gap:4px;margin:2px 0 4px;flex-wrap:wrap}
+.spot-filter button{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1px 9px;font-size:11.5px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:4px}
+.spot-filter button .ic{width:14px;height:14px}
+.spot-filter button.on{color:var(--ink);border-color:var(--muted)}
+.spot-item .ti{display:flex}.spot-item .ti .ic{width:16px;height:16px}
 .spot-pin.temp{background:transparent;border:3px solid #fff;box-shadow:0 0 0 2px #000a,inset 0 0 0 2px #000a}
 .spot-card[hidden]{display:none}
 .sc-summary{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
@@ -285,6 +307,14 @@ details.more summary::-webkit-details-marker{display:none}
 .spot-item .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* locate me + best spots near you */
 .tools .tool-gap{height:6px}
+.tool-spot{position:relative}
+.tools button{position:relative}
+.tool-spot #tool-spot::after{content:"";position:absolute;right:3px;bottom:3px;border:3px solid transparent;border-right-color:currentColor;border-bottom-color:currentColor;opacity:.6}
+.type-pop{position:absolute;left:calc(100% + 6px);top:0;display:flex;gap:4px;background:var(--slate);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 2px 10px #0008;z-index:1001}
+.type-pop[hidden]{display:none}
+.tools .type-pop button{width:auto;height:auto;padding:5px 9px;gap:6px;font-weight:500;white-space:nowrap;box-shadow:none}
+.tools .type-pop button svg{width:18px;height:18px}
+.tools .type-pop button.on{border-color:var(--blaze)}
 .night-pin{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#6d4bd8;color:#fff;
   font-weight:700;font-size:13px;border:2px solid #fff;box-shadow:0 1px 5px #000a;cursor:pointer}
 .night-dot{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#6d4bd8;color:#fff;font-size:11px;margin-right:2px}
@@ -292,6 +322,25 @@ details.more summary::-webkit-details-marker{display:none}
 .rt-opts input,.rt-opts select{width:64px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px 5px;color:var(--ink)}
 .rt-opts select{width:auto}
 .rt-h{font-family:"Barlow Semi Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+.sup-stop .ics{display:flex;gap:2px;flex-shrink:0}
+.sup-stop .ics .ic{width:16px;height:16px}
+.spot-item.sup-stop{align-items:flex-start}
+.sup-stop .nm{white-space:normal}
+.sup-stop .nm small{display:block;color:var(--muted);font-size:11.5px;line-height:1.35}
+.rt-gap{font-size:12px;line-height:1.4;margin-top:4px;display:flex;gap:6px;align-items:flex-start}
+.rt-gap .ic{width:16px;height:16px;margin-top:1px}
+.brk-pin{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#3fa89a;color:#fff;
+  font-weight:700;font-size:12px;border:2px solid #fff;box-shadow:0 1px 5px #000a;cursor:pointer}
+.brk-dot{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#3fa89a;color:#fff;font-size:11px;font-weight:700}
+.rt-night{font-size:11.5px;color:#b39ddb;margin:6px 0 2px;display:flex;align-items:center;gap:5px}
+.set-h{font-size:12.5px;font-weight:600;margin:14px 0 0}
+.oh-pick{display:flex;gap:6px;margin-top:5px}
+.oh-pick select,.oh-pick input{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:3px 6px;color:var(--ink);color-scheme:dark}
+.oh-pick select{flex:1}
+.oh-open{color:var(--good-text)}.oh-closed{color:var(--bad-text)}
+#map.zin .sup-pin{display:none}   /* zoomed in, the places themselves show as badges */
+.sup-pin{width:18px;height:18px;border-radius:50%;background:#e0a030;border:2px solid #fff;box-shadow:0 1px 4px #000a;color:#1d1a10;
+  font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .near-centre{width:30px;height:30px;border-radius:50%;background:#147337;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 6px #000a;cursor:grab}
 .near-centre .ic{width:18px;height:18px}
 .tools button.locating svg{animation:pulse 1.2s ease-in-out infinite}
@@ -308,6 +357,8 @@ details.more summary::-webkit-details-marker{display:none}
   .brand span,#status,.hbtn .lbl{display:none}
   #search{flex:1}
   #layer-btn{padding:5px 6px}
+  .mode-seg .lbl{display:none}
+  .mode-seg button{padding:5px 7px}
   #layer-name{display:none}
   #layer-menu{left:auto;right:-40px}
   .panel{position:absolute;left:0;right:0;bottom:0;width:auto;height:150px;z-index:1001;border-left:0;border-top:1px solid var(--line);
@@ -408,6 +459,17 @@ details.more summary::-webkit-details-marker{display:none}
 <symbol id="i-warning-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/></symbol>
 <symbol id="i-shield-check" viewBox="0 0 256 256" fill="currentColor"><path d="M216,56v56c0,96-88,120-88,120S40,208,40,112V56a8,8,0,0,1,8-8H208A8,8,0,0,1,216,56Z" opacity="0.2"/><path d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"/></symbol>
 <symbol id="i-map-trifold" viewBox="0 0 256 256" fill="currentColor"><path d="M160,72V216L96,184V40Z" opacity="0.2"/><path d="M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z"/></symbol>
+<symbol id="i-basket" viewBox="0 0 256 256" fill="currentColor"><path d="M232,88,216.93,201.06A8,8,0,0,1,209,208H47a8,8,0,0,1-7.93-6.94L24,88Z" opacity="0.2"/><path d="M136,120v56a8,8,0,0,1-16,0V120a8,8,0,0,1,16,0Zm36.84-.8-5.6,56A8,8,0,0,0,174.4,184a7.32,7.32,0,0,0,.81,0,8,8,0,0,0,7.95-7.2l5.6-56a8,8,0,0,0-15.92-1.6Zm-89.68,0a8,8,0,0,0-15.92,1.6l5.6,56a8,8,0,0,0,8,7.2,7.32,7.32,0,0,0,.81,0,8,8,0,0,0,7.16-8.76ZM239.93,89.06,224.86,202.12A16.06,16.06,0,0,1,209,216H47a16.06,16.06,0,0,1-15.86-13.88L16.07,89.06A8,8,0,0,1,24,80H68.37L122,18.73a8,8,0,0,1,12,0L187.63,80H232a8,8,0,0,1,7.93,9.06ZM89.63,80h76.74L128,36.15ZM222.86,96H33.14L47,200H209Z"/></symbol>
+<symbol id="i-coffee" viewBox="0 0 256 256" fill="currentColor"><path d="M208,88v48a88,88,0,0,1-51.3,80H83.3A88,88,0,0,1,32,136V88Z" opacity="0.2"/><path d="M80,56V24a8,8,0,0,1,16,0V56a8,8,0,0,1-16,0Zm40,8a8,8,0,0,0,8-8V24a8,8,0,0,0-16,0V56A8,8,0,0,0,120,64Zm32,0a8,8,0,0,0,8-8V24a8,8,0,0,0-16,0V56A8,8,0,0,0,152,64Zm96,56v8a40,40,0,0,1-37.51,39.91,96.59,96.59,0,0,1-27,40.09H208a8,8,0,0,1,0,16H32a8,8,0,0,1,0-16H56.54A96.3,96.3,0,0,1,24,136V88a8,8,0,0,1,8-8H208A40,40,0,0,1,248,120ZM200,96H40v40a80.27,80.27,0,0,0,45.12,72h69.76A80.27,80.27,0,0,0,200,136Zm32,24a24,24,0,0,0-16-22.62V136a95.78,95.78,0,0,1-1.2,15A24,24,0,0,0,232,128Z"/></symbol>
+<symbol id="i-toilet" viewBox="0 0 256 256" fill="currentColor"><path d="M167.92,222.87A8,8,0,0,1,160,232H96a8,8,0,0,1-7.92-9.13l4.34-30.36h0a88.21,88.21,0,0,0,71.14,0h0ZM184,32H72a8,8,0,0,0-8,8v72H192V40A8,8,0,0,0,184,32Z" opacity="0.2"/><path d="M120,64a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h16A8,8,0,0,1,120,64Zm52.32,133.14,3.52,24.6A16,16,0,0,1,160,240H96a16,16,0,0,1-15.84-18.26l3.52-24.6A96.09,96.09,0,0,1,32,112a8,8,0,0,1,8-8H56V40A16,16,0,0,1,72,24H184a16,16,0,0,1,16,16v64h16a8,8,0,0,1,8,8A96.09,96.09,0,0,1,172.32,197.14ZM72,104H184V40H72Zm85.07,99.5a96.15,96.15,0,0,1-58.14,0L96,224h64ZM207.6,120H48.4a80,80,0,0,0,159.2,0Z"/></symbol>
+<symbol id="i-castle-turret" viewBox="0 0 256 256" fill="currentColor"><path d="M208,48V92.69a8,8,0,0,1-2.34,5.65L192,112V224H152V168a24,24,0,0,0-48,0v56H64V112L50.34,98.34A8,8,0,0,1,48,92.69V48a8,8,0,0,1,8-8H80V72h32V40h32V72h32V40h24A8,8,0,0,1,208,48Z" opacity="0.2"/><path d="M216,216H200V115.31L211.31,104A15.86,15.86,0,0,0,216,92.69V48a16,16,0,0,0-16-16H176a8,8,0,0,0-8,8V64H152V40a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8V64H88V40a8,8,0,0,0-8-8H56A16,16,0,0,0,40,48V92.69A15.86,15.86,0,0,0,44.69,104L56,115.31V216H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16ZM69.66,106.34,56,92.69V48H72V72a8,8,0,0,0,8,8h32a8,8,0,0,0,8-8V48h16V72a8,8,0,0,0,8,8h32a8,8,0,0,0,8-8V48h16V92.69l-13.66,13.65A8,8,0,0,0,184,112V216H160V168a32,32,0,0,0-64,0v48H72V112A8,8,0,0,0,69.66,106.34ZM144,216H112V168a16,16,0,0,1,32,0Z"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 256 256" fill="currentColor"><path d="M224,96a64,64,0,0,1-94.94,56L73,217A24,24,0,0,1,39,183L104,126.94a64,64,0,0,1,80-90.29L144,80l5.66,26.34L176,112l43.35-40A63.8,63.8,0,0,1,224,96Z" opacity="0.2"/><path d="M226.76,69a8,8,0,0,0-12.84-2.88l-40.3,37.19-17.23-3.7-3.7-17.23,37.19-40.3A8,8,0,0,0,187,29.24,72,72,0,0,0,88,96,72.34,72.34,0,0,0,94,124.94L33.79,177c-.15.12-.29.26-.43.39a32,32,0,0,0,45.26,45.26c.13-.13.27-.28.39-.42L131.06,162A72,72,0,0,0,232,96,71.56,71.56,0,0,0,226.76,69ZM160,152a56.14,56.14,0,0,1-27.07-7,8,8,0,0,0-9.92,1.77L67.11,211.51a16,16,0,0,1-22.62-22.62L109.18,133a8,8,0,0,0,1.77-9.93,56,56,0,0,1,58.36-82.31l-31.2,33.81a8,8,0,0,0-1.94,7.1L141.83,108a8,8,0,0,0,6.14,6.14l26.35,5.66a8,8,0,0,0,7.1-1.94l33.81-31.2A56.06,56.06,0,0,1,160,152Z"/></symbol>
+<symbol id="i-park" viewBox="0 0 256 256" fill="currentColor"><path d="M224,160H160L192,32Z" opacity="0.2"/><path d="M232,192H200V168h24a8,8,0,0,0,7.76-9.94l-32-128a8,8,0,0,0-15.52,0l-32,128A8,8,0,0,0,160,168h24v24H120V176h8a8,8,0,0,0,0-16h-8V144h8a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16h8v16H40a8,8,0,0,0,0,16h8v16H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16ZM192,65l21.75,87h-43.5ZM64,144h40v16H64Zm0,32h40v16H64Zm52-80A28,28,0,1,0,88,68,28,28,0,0,0,116,96Zm0-40a12,12,0,1,1-12,12A12,12,0,0,1,116,56Z"/></symbol>
+<symbol id="i-person-simple-swim" viewBox="0 0 256 256" fill="currentColor"><path d="M132.14,108.12l57.45,57.46C147.85,178.63,119.12,134.49,80,136l38.94-38.95A96,96,0,0,1,132.14,108.12ZM176,48a24,24,0,1,0,24,24A24,24,0,0,0,176,48Z" opacity="0.2"/><path d="M176,104a32,32,0,1,0-32-32A32,32,0,0,0,176,104Zm0-48a16,16,0,1,1-16,16A16,16,0,0,1,176,56Zm46.16,129.24a8,8,0,0,1-1,11.26c-17.36,14.39-32.86,19.5-47,19.5-18.58,0-34.82-8.82-49.93-17-25.35-13.76-47.24-25.65-79.07.74a8,8,0,1,1-10.22-12.31c40.17-33.29,70.32-16.93,96.93-2.49,25.35,13.77,47.24,25.65,79.07-.74A8,8,0,0,1,222.16,185.24ZM34.89,147.42a8,8,0,1,0,10.22,12.31c31.83-26.38,53.72-14.5,79.07-.74,15.11,8.2,31.35,17,49.93,17,14.14,0,29.64-5.11,47-19.5a8,8,0,1,0-10.22-12.31,75.79,75.79,0,0,1-19.28,12.06l-53.84-53.82A103.34,103.34,0,0,0,64.24,72H40a8,8,0,0,0,0,16H64.24a87.66,87.66,0,0,1,41.88,10.56L76.49,128.17C63.82,129.35,50.07,134.84,34.89,147.42Zm91.57-33.67,46.13,46.12c-14-.43-26.88-7.39-40.77-14.93-10.75-5.84-22.09-12-34.42-15.05l22.26-22.26A87.14,87.14,0,0,1,126.46,113.75Z"/></symbol>
+<symbol id="i-train-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M208,56v72H48V56A24,24,0,0,1,72,32H184A24,24,0,0,1,208,56Z" opacity="0.2"/><path d="M184,24H72A32,32,0,0,0,40,56V184a32,32,0,0,0,32,32h8L65.6,235.2a8,8,0,1,0,12.8,9.6L100,216h56l21.6,28.8a8,8,0,1,0,12.8-9.6L176,216h8a32,32,0,0,0,32-32V56A32,32,0,0,0,184,24ZM72,40H184a16,16,0,0,1,16,16v64H56V56A16,16,0,0,1,72,40ZM184,200H72a16,16,0,0,1-16-16V136H200v48A16,16,0,0,1,184,200ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm88,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z"/></symbol>
+<symbol id="i-eye" viewBox="0 0 256 256" fill="currentColor"><path d="M128,56C48,56,16,128,16,128s32,72,112,72,112-72,112-72S208,56,128,56Zm0,112a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></symbol>
+<symbol id="i-umbrella-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M224,136H32a8,8,0,0,1-8-8.71,104.37,104.37,0,0,1,207.94,0A8,8,0,0,1,224,136Z" opacity="0.2"/><path d="M240,126.63A112.44,112.44,0,0,0,51.75,53.75a111.56,111.56,0,0,0-35.7,72.88A16,16,0,0,0,32,144h88v56a32,32,0,0,0,64,0,8,8,0,0,0-16,0,16,16,0,0,1-32,0V144h88a16,16,0,0,0,16-17.37ZM32,128l0,0A96.43,96.43,0,0,1,193.4,65.52,95.32,95.32,0,0,1,224,128Z"/></symbol>
 <symbol id="i-hollow" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><clipPath id="i-hollow-c"><rect x="0" y="136" width="256" height="120"/></clipPath><path d="M16,72C72,72,80,208,128,208S184,72,240,72Z" fill="currentColor" opacity="0.2" stroke="none" clip-path="url(#i-hollow-c)"/><path d="M16,72C72,72,80,208,128,208S184,72,240,72"/><line x1="98.0" y1="104.0" x2="158.0" y2="104.0" stroke-width="12"/><line x1="113.0" y1="78.0" x2="143.0" y2="130.0" stroke-width="12"/><line x1="143.0" y1="78.0" x2="113.0" y2="130.0" stroke-width="12"/></symbol>
 <symbol id="i-stand" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><rect x="72" y="56" width="112" height="64" rx="4" fill="currentColor" opacity="0.2" stroke="none"/><path d="M60,60L128,24L196,60"/><rect x="72" y="60" width="112" height="60" rx="4"/><path d="M96,88H160" stroke-width="12"/><path d="M84,120L60,232M172,120L196,232M72,176H184"/></symbol>
 <symbol id="i-shelter" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M24,112L128,40L232,112Z" fill="currentColor" opacity="0.2" stroke="none"/><path d="M24,112L128,40L232,112"/><path d="M64,88V216M192,88V216M96,168H160M104,168V208M152,168V208" /></symbol>
@@ -415,7 +477,10 @@ details.more summary::-webkit-details-marker{display:none}
 
 <header>
   <div class="brand"><svg class="logo" role="img" aria-label="WildNav logo"><use href="#logo"/></svg><span>WildNav</span></div>
-  <form id="search"><input id="q" placeholder="Go to a place…" aria-label="Search place"><button type="submit" aria-label="Search"><svg class="ic"><use href="#i-magnifying-glass"/></svg></button></form>
+  <form id="search"><input id="q" placeholder="Go to a place or your spot…" aria-label="Search place or saved spot"><button type="submit" aria-label="Search"><svg class="ic"><use href="#i-magnifying-glass"/></svg></button></form>
+  <div class="mode-seg" id="mode-seg" role="group" aria-label="Planning mode">
+    <button data-mode="night" title="Night: where to sleep (hidden, quiet, flat, allowed)"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg><span class="lbl">Night</span></button>
+    <button data-mode="day" title="Day: riding (resupply, sights, hills, busy roads)"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg><span class="lbl">Day</span></button></div>
   <div class="layer-pick"><button id="layer-btn" aria-haspopup="true" aria-expanded="false" aria-controls="layer-menu" title="What the map shows">
     <span id="layer-ic"></span><span id="layer-name"></span><svg class="ic car" aria-hidden="true"><use href="#i-caret-right"/></svg></button>
     <div id="layer-menu" hidden></div></div>
@@ -430,10 +495,9 @@ details.more summary::-webkit-details-marker{display:none}
   <div id="map"></div>
 
   <div class="tools" role="toolbar" aria-label="What a click on the map does">
-    <button data-tool="inspect" title="Look at spots: click the map to see what a spot is like, and save it from there" aria-label="Look at spots">
-      <svg aria-hidden="true"><use href="#i-magnifying-glass"/></svg></button>
-    <button data-tool="off" title="Click off: clicks on the map do nothing (just move and zoom)" aria-label="Clicks off">
-      <svg aria-hidden="true"><use href="#i-hand-grabbing"/></svg></button>
+    <div class="tool-spot"><button data-tool="inspect" id="tool-spot" aria-haspopup="true" aria-expanded="false">
+      <svg aria-hidden="true"><use href="#i-tent"/></svg></button>
+      <div class="type-pop" id="type-pop" hidden role="menu" aria-label="Kind of spot"></div></div>
     <button data-tool="near" title="Find spots here: click the map to list the best spots within 5 km of that point (drag the centre marker to move it)" aria-label="Find spots here">
       <svg aria-hidden="true"><use href="#i-map-pin-area"/></svg></button>
     <div class="tool-gap"></div>
@@ -494,20 +558,38 @@ details.more summary::-webkit-details-marker{display:none}
     <div class="set-head"><h2>Settings</h2><button class="sc-x" id="settings-close" title="Close" aria-label="Close settings"><svg class="ic"><use href="#i-x"/></svg></button></div>
 
     <section class="sec">
-      <h2><svg class="ic" style="color:#d64545"><use href="#i-house"/></svg>Houses</h2>
+      <h2><svg class="ic" style="color:var(--muted)"><use href="#i-clock"/></svg>Plan for</h2>
+      <div class="oh-pick" style="margin-top:0"><select id="oh-day" aria-label="Day"><option value="">now</option></select><input type="time" id="oh-time" aria-label="Time" step="900"></div>
+      <div class="note">Opening hours and shade are shown for this time; a route plan starts on this day.</div>
+    </section>
+
+    <section class="sec">
+      <h2><svg class="ic" style="color:#d64545"><use href="#i-house"/></svg>Camp: houses</h2>
       <div id="haz-sliders"></div>
     </section>
 
     <section class="sec">
-      <h2><svg class="ic" style="color:#6cc38a"><use href="#i-eye-slash"/></svg>Hidden &amp; quiet</h2>
+      <h2><svg class="ic" style="color:#6cc38a"><use href="#i-eye-slash"/></svg>Camp: hidden &amp; quiet</h2>
       <div id="hide-sliders"></div>
       <details class="more"><summary>How it works</summary><div class="note">From zoom 11 in the offline regions. “Hidden”: can people on roads, paths or in houses see or hear you? Forest, scrub and hedges hide you; open fields don't. Counts more than the house distance. “Quiet night”: road and railway noise, full penalty from 55 dB. “Avoid slopes”: from a 30 m elevation model, so small flat patches on a slope may not show.</div></details>
     </section>
 
     <section class="sec">
-      <h2><svg class="ic" style="color:#22b8d6"><use href="#i-plus-circle"/></svg>Useful places</h2>
+      <h2><svg class="ic" style="color:#22b8d6"><use href="#i-plus-circle"/></svg>Camp: useful places</h2>
       <div id="att-cut"></div>
       <div id="rows-attract"></div>
+    </section>
+
+    <section class="sec">
+      <h2><svg class="ic" style="color:#3fa89a"><use href="#i-park"/></svg>Break</h2>
+      <div id="break-sliders"></div>
+    </section>
+
+    <section class="sec">
+      <h2><svg class="ic" style="color:#e0a030"><use href="#i-basket"/></svg>Resupply &amp; places</h2>
+      <div id="day-cut"></div>
+      <div id="rows-day"></div>
+      <div class="note">Which places count on the Day maps and in route plans. Water sources and viewpoints are set under “Camp: useful places”.</div>
     </section>
 
     <section class="sec">
@@ -564,7 +646,29 @@ const CATS = {
   campsites:  { label: 'Camp sites',      icon: 'tent', color: '#2f9e8f', group: 'attract', weight: 0   },
   viewpoints: { label: 'Viewpoints',      icon: 'binoculars', color: '#9b7fe0', group: 'attract', weight: 0.2 },
   firepits:   { label: 'Fire pits',       icon: 'campfire', color: '#e8743a', group: 'attract', weight: 0.8 },
+  // Day mode (riding): resupply and sights; not part of the night score. Rules: day_class() in build_tiles.py
+  groceries:  { label: 'Groceries',       icon: 'basket', color: '#e0a030', group: 'day', weight: 1 },
+  food:       { label: 'Cafés & food',    icon: 'coffee', color: '#c7794a', group: 'day', weight: 0.8 },
+  bike:       { label: 'Bike shops & repair', icon: 'wrench', color: '#5aa0c8', group: 'day', weight: 0.5 },
+  toilets:    { label: 'Toilets',         icon: 'toilet', color: '#8a9ba8', group: 'day', weight: 0.3 },
+  sights:     { label: 'Sights',          icon: 'castle-turret', color: '#b07fd0', group: 'day', weight: 1 },
+  stations:   { label: 'Train stations',  icon: 'train-simple', color: '#7d8fa3', group: 'day', weight: 0.3 },
+  benches:    { label: 'Benches & tables', icon: 'park', color: '#9c8a5e', group: 'day', weight: 1, minZ: 14 },   // many: markers only close up
+  swim:       { label: 'Swimming spots',  icon: 'person-simple-swim', color: '#3aa6c9', group: 'day', weight: 1 },
 };
+// what the Day map uses: resupply (with water taps) and sights (with viewpoints)
+const DAY_SUPPLY = ['groceries', 'food', 'water', 'bike', 'toilets', 'stations'], DAY_SIGHTS = ['sights', 'viewpoints'];
+const DAY_BREAK = ['benches', 'shelters', 'swim'];                 // places that make a good break (with shade, view, water)
+const DAY_CATS = [...DAY_SUPPLY, ...DAY_BREAK, ...DAY_SIGHTS];
+const NIGHT_CATS = Object.keys(CATS).filter(k => CATS[k].group !== 'day');
+// words for the OSM types of day places ('t' in the tile data)
+const DAY_TYPES = { supermarket: 'supermarket', convenience: 'corner shop', bakery: 'bakery', pastry: 'cake shop', butcher: 'butcher',
+  greengrocer: 'greengrocer', farm: 'farm shop', deli: 'deli', general: 'village shop', kiosk: 'kiosk', fuel: 'petrol station',
+  restaurant: 'restaurant', cafe: 'café', fast_food: 'fast food', pub: 'pub', biergarten: 'beer garden', ice_cream: 'ice cream',
+  bicycle: 'bike shop', bicycle_repair_station: 'repair stand', compressed_air: 'air pump', toilets: 'toilets',
+  attraction: 'attraction', museum: 'museum', castle: 'castle', ruins: 'ruins', monument: 'monument', archaeological_site: 'archaeological site',
+  fort: 'fort', peak: 'peak', bench: 'bench', picnic_table: 'picnic table', bathing_place: 'bathing spot', swimming_area: 'swimming area',
+  station: 'station', halt: 'halt' };
 const CAT_KEYS = Object.keys(CATS);
 const HAZ = CAT_KEYS.filter(k => CATS[k].group === 'hazard');
 const ATT = CAT_KEYS.filter(k => CATS[k].group === 'attract');
@@ -574,7 +678,8 @@ const ATT = CAT_KEYS.filter(k => CATS[k].group === 'attract');
 // ════════════════════════════════════════════════════════════════════
 const DEFAULTS = { basemap: 'grey', layer: 'score', markers: true, grey: false,
   cbSafe: false, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {},
-  hideW: 1, quietW: 0.7, slopeW: 1 };
+  hideW: 1, quietW: 0.7, slopeW: 1, mode: 'night', dayLayer: 'break', cutS: 2000, routeOffS: 1000, ohAt: null, spotType: 'camp',
+  bShade: 1, bView: 0.8, bSeat: 0.7, bWater: 0.5, bQuiet: 0.6, speed: 18, breakEvery: 2, rideStart: '09:00' };
 CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
 const settings = (() => {
   try {
@@ -583,6 +688,14 @@ const settings = (() => {
   } catch { return JSON.parse(JSON.stringify(DEFAULTS)); }
 })();
 if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.layer)) settings.layer = 'score';
+if (!['break', 'supply', 'shade', 'sights', 'swim', 'topo', 'quiet'].includes(settings.dayLayer)) settings.dayLayer = 'break';
+if (settings.mode !== 'day') settings.mode = 'night';
+if (settings.spotType === 'shop') settings.spotType = 'supply';
+if (!['camp', 'break', 'supply'].includes(settings.spotType)) settings.spotType = 'camp';
+if (!/^\d\d:\d\d$/.test(settings.rideStart)) settings.rideStart = '09:00';
+if (settings.ohAt && !(settings.ohAt.d >= 0 && settings.ohAt.d <= 6 && /^\d\d:\d\d$/.test(settings.ohAt.t))) settings.ohAt = null;
+if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.nightLayer)) delete settings.nightLayer;
+const isDay = () => settings.mode === 'day';
 settings.weights.buildings = 1;                            // no slider: houses always count fully
 for (const k of CAT_KEYS) settings.weights[k] = Math.min(1, settings.weights[k]);   // sliders now go 0..100 %
 let saveT;
@@ -601,6 +714,55 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function fmtDist(m) { if (!isFinite(m)) return '—'; return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' km'; }
 function fmtN(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : String(n); }
+// Opening hours (OSM opening_hours) -> 'open' | 'closed' | null (not understood). Covers the common forms:
+// "24/7", "Mo-Fr 08:00-18:00; Sa 08:00-12:00", "Su off", "Mo,We 09:00-12:00,14:00-18:00", ranges past midnight.
+// Later rules replace earlier ones for their days, as in OSM; public holidays (PH) are ignored.
+const OH_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+function ohRules(oh) {
+  const rules = [];
+  for (let part of oh.split(/;|\|\|/)) {
+    part = part.trim(); if (!part) continue;
+    const m = part.match(/^((?:(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?)(?:\s*,\s*(?:(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?))*)?\s*(.*)$/);
+    const days = new Set(), sel = m[1], rest = m[2].trim();
+    if (sel) for (const d of sel.split(',').map(x => x.trim())) {
+      if (d === 'PH') continue;
+      const [a, b] = d.split('-').map(x => OH_DAYS.indexOf(x));
+      for (let k = a; ; k = (k + 1) % 7) { days.add(k); if (b === undefined || k === b) break; }
+    } else for (let k = 0; k < 7; k++) days.add(k);
+    if (sel && !days.size) continue;                        // holidays only
+    if (/^(off|closed)$/i.test(rest)) { rules.push({ days, ranges: [] }); continue; }
+    if (rest === '24/7' || (sel && rest === '00:00-24:00')) { rules.push({ days, ranges: [[0, 1440]] }); continue; }
+    if (!/^\d\d?:\d\d-\d\d?:\d\d(\s*,\s*\d\d?:\d\d-\d\d?:\d\d)*$/.test(rest)) return null;   // months, sunrise, "+" …: not understood
+    rules.push({ days, ranges: rest.split(',').map(r => { const [a, b] = r.trim().split('-').map(t => { const [h, mi] = t.split(':'); return h * 60 + +mi; });
+      return [a, b <= a ? b + 1440 : b]; }) });
+  }
+  return rules.length ? rules : null;
+}
+// when opening hours are checked: now, or a chosen weekday and time (settings.ohAt = { d: 0..6 (Sunday = 0), t: 'HH:MM' })
+const DAY_WORDS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function ohWhen() {
+  const a = settings.ohAt, d = new Date();
+  if (!a) return d;
+  const [h, m] = a.t.split(':').map(Number);
+  d.setDate(d.getDate() + (a.d - d.getDay() + 7) % 7); d.setHours(h, m, 0, 0);
+  return d;
+}
+const ohWhenText = () => settings.ohAt ? `${DAY_WORDS[settings.ohAt.d]} ${settings.ohAt.t}` : 'now';
+const ohCache = new Map();
+function ohState(oh, d = ohWhen()) {
+  if (!oh) return null;
+  if (!ohCache.has(oh)) ohCache.set(oh, ohRules(oh.trim()));
+  const rules = ohCache.get(oh); if (!rules) return null;
+  const on = day => { let r = []; for (const x of rules) if (x.days.has(day)) r = x.ranges; return r; };
+  const t = d.getHours() * 60 + d.getMinutes(), today = d.getDay();
+  if (on(today).some(([a, b]) => t >= a && t < b)) return 'open';
+  if (on((today + 6) % 7).some(([, b]) => b > 1440 && t < b - 1440)) return 'open';   // last night's hours past midnight
+  return 'closed';
+}
+const ohTag = p => { const st = ohState(p.o); return st ? `<span class="oh-${st}">${st} ${ohWhenText()}</span>` : ''; };
+// "bakery · open now", or with the hours when asked
+// (places without a type, e.g. water taps and viewpoints: "unnamed" when the name line would be empty)
+const dayWhat = (p, hours, named = true) => [DAY_TYPES[p.t] || (named ? '' : 'unnamed'), ohTag(p), hours && p.o ? esc(p.o) : ''].filter(Boolean).join(' · ') || '&nbsp;';
 function hdist(a1, o1, a2, o2) {
   const R = 6371000, r = Math.PI / 180, dA = (a2 - a1) * r, dO = (o2 - o1) * r;
   const h = Math.sin(dA / 2) ** 2 + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(dO / 2) ** 2;
@@ -761,7 +923,7 @@ let dataT;
 function addTile(x, y, rec) {
   const k = tkey(x, y);
   if (tiles.has(k)) return;
-  const pois = rec.pois.map(p => ({ ...p, mx: mercX(p.lon), my: mercY(p.lat) }));
+  const pois = rec.pois.filter(p => CATS[p.c]).map(p => ({ ...p, mx: mercX(p.lon), my: mercY(p.lat) }));
   tiles.set(k, { x, y, b: rec.b, w: rec.w || null, pois });
   catCount.buildings += rec.b.length / 2;
   pois.forEach(p => catCount[p.c]++);
@@ -995,7 +1157,7 @@ function boxV(src, dst, W, H, r) {
 // ════════════════════════════════════════════════════════════════════
 let R = { valid: false }, baseDirty = true, densDirty = true, rafId = 0;
 const cellSize = () => CELL_SIZES[settings.cellIdx];
-const neededReach = () => Math.max(settings.cutA, settings.cutH, 3 * settings.densR);
+const neededReach = () => Math.max(settings.cutA, settings.cutH, 3 * settings.densR, isDay() ? settings.cutS : 0);
 
 function requestRender() { if (!rafId) rafId = requestAnimationFrame(render); }
 
@@ -1038,7 +1200,7 @@ function buildGrid(z, S, x0, y0, gw, gh) {
     ? [...tiles.values()].filter(inRange)
     : (() => { const a = []; for (let x = tx0; x <= tx1; x++) for (let y = ty0; y <= ty1; y++) { const t = tiles.get(tkey(x, y)); if (t) a.push(t); } return a; })();
 
-  let pts = 0, land = null, prot = null, hid = null, hdb = null, hbike = null, hmask = null, slp = null, hol = null;
+  let pts = 0, land = null, prot = null, hid = null, hdb = null, hbike = null, hmask = null, slp = null, hol = null, elv = null;
   for (const t of list) {
     const ox = (t.x * span - gx0) / S, oy = (t.y * span - gy0) / S;
     // coverage mask: only loaded areas get coloured
@@ -1076,13 +1238,13 @@ function buildGrid(z, S, x0, y0, gw, gh) {
       }
     }
     if (t.slope) {                             // slope of each cell centre, ¼ degrees + 1 (0 = no data)
-      slp = slp || new Uint16Array(N); hol = hol || new Uint8Array(N);
-      const sc = SLOPE_PX / k, S2 = t.slope.s, AS = t.slope.asp;
+      slp = slp || new Uint16Array(N); hol = hol || new Uint8Array(N); elv = elv || new Float32Array(N);
+      const sc = SLOPE_PX / k, S2 = t.slope.s, AS = t.slope.asp, EV = t.slope.el;
       for (let yy = cy0; yy < cy1; yy++) {
         const py = Math.min(SLOPE_PX - 1, Math.max(0, (yy + 0.5 - oy) * sc | 0)) * SLOPE_PX, row = yy * W;
         for (let xx = cx0; xx < cx1; xx++) {
           const j = py + Math.min(SLOPE_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0));
-          slp[row + xx] = S2[j] + 1;
+          slp[row + xx] = S2[j] + 1; elv[row + xx] = EV[j] * 4 + 0.01;   // 0 = no data
           hol[row + xx] = (AS[j] & 15) * 2 >= 6 && S2[j] < 24 ? 1 : 0;   // cold hollow, same rule as isHollow()
         }
       }
@@ -1114,10 +1276,11 @@ function buildGrid(z, S, x0, y0, gw, gh) {
   }
 
   const fields = {};
-  for (const c of CAT_KEYS) fields[c] = seeds[c] ? edtField(seeds[c], W, H, cellM) : null;
+  const dayF = isDay() || settings.spotType !== 'camp';   // day places: only needed for Day maps and break / resupply spots
+  for (const c of CAT_KEYS) fields[c] = seeds[c] && (CATS[c].group !== 'day' || dayF) ? edtField(seeds[c], W, H, cellM) : null;
   const nw = map.unproject([x0, y0], z), se = map.unproject([x0 + gw * S, y0 + gh * S], z);
   return { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, fields, density: null, pts, land, prot,
-        hid, hdb, hbike, hmask, slp, hol,
+        hid, hdb, hbike, hmask, slp, hol, elv,
         bounds: L.latLngBounds(nw, se) };
 }
 
@@ -1146,6 +1309,8 @@ function lut(stops) {
 let LUT_D, LUT_S;
 // good-to-have: solid blue (close) → transparent (far)
 const LUT_A = lut([[0, 29, 78, 216, 235], [0.5, 59, 130, 246, 130], [1, 96, 165, 250, 0]]);
+const LUT_U = lut([[0, 205, 120, 10, 235], [0.5, 230, 160, 40, 130], [1, 245, 195, 80, 0]]);    // Day: resupply (amber)
+const LUT_V = lut([[0, 130, 70, 200, 230], [0.5, 165, 115, 220, 125], [1, 190, 160, 240, 0]]);  // Day: sights (purple)
 // best spots: red (avoid) → pale yellow-green (ok) → green (great); "ok" is a light tint, not clear (owner's wish)
 // (colour-blind friendly: orange → pale yellow → blue-green)
 function buildLuts() {
@@ -1246,10 +1411,142 @@ function scorer(g = R) {
   };
 }
 
+// layers that show the distance to the nearest (weighted) place of some categories
+const NEAREST = {
+  nearby: { cats: () => ATT, cut: () => settings.cutA, lut: LUT_A },
+  supply: { cats: () => DAY_SUPPLY, cut: () => settings.cutS, lut: LUT_U },
+  sights: { cats: () => DAY_SIGHTS, cut: () => settings.cutS, lut: LUT_V },
+  swim:   { cats: () => ['swim'], cut: () => settings.cutS, lut: LUT_A },
+};
+function nearestT(i) {                           // 0 (right here) .. 1 (at the cut-off) for the current NEAREST layer, or null
+  const nl = NEAREST[settings.layer], ka = nl.cats().filter(c => R.fields[c] && settings.weights[c] > 0);
+  let d = Infinity; for (const c of ka) d = Math.min(d, R.fields[c][i] / settings.weights[c]);
+  return ka.length ? Math.min(1, d / nl.cut()) : null;
+}
+// ── Day: break spots. Shade at the plan time (sun from SunCalc, trees / buildings / hills in its direction),
+// a view (higher than the land around, not inside a forest, or near a viewpoint), somewhere to sit, water, quiet,
+// close to a path. Everything is computed here from maps that are already loaded (no extra data files).
+const SHADE_H = new Float32Array(17); Object.entries({ 3: 5, 5: 2.5, 6: 20, 7: 20, 8: 20 }).forEach(([c, h]) => SHADE_H[c] = h);  // height (m) by terrain class (not villages: too coarse)
+const CANOPY = new Uint8Array(17); [3, 6, 7, 8].forEach(c => CANOPY[c] = 1);                                              // under trees
+const BREAK_LAND = { 16: 0, 15: 0, 11: 0.3, 14: 0.4, 13: 0.5 };                                                            // water, military, quarry …
+function sunAt(lat, lon, d) {
+  if (typeof SunCalc === 'undefined') return null;
+  const p = SunCalc.getPosition(d, lat, lon);
+  return { alt: p.altitude, bear: (p.azimuth * 180 / Math.PI + 180) % 360 };
+}
+// shade of the drawn cells of grid g at time d (1 = shade, 0 = sun); null when the sun is down or there is no terrain map
+function shadeGrid(g, d) {
+  const key = Math.round(d.getTime() / 3e5);          // recomputed every 5 minutes of sun movement
+  if (g.shadeKey === key) return g.shade;
+  g.shadeKey = key; g.shade = null;
+  const c = g.bounds.getCenter(), sun = g.sun = sunAt(c.lat, c.lng, d);
+  if (!g.land || !sun || sun.alt < 0.03) return null;
+  const { W, H, pad, gw, gh, land: LD, elv: EL, cellM } = g, tanA = Math.tan(sun.alt), b = sun.bear * Math.PI / 180, ux = Math.sin(b), uy = -Math.cos(b);
+  const maxV = Math.min(160, 20 / tanA), maxT = EL ? Math.min(900, 150 / tanA) : 0, out = new Uint8Array(W * H);
+  for (let y = pad; y < pad + gh; y++) {
+    const m = cellM[y], stV = Math.max(m, 6), stT = Math.max(m, 25);
+    for (let x = pad; x < pad + gw; x++) {
+      const i = y * W + x;
+      if (CANOPY[LD[i]]) { out[i] = 1; continue; }
+      let sh = 0;
+      for (let dd = stV; dd <= maxV; dd += stV) {
+        const xx = Math.round(x + ux * dd / m), yy = Math.round(y + uy * dd / m);
+        if (xx < 0 || yy < 0 || xx >= W || yy >= H) break;
+        if (SHADE_H[LD[yy * W + xx]] > dd * tanA) { sh = 1; break; }
+      }
+      if (!sh && EL && EL[i]) {
+        const e0 = EL[i];
+        for (let dd = stT; dd <= maxT; dd += stT) {
+          const xx = Math.round(x + ux * dd / m), yy = Math.round(y + uy * dd / m);
+          if (xx < 0 || yy < 0 || xx >= W || yy >= H) break;
+          const e = EL[yy * W + xx];
+          if (e && e - e0 > dd * tanA + 3) { sh = 1; break; }   // 3 m: errors of the elevation model
+        }
+      }
+      out[i] = sh;
+    }
+  }
+  return g.shade = out;
+}
+// shade at one point and time (the spot card): same rule, with the exact terrain map (~12 m) and the elevation model
+function shadeAt(lat, lon, d) {
+  const sun = sunAt(lat, lon, d);
+  if (!sun) return null;
+  if (sun.alt < 0.03) return { down: true, sun };
+  const l0 = landAt(lat, lon); if (l0 < 0) return null;
+  if (CANOPY[l0]) return { shade: true, by: 'trees', sun };
+  const tanA = Math.tan(sun.alt), b = sun.bear * Math.PI / 180, dN = Math.cos(b), dE = Math.sin(b), kLat = 1 / 110574, kLon = 1 / (111320 * Math.cos(lat * Math.PI / 180));
+  for (let dd = 6; dd <= Math.min(160, 20 / tanA); dd += 6) {
+    const c = landAt(lat + dN * dd * kLat, lon + dE * dd * kLon);
+    if (SHADE_H[c] > dd * tanA) return { shade: true, by: 'trees', sun };
+  }
+  const s0 = slopeAt(lat, lon);
+  if (s0) for (let dd = 25; dd <= Math.min(900, 150 / tanA); dd += 25) {
+    const s1 = slopeAt(lat + dN * dd * kLat, lon + dE * dd * kLon);
+    if (s1 && s1.elev - s0.elev > dd * tanA + 3) return { shade: true, by: 'the hill', sun };
+  }
+  return { shade: false, sun };
+}
+// how much higher each cell is than the land within ~350 m (m); 0 where there is no elevation
+function promGrid(g) {
+  if (g.prom !== undefined) return g.prom;
+  if (!g.elv) return g.prom = null;
+  const { W, H, elv } = g, N = W * H, r = Math.max(1, Math.round(350 / g.cellMc / 2));
+  const a = new Float32Array(elv), m = new Float32Array(N), t = new Float32Array(N);
+  for (let i = 0; i < N; i++) m[i] = elv[i] ? 1 : 0;
+  for (let p = 0; p < 2; p++) { boxH(a, t, W, H, r); boxV(t, a, W, H, r); boxH(m, t, W, H, r); boxV(t, m, W, H, r); }
+  const out = new Float32Array(N);
+  for (let i = 0; i < N; i++) out[i] = elv[i] && m[i] > 0.3 ? elv[i] - a[i] / m[i] : 0;
+  return g.prom = out;
+}
+// break score from its parts (the map layer and the card use the same rule)
+function breakMix(acc, qLand, qNoise, shade, view, seat, water) {
+  const miss = (1 - settings.bShade * (shade > 0 ? 1 : 0)) * (1 - settings.bView * view) * (1 - settings.bSeat * seat) * (1 - settings.bWater * water);
+  return [1 - miss, acc * qLand * qNoise * (0.15 + 0.85 * (1 - miss))];
+}
+const dayNoisePen = db => Math.max(0, Math.min(1, (db - 45) / 20));   // daytime: bothersome from 45 dB, full from 65
+const breakWord = s => s < 0.15 ? 'poor' : s < 0.35 ? 'ok' : s < 0.6 ? 'good' : 'great';
+const viewWord = v => v >= 0.7 ? 'wide view' : v >= 0.35 ? 'some view' : 'no real view';
+function breakScorer(g = R, d = ohWhen()) {
+  const f = g.fields, LD = g.land, HM = g.hmask, SH = shadeGrid(g, d), PR = promGrid(g);
+  const near = (F, i, r) => F ? Math.max(0, 1 - F[i] / r) : 0;
+  return (i, out) => {
+    const bike = HM && HM[i] ? g.hbike[i] * 10 : -1, acc = bike < 0 ? 1 : bike <= 30 ? 1 : Math.max(0, 1 - (bike - 30) / 170);   // right by a path
+    const lc = LD ? LD[i] : 0, qLand = BREAK_LAND[lc] ?? 1;
+    const db = HM && HM[i] ? g.hdb[i] : -1, qNoise = db < 0 ? 1 : 1 - settings.bQuiet * dayNoisePen(db);
+    const shade = SH ? SH[i] : -1;
+    const prom = PR ? PR[i] : 0, forest = CANOPY[lc] && lc !== 3;
+    const view = Math.max(Math.max(0, Math.min(1, (prom - 4) / 16)) * (forest ? 0.15 : 1), near(f.viewpoints, i, 250), near(f.sights, i, 150) * 0.6);
+    const seat = Math.max(near(f.benches, i, 150), near(f.shelters, i, 150));
+    const water = Math.max(near(f.water, i, 400), near(f.rivers, i, 200), near(f.swim, i, 300));
+    const [bonus, s] = breakMix(acc, qLand, qNoise, shade, view, seat, water);
+    if (out) Object.assign(out, { bike, acc, lc, qLand, db, qNoise, shade, sunUp: !!SH, prom, view, seat, water, bonus, score: s });
+    return s;
+  };
+}
+const LUT_B = lut([[0, 0, 0, 0, 0], [0.2, 70, 170, 160, 30], [0.5, 40, 160, 150, 150], [1, 10, 120, 110, 235]]);   // break spots (teal)
 function composite() {
   if (!R.valid) { hazLayer.clear(); attLayer.clear(); return; }
   const { W, gw, gh, pad, fields, cov } = R;
 
+  if (settings.layer === 'break' || settings.layer === 'shade') {
+    const img = getImg('h', gw, gh), px = img.data, brk = settings.layer === 'break' ? breakScorer() : null;
+    const SH = brk ? null : shadeGrid(R, ohWhen());
+    for (let y = 0; y < gh; y++) {
+      let i = (y + pad) * W + pad, o = y * gw * 4;
+      for (let x = 0; x < gw; x++, i++, o += 4) {
+        if (!cov[i] || (brk && !R.hmask)) { px[o + 3] = 0; continue; }
+        if (brk) { const li = Math.min(255, brk(i) * 255 | 0) << 2; px[o] = LUT_B[li]; px[o + 1] = LUT_B[li + 1]; px[o + 2] = LUT_B[li + 2]; px[o + 3] = LUT_B[li + 3]; }
+        else if (!SH) px[o + 3] = 0;
+        else if (SH[i]) { px[o] = 40; px[o + 1] = 70; px[o + 2] = 120; px[o + 3] = 150; }   // shade: blue-grey
+        else { px[o] = 250; px[o + 1] = 205; px[o + 2] = 90; px[o + 3] = 70; }             // sun: light yellow
+      }
+    }
+    hazLayer.update(R.bounds, img);
+    hazLayer.setOpacity(Math.min(1, settings.opacity + 0.15));
+    attLayer.clear();
+    return;
+  }
   if (settings.layer === 'score') {
     const img = getImg('h', gw, gh), px = img.data, score = scorer();
     for (let y = 0; y < gh; y++) {
@@ -1311,10 +1608,10 @@ function composite() {
     hazLayer.setOpacity(settings.opacity);
   } else hazLayer.clear();
 
-  const ka = ATT.filter(c => fields[c] && settings.weights[c] > 0);
-  if (settings.layer === 'nearby' && ka.length) {
-    const img = getImg('a', gw, gh), px = img.data;
-    const A = ka.map(c => fields[c]), iw = ka.map(c => 1 / settings.weights[c]), m = A.length, sc = 255 / settings.cutA;
+  const nl = NEAREST[settings.layer], ka = nl ? nl.cats().filter(c => fields[c] && settings.weights[c] > 0) : [];
+  if (ka.length) {
+    const img = getImg('a', gw, gh), px = img.data, LUT_A = nl.lut;
+    const A = ka.map(c => fields[c]), iw = ka.map(c => 1 / settings.weights[c]), m = A.length, sc = 255 / nl.cut();
     for (let y = 0; y < gh; y++) {
       let i = (y + pad) * W + pad, o = y * gw * 4;
       for (let x = 0; x < gw; x++, i++, o += 4) {
@@ -1351,9 +1648,10 @@ function rebuildMarkers() {
   markerLayer.clearLayers();
   if (!settings.markers || map.getZoom() < MARKER_MIN_Z) return;
   const b = map.getBounds().pad(0.2), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast(), badges = map.getZoom() >= BADGE_MIN_Z;
+  const show = new Set(isDay() ? DAY_CATS : NIGHT_CATS);
   for (const t of tiles.values()) for (const p of t.pois) {
-    if (p.lat < s || p.lat > n || p.lon < w || p.lon > e || settings.weights[p.c] === 0) continue;
-    const c = CATS[p.c], tip = `${ic(c.icon, c.color)}${esc(p.n || c.label)}`;
+    if (p.lat < s || p.lat > n || p.lon < w || p.lon > e || settings.weights[p.c] === 0 || !show.has(p.c) || CATS[p.c].minZ > map.getZoom()) continue;
+    const c = CATS[p.c], tip = `${ic(c.icon, c.color)}${esc(p.n || c.label)}` + (p.t ? `<br><small>${dayWhat(p, true)}</small>` : '');
     // zoomed in: round badges with the category icon; further out plain dots (fast, many points)
     if (badges) L.marker([p.lat, p.lon], { icon: L.divIcon({ className: '', html: `<div class="poi-badge" style="--c:${c.color}">${ic(c.icon)}</div>`,
         iconSize: [22, 22], iconAnchor: [11, 11] }), keyboard: false, zIndexOffset: -500 })
@@ -1386,6 +1684,7 @@ const scoreWord = s => s < 0.1 ? 'avoid' : s < 0.3 ? 'ok' : s < 0.6 ? 'good' : '
 // a value that isn't there shows "—" (or "zoom in" / "…"), names and hints have a reserved line.
 function updateHover() {
   hoverRaf = 0;
+  if (isDay()) { updateHoverDay(); return; }
   const i = hoverLL ? gridIndex(hoverLL) : -1, has = i >= 0;
   const HL = { Terrain: 'terrain', Topography: 'topo', Hidden: 'hidden', 'Road noise': 'quiet',
     'Protected area': 'terrain', 'House density': 'density' };
@@ -1403,9 +1702,7 @@ function updateHover() {
   else if (settings.layer === 'topo') setLegendMark(R.slp && R.slp[i] ? (R.slp[i] - 1) / 80 : null);
   else if (settings.layer === 'terrain') setLegendMark(R.land ? (terrClass(R.land[i]) + 0.5) / 4 : null);
   else if (settings.layer === 'density') setLegendMark(R.density ? Math.log1p(Math.max(0, R.density[i])) / Math.log1p(DMAX) : null);
-  else { const ka = ATT.filter(c => R.fields[c] && settings.weights[c] > 0); let d = Infinity;
-    for (const c of ka) d = Math.min(d, R.fields[c][i] / settings.weights[c]);
-    setLegendMark(ka.length ? Math.min(1, d / settings.cutA) : null); }
+  else setLegendMark(nearestT(i));
   rows.push(`<div class="irow" data-layer="score"><span>${ic('star', 'var(--blaze)')}Spot score</span><b>${has ? dv(scoreWord(s), `${Math.round(s * 100)} %`) : none}</b></div>`);
   rows.push(row(has && R.land ? landIc(R.land[i]) : ic('circle-dashed'), 'Terrain', has && R.land ? LAND[R.land[i]][0] : landVal));
   if (has && R.slp && R.slp[i]) { const d = (R.slp[i] - 1) / 4, sl = slopeAt(hoverLL.lat, hoverLL.lng), ho = isHollow(sl);
@@ -1446,9 +1743,56 @@ function updateHover() {
   // one hint line at the bottom, always there (two lines reserved); in a protected area it names the area
   const hint = !hoverLL ? 'Move the cursor over the map, or click it to look at a spot.'
     : pa ? esc(pa.t + (pa.n ? ': ' + pa.n : '')) + (pa.l === 2 ? ' (no camping)' : ' (check the rules)')
-    : has ? (tool === 'inspect' ? 'Click to open this spot.'
-      : tool === 'near' ? 'Click to find the best spots around here.' : 'Clicks are off: pick the magnifier to look at spots.')
+    : has ? (tool === 'inspect' ? `Click to look at this ${SPOT_TYPES[settings.spotType].label.toLowerCase()} spot.` : 'Click to find the best spots around here.')
     : 'No data here: this area is outside the prepared regions.';
+  rows.push(`<div class="inote">${hint}</div>`);
+  $('#info').innerHTML = rows.join('');
+  markLayerRows();
+}
+
+// Day mode "Here": nearest resupply places and sights (with names and whether they are open), then riding facts.
+// Same rule as at night: always the same rows, so nothing jumps while the mouse moves.
+function updateHoverDay() {
+  const i = hoverLL ? gridIndex(hoverLL) : -1, has = i >= 0, none = '—';
+  const landVal = !has ? none : map.getZoom() < LAND_MIN_Z ? 'zoom in' : '…';
+  const row = (icon, label, val, layer) => `<div class="irow"${layer ? ` data-layer="${layer}"` : ''}><span class="muted">${icon}${label}</span><b>${val}</b></div>`;
+  const sub = t => `<div class="isub">${t || '&nbsp;'}</div>`;
+  const dv = (desc, val) => `<span class="dsc">${desc}</span>${val}`;
+  const bo = { }, bs = has && R.hmask ? breakScorer()(i, bo) : -1;
+  if (!has) setLegendMark(null);
+  else if (settings.layer === 'break') setLegendMark(bs >= 0 ? bs : null);
+  else if (settings.layer === 'shade') setLegendMark(bo.sunUp ? (bo.shade ? 0.75 : 0.25) : null);
+  else if (NEAREST[settings.layer]) setLegendMark(nearestT(i));
+  else if (settings.layer === 'quiet') setLegendMark(R.hmask && R.hmask[i] ? (R.hdb[i] - 30) / 30 : null);
+  else setLegendMark(R.slp && R.slp[i] ? (R.slp[i] - 1) / 80 : null);
+  const best = {}, at = hoverLL && localFrame(hoverLL.lat, hoverLL.lng), want = new Set(DAY_CATS);
+  if (has) for (const t of tiles.values()) for (const p of t.pois) {
+    if (!want.has(p.c)) continue;
+    const [d, bb] = at(p.lat, p.lon);
+    if (!best[p.c] || d < best[p.c].d) best[p.c] = { d, b: bb, p };
+  }
+  const rows = [];
+  rows.push(`<div class="irow" data-layer="break"><span>${ic('park', '#3fa89a')}Break spot</span><b>${bs >= 0 ? dv(breakWord(bs), `${Math.round(bs * 100)} %`) : landVal}</b></div>`);
+  rows.push(row(ic(bo.shade > 0 ? 'umbrella-simple' : 'sun', bo.shade > 0 ? '#6f8fc0' : 'var(--blaze)'), `Shade (${ohWhenText()})`,
+    bs < 0 ? landVal : !bo.sunUp ? 'sun is down' : bo.shade ? 'in the shade' : 'in the sun', 'shade'),
+    row(ic('eye'), 'View', bs < 0 ? landVal : cap(viewWord(bo.view)), 'sights'));
+  rows.push('<div class="isep"></div>');
+  const place = (k, layer) => { const c = CATS[k], b = best[k];
+    rows.push(`<div class="irow" data-layer="${layer}"><span>${ic(c.icon, c.color)}${c.label}</span><b>${b ? distDir(b.d, b.b) : none}</b></div>` +
+      sub(b ? [b.p.n ? esc(b.p.n) : '', b.p.t ? dayWhat(b.p) : ''].filter(Boolean).join(' · ') || '<span class="dim">unnamed</span>' : has ? 'none loaded nearby' : '')); };
+  DAY_SUPPLY.forEach(k => place(k, 'supply'));
+  rows.push('<div class="isep"></div>');
+  DAY_BREAK.forEach(k => place(k, k === 'swim' ? 'swim' : 'break'));
+  rows.push('<div class="isep"></div>');
+  DAY_SIGHTS.forEach(k => place(k, 'sights'));
+  rows.push('<div class="isep"></div>');
+  if (has && R.slp && R.slp[i]) { const d = (R.slp[i] - 1) / 4; rows.push(row(topoIc(d, false), 'Slope', dv(slopeWord(d).split(',')[0], `${Math.round(d)}°`), 'topo')); }
+  else rows.push(row(topoIc(0, false, 'currentColor'), 'Slope', landVal, 'topo'));
+  const hd = has && R.hmask && R.hmask[i], db = hd ? R.hdb[i] : 0, bk = hd ? R.hbike[i] * 10 : 0;
+  rows.push(row(ic('ear'), 'Traffic noise', hd ? dv(noiseWord(db), `${db} dB`) : landVal, 'quiet'),
+    row(ic('bicycle'), 'Nearest path or track', hd ? (bk >= 2550 ? 'over 2.5 km' : fmtDist(bk)) : landVal));
+  const hint = !hoverLL ? 'Move the cursor over the map. Hover a marker for opening hours.'
+    : has ? 'Opening hours are from OpenStreetMap and may be out of date.' : 'No data here: this area is outside the prepared regions.';
   rows.push(`<div class="inote">${hint}</div>`);
   $('#info').innerHTML = rows.join('');
   markLayerRows();
@@ -1475,20 +1819,35 @@ function storeSpots() {
 let noteT;
 const storeSoon = () => { clearTimeout(noteT); noteT = setTimeout(storeSpots, 400); };
 
-const pinIcon = cls => L.divIcon({ className: 'spot-pin ' + cls, html: cls === 'temp' ? '' : ic('star'), iconSize: [26, 26], iconAnchor: [13, 13] });
+// Spot types: the card shows what matters for that kind of stop. The type is chosen in the tool strip (settings.spotType,
+// independent of the map layer; switching Night/Day sets Camp/Break); the switch in the card changes it; saved spots keep it.
+const SPOT_TYPES = {
+  camp:  { label: 'Camp',  icon: 'tent',   col: 'var(--blaze)', gpx: 'Campground' },
+  break: { label: 'Break', icon: 'park',   col: '#3fa89a',      gpx: 'Picnic Area' },
+  supply: { label: 'Resupply', icon: 'basket', col: '#e0a030',   gpx: 'Shopping Center' },
+};
+const SPOT_WHAT = { camp: 'a place to sleep', break: 'a place for a break: shade, a view, a bench', supply: 'shops, cafés, water, toilets' };
+const typeKey = t => t === 'shop' ? 'supply' : SPOT_TYPES[t] ? t : 'camp';      // 'shop' = old name of 'supply'
+const spotType = s => typeKey(s.type);
+const pinIcon = (cls, type = 'camp') => L.divIcon({ className: `spot-pin ${cls} pt-${type}`, html: cls === 'temp' ? '' : ic(SPOT_TYPES[type].icon), iconSize: [26, 26], iconAnchor: [13, 13] });
 function drawSpotPins() {
   spotLayer.clearLayers();
   for (const s of spots)
-    L.marker([s.lat, s.lon], { icon: pinIcon(cur && cur.id === s.id ? 'on' : ''), title: s.name || 'Saved spot', keyboard: false })
+    L.marker([s.lat, s.lon], { icon: pinIcon(cur && cur.id === s.id ? 'on' : '', spotType(s)), title: s.name || 'Saved spot', keyboard: false })
       .on('click', () => openSpot(s)).addTo(spotLayer);
   if (cur && !cur.id) L.marker([cur.lat, cur.lon], { icon: pinIcon('temp'), interactive: false }).addTo(spotLayer);
 }
 
+let spotFilter = '';
 function renderSpotList() {
   const box = $('#spot-list');
   if (!spots.length) { box.innerHTML = '<div class="muted" style="font-size:12px">No saved spots yet.</div>'; return; }
-  box.innerHTML = spots.map((s, j) => `<div class="spot-item" data-j="${j}" tabindex="0">
-      <span class="nm">${esc(s.name || 'Unnamed spot')}</span><span class="st">${'★'.repeat(s.rating || 0)}<span class="dim">${'★'.repeat(5 - (s.rating || 0))}</span></span></div>`).join('');
+  const types = Object.keys(SPOT_TYPES).filter(t => spots.some(x => spotType(x) === t));
+  if (!types.includes(spotFilter)) spotFilter = '';
+  const chips = types.length > 1 ? `<div class="spot-filter">${['', ...types].map(t => `<button data-t="${t}" class="${t === spotFilter ? 'on' : ''}">${t ? ic(SPOT_TYPES[t].icon, SPOT_TYPES[t].col) + SPOT_TYPES[t].label : 'All'}</button>`).join('')}</div>` : '';
+  box.innerHTML = chips + spots.map((s, j) => spotFilter && spotType(s) !== spotFilter ? '' : `<div class="spot-item" data-j="${j}" tabindex="0">
+      <span class="ti">${ic(SPOT_TYPES[spotType(s)].icon, SPOT_TYPES[spotType(s)].col)}</span><span class="nm">${esc(s.name || 'Unnamed spot')}</span><span class="st">${'★'.repeat(s.rating || 0)}<span class="dim">${'★'.repeat(5 - (s.rating || 0))}</span></span></div>`).join('');
+  box.querySelectorAll('.spot-filter button').forEach(b => b.onclick = () => { spotFilter = b.dataset.t; renderSpotList(); });
   box.querySelectorAll('.spot-item').forEach(el => {
     const go = () => { const s = spots[+el.dataset.j]; map.setView([s.lat, s.lon], Math.max(map.getZoom(), 14)); openSpot(s); };
     el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); };
@@ -1521,7 +1880,7 @@ function analyseSpot(s) {
   const keep = (k, d, b, extra) => { if (!a.near[k] || d < a.near[k].d) a.near[k] = { d, b, ...extra }; };
   for (const { x, y } of tilesAround(s)) {
     const t = tiles.get(tkey(x, y));
-    if (!t) { a.missing++; continue; }
+    if (!t) { if (offline.has(tkey(x, y))) a.missing++; continue; }   // outside the data: nothing to wait for
     for (let i = 0; i < t.b.length; i += 2) {
       const [d, b] = at(yToLat((y + t.b[i + 1]) / N12), (x + t.b[i]) / N12 * 360 - 180);
       if (d > RADAR_MAX) continue;
@@ -1538,7 +1897,7 @@ function analyseSpot(s) {
       const [d, b] = at(p.lat, p.lon);
       if (d > RADAR_MAX) continue;
       if (p.c === 'hunting') { if (d < 1000) a.hunting.push({ d, b, n: p.n }); }
-      else keep(p.c, d, b, { n: p.n });
+      else keep(p.c, d, b, { n: p.n, p });
     }
   }
   a.hunting.sort((u, v) => u.d - v.d);
@@ -1611,6 +1970,7 @@ function radarSVG(a, sun) {
 }
 
 function openSpot(s) {
+  s.type = s.type ? typeKey(s.type) : s.id ? 'camp' : settings.spotType;
   cur = s; card.hidden = false; cardScore = null; cardBonus = -1;
   $('#hover-sec').hidden = true; panel.scrollTop = 0;
   offlineReady.then(() => {                      // wait for the list of prepared tiles
@@ -1629,7 +1989,7 @@ const cap = t => t[0].toUpperCase() + t.slice(1);
 const cardInOffline = () => offline.has(tkey(Math.floor(mercX(cur.lon) * N12), Math.floor(mercY(cur.lat) * N12)));
 const cardWait = () => cardInOffline() ? '…' : 'no data';
 function updateCardSummary() {
-  const el = $('#sc-summary'); if (!el) return;
+  const el = $('#sc-summary'); if (!el || spotType(cur) !== 'camp') return;
   const facts = [], f = (icon, val, lbl, cls = '') => facts.push(`<div class="fact ${cls}">${icon}<div><b>${val}</b><small>${lbl}</small></div></div>`);
   const off = ic('circle-dashed', 'var(--line)'), w = cardWait();
   // terrain (+ protected area: red/orange edge and the rule as the label)
@@ -1669,6 +2029,8 @@ function renderCard() {
   card.innerHTML = `
     <div class="sc-head"><input id="sc-name" value="${esc(s.name || '')}" placeholder="${saved ? 'Unnamed spot' : 'Name this spot'}" aria-label="Spot name">
       <button class="sc-x" id="sc-close" title="Close" aria-label="Close">${ic('x')}</button></div>
+    <div class="seg sc-types" role="group" aria-label="Kind of spot">${Object.entries(SPOT_TYPES).map(([k, t]) =>
+      `<button data-t="${k}" class="${spotType(s) === k ? 'on' : ''}" title="${t.label}: ${SPOT_WHAT[k]}">${ic(t.icon, t.col)}${t.label}</button>`).join('')}</div>
     <div class="sc-top" id="sc-top"></div>
     <div class="sc-summary" id="sc-summary"></div>
     <div class="sc-btns">
@@ -1676,10 +2038,13 @@ function renderCard() {
       <button class="btn" id="sc-share" title="Copy a link to this spot">${ic('link')}Copy link</button>
       <button class="btn" id="sc-zoom">${ic('magnifying-glass-plus')}Zoom to</button>
     </div>
-    ${cardSec('score', 'chart-bar', 'Score', '<div id="sc-score"></div>')}
+    ${spotType(s) === 'break' ? cardSec('bsun', 'sun', 'Sun & shade', '<div class="near" id="sc-bsun"></div>') + cardSec('bscore', 'chart-bar', 'Score', '<div class="near" id="sc-bscore"></div>')
+      + cardSec('bnear', 'compass', 'Nearby', '<div class="near" id="sc-bnear"></div>') : ''}
+    ${spotType(s) === 'supply' ? cardSec('places', 'basket', 'Places', '<div class="near" id="sc-places"></div>') : ''}
+    ${spotType(s) !== 'camp' ? '' : `${cardSec('score', 'chart-bar', 'Score', '<div id="sc-score"></div>')}
     ${cardSec('around', 'compass', 'Nearby', '<div id="sc-radar"></div><div class="near" id="sc-near"></div>')}
     ${cardSec('wx', 'moon-stars', 'Night', `<div style="font-size:12.5px;margin:0 0 8px 30px"><span class="muted">Night of </span><input type="date" class="sc-date" id="sc-date" value="${cardDate.getFullYear()}-${String(cardDate.getMonth() + 1).padStart(2, '0')}-${String(cardDate.getDate()).padStart(2, '0')}" aria-label="Date"></div>
-      <div class="near" id="sc-sun"></div><div class="near" id="sc-wx" style="margin-top:9px;padding-top:9px;border-top:1px solid var(--line)"></div>`)}
+      <div class="near" id="sc-sun"></div><div class="near" id="sc-wx" style="margin-top:9px;padding-top:9px;border-top:1px solid var(--line)"></div>`)}`}
     ${cardSec('notes', 'notepad', 'Notes', `<div class="sc-stars" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" class="${n <= (s.rating || 0) ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
       <textarea id="sc-note" placeholder="Notes: access, ground, where to pitch, water, who you met…">${esc(s.note || '')}</textarea>
       <div class="sc-sub">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.created ? ' · saved ' + new Date(s.created).toLocaleDateString() : ''}</div>`)}`;
@@ -1703,14 +2068,19 @@ function renderCard() {
   };
   else $('#sc-save').onclick = () => {
     s.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); s.created = Date.now();
-    if (!s.name) s.name = 'Spot ' + (spots.length + 1);
+    if (!s.name) s.name = (spotType(s) === 'camp' ? 'Spot' : SPOT_TYPES[spotType(s)].label) + ' ' + (spots.length + 1);
     spots.push(s); storeSpots(); renderCard(); setStatus('Spot saved', 'ok');
   };
   $('#sc-share').onclick = async () => {
-    const url = `${location.origin}${location.pathname}#spot=${s.lat.toFixed(5)},${s.lon.toFixed(5)},${encodeURIComponent(s.name || '')}`;
+    const url = `${location.origin}${location.pathname}#spot=${s.lat.toFixed(5)},${s.lon.toFixed(5)},${encodeURIComponent(s.name || '')}${spotType(s) !== 'camp' ? '&t=' + spotType(s) : ''}`;
     try { await navigator.clipboard.writeText(url); setStatus('Link copied', 'ok'); } catch { prompt('Link to this spot:', url); }
   };
   $('#sc-zoom').onclick = () => map.setView([s.lat, s.lon], 15);
+  card.querySelectorAll('.sc-types button').forEach(b => b.onclick = () => {
+    if (spotType(s) === b.dataset.t) return;
+    s.type = b.dataset.t; if (saved) storeSpots(); renderCard(); drawSpotPins();
+  });
+  if (spotType(s) !== 'camp') { updateDayCard(); return; }
   $('#sc-date').onchange = e => { if (e.target.value) { cardDate = new Date(e.target.value + 'T12:00'); updateCardAround(); loadWeather(s); } };
   updateCardAround(); updateCardScore(); loadWeather(s);
 }
@@ -1802,6 +2172,7 @@ function renderWeather(el, nights) {
 
 function updateCardAround() {
   if (!cur || card.hidden) return;
+  if (spotType(cur) !== 'camp') { updateDayCard(); return; }
   const a = cardAnalysis = analyseSpot(cur), sun = sunInfo(cur), wait = a.missing ? '…' : null;
   $('#sc-radar').innerHTML = radarSVG(a, sun);
   // Around the spot = the useful places only (terrain, houses etc. are in "Why this score")
@@ -1825,9 +2196,112 @@ function updateCardAround() {
   if (cardScore !== null) updateCardScore();      // houses, hunting stands and terrain mix come from this analysis
 }
 
+// ── Break and shop cards (Day spot types). Same rules as the camp card: every tile and row is always there,
+// showing "…" until its data is loaded, so nothing jumps.
+function promAt(lat, lon) {                      // how much higher than the land within ~350 m (m), or null
+  const s0 = slopeAt(lat, lon); if (!s0) return null;
+  const kLat = 1 / 110574, kLon = 1 / (111320 * Math.cos(lat * Math.PI / 180));
+  let sum = 0, n = 0;
+  for (const r of [120, 240, 360]) for (let a = 0; a < 360; a += 45) {
+    const s1 = slopeAt(lat + Math.cos(a * Math.PI / 180) * r * kLat, lon + Math.sin(a * Math.PI / 180) * r * kLon);
+    if (s1) { sum += s1.elev; n++; }
+  }
+  return n >= 12 ? s0.elev - sum / n : null;
+}
+function breakAt(s, a) {                         // break parts at a point (exact maps, not the coarser map grid)
+  const hd = hideAt(s.lat, s.lon), lc = landAt(s.lat, s.lon), when = ohWhen(), sh = shadeAt(s.lat, s.lon, when), prom = promAt(s.lat, s.lon);
+  if (!hd || lc < 0 || !a || a.missing) return null;
+  const nr = (k, r) => a.near[k] ? Math.max(0, 1 - a.near[k].d / r) : 0;
+  const acc = hd.bike <= 30 ? 1 : Math.max(0, 1 - (hd.bike - 30) / 170), qLand = BREAK_LAND[lc] ?? 1, qNoise = 1 - settings.bQuiet * dayNoisePen(hd.db);
+  const forest = CANOPY[lc] && lc !== 3;
+  const view = Math.max(prom === null ? 0 : Math.max(0, Math.min(1, (prom - 4) / 16)) * (forest ? 0.15 : 1), nr('viewpoints', 250), nr('sights', 150) * 0.6);
+  const seat = Math.max(nr('benches', 150), nr('shelters', 150)), water = Math.max(nr('water', 400), nr('rivers', 200), nr('swim', 300));
+  const shade = sh && sh.shade ? 1 : 0, [bonus, score] = breakMix(acc, qLand, qNoise, shade, view, seat, water);
+  return { hd, lc, sh, prom, acc, qLand, qNoise, shade, view, seat, water, bonus, score };
+}
+function updateDayCard() {
+  if (!cur || card.hidden) return;
+  const t = spotType(cur), a = cardAnalysis = analyseSpot(cur), off = cardOff(), w = cardWait(), whenT = ohWhenText();
+  const facts = [], f = (icon, val, lbl, cls = '') => facts.push(`<div class="fact ${cls}">${icon}<div><b>${val}</b><small>${lbl}</small></div></div>`);
+  const aOk = !a.missing, nd = n => n ? distDir(n.d, n.b) : `over ${fmtDist(RADAR_MAX)}`, pct = v => Math.round(v * 100) + ' %';
+  const nameLine = (k, n) => !aOk ? '…' : !n ? `none within ${fmtDist(RADAR_MAX)}` : [n.n ? esc(n.n) : k === 'rivers' ? 'river, stream or lake shore' : '', n.p && n.p.t ? dayWhat(n.p) : ''].filter(x => x && x !== '&nbsp;').join(' · ') || '<span class="dim">unnamed</span>';
+  if (t === 'supply') {
+    const at = localFrame(cur.lat, cur.lon), list = [], want = new Set(DAY_SUPPLY);
+    for (const { x, y } of tilesAround(cur)) { const tt = tiles.get(tkey(x, y)); if (tt) for (const p of tt.pois) {
+      if (!want.has(p.c)) continue; const [d, b] = at(p.lat, p.lon); if (d <= 1000) list.push({ d, b, p }); } }
+    list.sort((u, v) => u.d - v.d);
+    const in500 = list.filter(x => x.d <= 500), open = in500.filter(x => ohState(x.p.o) === 'open').length;
+    $('#sc-top').innerHTML = `<div class="sc-score"><span class="big" style="color:#e0a030">${aOk ? in500.length : '…'}</span>
+      <span><span class="word">${in500.length === 1 ? 'place' : 'places'} within 500 m</span><span class="why">${!aOk ? 'loading…' : open ? `<span class="oh-open">${open} open ${whenT}</span>` : in500.length ? `none known to be open ${whenT}` : 'look further in “Places”'}</span></span></div>`;
+    for (const k of ['groceries', 'food', 'water', 'toilets', 'bike', 'stations']) {
+      const n = a.near[k], c = CATS[k], st = n && n.p ? ohState(n.p.o) : null;
+      f(aOk ? ic(c.icon, c.color) : off, aOk ? nd(n) : '…', n && st ? `${c.label.split(' ')[0].toLowerCase()} · <span class="oh-${st}">${st}</span>` : c.label, n && n.d > 1000 ? 'warn' : '');
+    }
+    $('#sc-summary').innerHTML = facts.join('');
+    $('#sc-places').innerHTML = !aOk ? cardRow(off, 'Places within 1 km', '', w) : !list.length ? cardRow(off, 'No shops, cafés or water within 1 km', '', 'see the tiles above for the nearest')
+      : list.slice(0, 25).map(x => cardRow(ic(CATS[x.p.c].icon, CATS[x.p.c].color), esc(x.p.n || DAY_TYPES[x.p.t] || CATS[x.p.c].label), distDir(x.d, x.b),
+        [dayWhat(x.p) !== '&nbsp;' ? dayWhat(x.p) : '', x.p.o ? esc(x.p.o) : ''].filter(Boolean).join('<br>') || '&nbsp;')).join('');
+    setSum('places', aOk ? `${list.length} within 1 km` + (list.length ? ` · nearest ${fmtDist(list[0].d)}` : '') : 'loading…');
+    return;
+  }
+  // break
+  const b = breakAt(cur, a), sun = b && b.sh ? b.sh.sun : sunAt(cur.lat, cur.lon, ohWhen());
+  if (b) {
+    const col = b.score < 0.3 ? 'var(--blaze)' : 'var(--good-text)';
+    const lim = [['being far from a path', b.acc], ['the ground', b.qLand], ['traffic noise', b.qNoise]].sort((u, v) => u[1] - v[1]);
+    const goods = [['shade', b.shade], ['a view', b.view], ['a bench', b.seat], ['water', b.water]].filter(x => x[1] >= 0.5).map(x => x[0]);
+    const why = lim[0][1] < 0.7 ? `Held back by ${lim[0][0]}` : goods.length ? `Good: ${goods.join(', ')}` : 'Fine, nothing special';
+    $('#sc-top').innerHTML = `<div class="sc-score"><span class="big" style="color:${col}">${Math.round(b.score * 100)}<small>%</small></span>
+      <span><span class="word" style="color:${col}">${cap(breakWord(b.score))} break spot</span><span class="why">${why}</span></span></div>
+      <div class="sc-bar"><i style="width:${Math.max(2, b.score * 100)}%;background:#3fa89a"></i></div>`;
+  } else $('#sc-top').innerHTML = `<span class="muted" style="font-size:12px">${w === '…' ? 'Loading the maps around this spot…' : 'No map data here.'}</span>`;
+  const sh = b && b.sh;
+  f(sh ? ic(sh.down ? 'moon' : sh.shade ? 'umbrella-simple' : 'sun', sh.shade ? '#6f8fc0' : 'var(--blaze)') : off, sh ? (sh.down ? 'Sun is down' : sh.shade ? 'Shade' : 'Sun') : w,
+    sh && sh.shade ? `from ${sh.by} · ${whenT}` : whenT);
+  f(b ? ic('eye', b.view >= 0.35 ? 'var(--good)' : 'var(--muted)') : off, b ? cap(viewWord(b.view)) : w, b && b.prom !== null ? `${Math.round(b.prom)} m above the land around` : 'view');
+  const seatN = a.near.benches && (!a.near.shelters || a.near.benches.d <= a.near.shelters.d) ? ['benches', a.near.benches] : ['shelters', a.near.shelters];
+  f(aOk ? ic(CATS[seatN[0]].icon, CATS[seatN[0]].color) : off, aOk ? nd(seatN[1]) : '…', seatN[0] === 'shelters' ? 'shelter or hut' : 'bench or table');
+  const wat = ['water', 'rivers', 'swim'].map(k => [k, a.near[k]]).filter(x => x[1]).sort((u, v) => u[1].d - v[1].d)[0];
+  f(aOk ? ic(wat ? CATS[wat[0]].icon : 'drop', wat ? CATS[wat[0]].color : 'var(--muted)') : off, aOk ? nd(wat && wat[1]) : '…', wat ? CATS[wat[0]].label.toLowerCase() : 'water');
+  f(b ? ic('ear', '#b39ddb') : off, b ? `${b.hd.db} dB` : w, b ? noiseWord(b.hd.db) : 'traffic noise');
+  f(b ? ic('bicycle', '#e8743a') : off, b ? (b.hd.bike >= 2550 ? 'over 2.5 km' : fmtDist(b.hd.bike)) : w, 'to a path or track');
+  $('#sc-summary').innerHTML = facts.join('');
+  // sun and shade through the day (06–21 h) on the plan day
+  const base = ohWhen(), hrs = [...Array(16)].map((_, k) => 6 + k), nowH = base.getHours();
+  const strip = hrs.map(h => { const d = new Date(base); d.setHours(h, 0, 0, 0); const x = shadeAt(cur.lat, cur.lon, d);
+    return { h, st: !x ? '' : x.down ? '' : x.shade ? 'shade' : 'sun' }; });
+  const shadeHrs = strip.filter(x => x.st === 'shade').map(x => x.h), runs = [];
+  for (const h of shadeHrs) { const r = runs[runs.length - 1]; if (r && r[1] === h - 1) r[1] = h; else runs.push([h, h]); }
+  const tm = typeof SunCalc !== 'undefined' ? SunCalc.getTimes(base, cur.lat, cur.lon) : null;
+  const known = strip.some(x => x.st);
+  $('#sc-bsun').innerHTML = cardRow(sun ? ic(sun.alt > 0.03 ? 'sun' : 'moon', 'var(--blaze)') : off, `Sun ${whenT}`,
+      sun ? (sun.alt > 0.03 ? dirTag(sun.bear) + Math.round(sun.alt * 180 / Math.PI) + '° high' : 'down') : '—', 'time: Settings → Plan for')
+    + `<span></span><span><div class="sun-strip">${strip.map(x => `<i class="${x.st}${x.h === nowH ? ' now' : ''}" title="${x.h}:00 ${x.st || 'no sun'}"></i>`).join('')}</div>
+      <div class="sun-hours">${hrs.map(h => `<span>${h % 3 ? '' : h}</span>`).join('')}</div></span><span></span>`
+    + cardRow(ic('umbrella-simple', '#6f8fc0'), 'Shade here', '', !known ? w : runs.length ? runs.map(r => `${r[0]}–${r[1] + 1} h`).join(', ') : 'none: in the sun all day')
+    + cardRow(ic('sun-horizon', '#e8743a'), 'Sunset', tm ? fmtTime(tm.sunset) : '—', tm ? `golden hour from ${fmtTime(tm.goldenHour)}` : '&nbsp;');
+  setSum('bsun', !known ? '…' : runs.length ? `shade ${runs.map(r => `${r[0]}–${r[1] + 1} h`).join(', ')}` : 'sunny all day');
+  const row = (icon, title, val, sub) => cardRow(icon, title, val, sub);
+  $('#sc-bscore').innerHTML = !b ? ['Close to a path', 'Ground', 'Away from traffic', 'Shade', 'View', 'Somewhere to sit', 'Water'].map(x => cardRow(off, x, '', w)).join('') : [
+    row(ic('bicycle', '#e8743a'), 'Close to a path', pct(b.acc), `path or track ${fmtDist(b.hd.bike)} away`),
+    row(landIc(b.lc), `Ground: ${esc(LAND[b.lc][0])}`, pct(b.qLand), b.qLand < 1 ? 'not a place to stop' : 'fine'),
+    row(ic('ear', '#b39ddb'), 'Away from traffic', pct(b.qNoise), `${b.hd.db} dB · ${noiseWord(b.hd.db)}`),
+    row(ic('umbrella-simple', '#6f8fc0'), 'Shade', b.shade ? 'yes' : 'no', sh && sh.down ? 'the sun is down' : `${whenT}${settings.bShade ? '' : ' · not counted'}`),
+    row(ic('eye', 'var(--good)'), 'View', pct(b.view), b.prom !== null ? `${Math.round(b.prom)} m above the land within 350 m` : 'no elevation data'),
+    row(ic('park', CATS.benches.color), 'Somewhere to sit', pct(b.seat), 'bench, table or shelter within 150 m'),
+    row(ic('drop', CATS.water.color), 'Water', pct(b.water), 'tap, river, lake or bathing spot'),
+  ].join('');
+  setSum('bscore', b ? (b.acc < 0.7 ? `far from a path (${fmtDist(b.hd.bike)})` : `extras ${pct(b.bonus)}`) : '…');
+  $('#sc-bnear').innerHTML = ['benches', 'shelters', 'water', 'rivers', 'swim', 'viewpoints', 'sights'].map(k =>
+    cardRow(ic(CATS[k].icon, CATS[k].color), CATS[k].label, aOk ? (a.near[k] ? distDir(a.near[k].d, a.near[k].b) : '—') : '…', nameLine(k, a.near[k]))).join('');
+  setSum('bnear', !aOk ? 'loading…' : ['benches', 'water', 'swim', 'viewpoints'].filter(k => a.near[k]).sort((u, v) => a.near[u].d - a.near[v].d).slice(0, 3)
+    .map(k => `${ic(CATS[k].icon, CATS[k].color)} ${distDir(a.near[k].d, a.near[k].b)}`).join(' · ') || 'nothing within 2 km');
+}
+
 let cardBonus = 0;
 function updateCardScore() {
   if (!cur || card.hidden) return;
+  if (spotType(cur) !== 'camp') { updateDayCard(); return; }
   const el = $('#sc-score'), i = gridIndex(L.latLng(cur.lat, cur.lon)), off = cardOff();
   // fixed rows first (always one short second line), rows that can grow last
   const ph = t => cardRow(off, t, '', '…');
@@ -1897,7 +2371,6 @@ function updateCardScore() {
 
 // What a click on the map does depends on the tool strip
 map.on('click', e => {
-  if (tool === 'off') return;
   if (tool === 'near') { setNearAt(e.latlng.lat, e.latlng.lng, true, true); return; }
   openSpot({ lat: e.latlng.lat, lon: e.latlng.lng });
 });
@@ -1917,7 +2390,7 @@ const xmlEsc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<'
 $('#btn-gpx').onclick = () => {
   if (!spots.length) { setStatus('No saved spots to export', 'error'); return; }
   const w = spots.map(s => `  <wpt lat="${s.lat.toFixed(6)}" lon="${s.lon.toFixed(6)}"><name>${xmlEsc(s.name)}</name>` +
-    `<desc>${xmlEsc((s.rating ? '★'.repeat(s.rating) + ' ' : '') + (s.note || ''))}</desc><sym>Campground</sym></wpt>`).join('\n');
+    `<desc>${xmlEsc((s.rating ? '★'.repeat(s.rating) + ' ' : '') + (s.note || ''))}</desc><sym>${SPOT_TYPES[spotType(s)].gpx}</sym><type>${spotType(s)}</type></wpt>`).join('\n');
   download('wildnav-spots.gpx', `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="WildNav" xmlns="http://www.topografix.com/GPX/1/1">\n${w}\n</gpx>\n`, 'application/gpx+xml');
 };
 $('#btn-backup').onclick = () => download(`wildnav-spots-${new Date().toISOString().slice(0, 10)}.json`,
@@ -1935,7 +2408,9 @@ $('#spot-file').onchange = async e => {
         const r = parseRoute(txt, f.name); if (r) { setRoute(r); setStatus(`Loaded as a route: ${fmtDist(r.len)}`, 'ok'); } return;
       }
       found = [...doc.getElementsByTagName('wpt')].map(w => ({ lat: +w.getAttribute('lat'), lon: +w.getAttribute('lon'),
-        name: w.getElementsByTagName('name')[0]?.textContent || '', note: w.getElementsByTagName('desc')[0]?.textContent || '' }));
+        name: w.getElementsByTagName('name')[0]?.textContent || '', note: w.getElementsByTagName('desc')[0]?.textContent || '',
+        type: (() => { const t = w.getElementsByTagName('type')[0]?.textContent, sym = w.getElementsByTagName('sym')[0]?.textContent;
+          return t ? typeKey(t) : Object.keys(SPOT_TYPES).find(k => SPOT_TYPES[k].gpx === sym) || 'camp'; })() }));
     } else {
       const j = JSON.parse(txt); found = Array.isArray(j) ? j : j.spots || [];
     }
@@ -1945,7 +2420,8 @@ $('#spot-file').onchange = async e => {
   for (const s of found) {
     if (!isFinite(s.lat) || !isFinite(s.lon) || spots.some(x => same(x, s))) continue;
     spots.push({ id: s.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 6), created: s.created || Date.now(),
-      lat: +s.lat, lon: +s.lon, name: String(s.name || ''), note: String(s.note || ''), rating: Math.max(0, Math.min(5, s.rating | 0)) });
+      lat: +s.lat, lon: +s.lon, name: String(s.name || ''), note: String(s.note || ''), rating: Math.max(0, Math.min(5, s.rating | 0)),
+      type: typeKey(s.type) });
     added++;
   }
   storeSpots(); setStatus(`${added} spot${added === 1 ? '' : 's'} imported${found.length > added ? `, ${found.length - added} skipped (already there)` : ''}`, 'ok');
@@ -1953,9 +2429,9 @@ $('#spot-file').onchange = async e => {
 
 // Shared link: #spot=lat,lon,name (on page load, and when the hash changes on an open page)
 function openFromHash() {
-  const m = location.hash.match(/^#spot=(-?[\d.]+),(-?[\d.]+),?(.*)$/);
+  const m = location.hash.match(/^#spot=(-?[\d.]+),(-?[\d.]+),?([^&]*)(?:&t=(\w+))?$/);
   if (!m) return;
-  const s = { lat: +m[1], lon: +m[2], name: decodeURIComponent(m[3] || '') };
+  const s = { lat: +m[1], lon: +m[2], name: decodeURIComponent(m[3] || ''), type: typeKey(m[4]) };
   if (!isFinite(s.lat) || !isFinite(s.lon)) return;
   const known = spots.find(x => Math.abs(x.lat - s.lat) < 1e-5 && Math.abs(x.lon - s.lon) < 1e-5);
   map.setView([s.lat, s.lon], 14);
@@ -2010,7 +2486,7 @@ function makeToggle(parent, label, key, onChange, hint) {
   }
   seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.key === settings.basemap));
 })();
-makeToggle($('#display-toggles'), 'Place markers', 'markers', rebuildMarkers, 'water, huts, stands … on the map');
+makeToggle($('#display-toggles'), 'Place markers', 'markers', rebuildMarkers, 'water, huts, stands … (Day: shops, cafés, sights)');
 makeToggle($('#display-toggles'), 'Grey base map', 'grey', v => document.body.classList.toggle('grey', v));
 makeToggle($('#display-toggles'), 'Colour-blind colours', 'cbSafe', () => { buildLuts(); buildFactorLuts(); updateLegends(); requestRender(); if (cur && !card.hidden) renderCard(); updateHover(); }, 'orange ↔ blue-green instead of red ↔ green');
 document.body.classList.toggle('grey', settings.grey);
@@ -2067,6 +2543,38 @@ function buildCatRows() {
 }
 buildCatRows();
 
+// Day: along the way
+{ const sel = $('#oh-day'), tm = $('#oh-time');
+  ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((w, d) => sel.add(new Option(w, d)));
+  const sync = () => { sel.value = settings.ohAt ? settings.ohAt.d : ''; tm.value = settings.ohAt ? settings.ohAt.t : ''; tm.disabled = !settings.ohAt; };
+  const changed = () => {
+    settings.ohAt = sel.value === '' ? null : { d: +sel.value, t: tm.value || (settings.ohAt && settings.ohAt.t) || '10:00' };
+    sync(); saveSettings(); ohChanged();
+  };
+  sel.onchange = changed; tm.onchange = changed; sync(); }
+// everything that shows open / closed
+setInterval(() => { if (!settings.ohAt && isDay()) ohChanged(); }, 5 * 60e3);
+function ohChanged() {
+  rebuildMarkers(); updateHover(); nearKey = ''; requestRender(); updateLegends();
+  if (routeSup) showSupplies();
+  if (cur && !card.hidden) updateCardAround();
+}
+makeSlider($('#day-cut'), { label: 'Worth a detour', hint: 'how far off your way a place still counts', min: 250, max: 10000, step: 250, value: settings.cutS, fmt: fmtDist,
+  onInput: v => { settings.cutS = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
+for (const [k, label, hint] of [['bShade', 'Shade', 'forest or a hill blocks the sun'], ['bView', 'View', 'higher than the land around, or a viewpoint'],
+  ['bSeat', 'Bench or table', 'or a shelter, within 150 m'], ['bWater', 'Water', 'a tap, river, lake or bathing spot nearby'], ['bQuiet', 'Away from traffic', 'noise from 45 dB counts against']])
+  makeSlider($('#break-sliders'), { label, hint, min: 0, max: 1, step: 0.1, value: settings[k], fmt: pctOff,
+    onInput: v => { settings[k] = v; requestRender(); saveSettings(); if (cur && !card.hidden) updateCardScore(); } });
+for (const k of ['groceries', 'food', 'bike', 'toilets', 'stations', 'sights', 'benches', 'swim']) {
+  const c = CATS[k], row = document.createElement('div');
+  row.className = 'cat-row';
+  row.innerHTML = `<span class="dot">${ic(c.icon, c.color)}</span><span class="name">${c.label}<small class="cnt" id="cnt-${k}"></small></span>`;
+  $('#rows-day').appendChild(row);
+  makeSlider(row, { min: 0, max: 1, step: 0.1, value: settings.weights[k], fmt: pctOff,
+    onInput: v => { const wasOff = settings.weights[k] === 0; settings.weights[k] = v; requestRender(); saveSettings(); if (wasOff !== (v === 0)) rebuildMarkers(); } })
+    .setAttribute('aria-label', c.label + ' weight');
+}
+
 // Legends
 // the colour bar as it looks on the (grey) map: each colour blended over a light map grey at the overlay opacity
 function drawLegend(sel, table, op = settings.opacity) {
@@ -2095,19 +2603,41 @@ const LAYERS = {
              note: 'Houses per km², smoothed. Hunting stands are shown as markers.' },
   nearby:  { name: 'Useful places',   icon: 'drop',           col: '#22b8d6',      title: 'Useful places', desc: 'Water, huts, fire pits and more nearby',
              note: 'Distance to the nearest useful place, weighted under Settings.' },
+  // Day mode (riding)
+  break:   { name: 'Break spots',     icon: 'park',           col: '#3fa89a',      title: 'Break spots',   desc: 'Shade, a view, a bench, water, close to a path',
+             note: 'Stronger = better break. Shade is for the time under Settings → Plan for (now by default); what counts is under Settings → Break.', mode: 'day', zoom: true },
+  shade:   { name: 'Shade',           icon: 'umbrella-simple', col: '#6f8fc0',     title: 'Shade',         desc: 'Where forests or hills block the sun',
+             note: 'Blue = shade from forests and hills, yellow = sun, at the time under Settings → Plan for. Single trees, hedges and buildings are not in the map.', mode: 'day', zoom: true },
+  supply:  { name: 'Resupply',        icon: 'basket',         col: '#e0a030',      title: 'Resupply',      desc: 'Groceries, cafés, water, bike repair, toilets',
+             note: 'Distance to the nearest shop, café, water tap, bike shop or toilet, weighted under Settings → Resupply. Hover a marker for opening hours.', mode: 'day' },
+  sights:  { name: 'Sights & views',  icon: 'castle-turret',  col: '#b07fd0',      title: 'Sights & views', desc: 'Castles, ruins, museums, peaks and viewpoints',
+             note: 'Distance to the nearest sight or viewpoint.', mode: 'day' },
+  swim:    { name: 'Swimming spots',  icon: 'person-simple-swim', col: '#3aa6c9',  title: 'Swimming spots', desc: 'Bathing places and swimming areas',
+             note: 'Mapped bathing places only; other lakes and rivers may be fine too, check the rules and the water.', mode: 'day' },
 };
+// Topography and road noise are also on the Day map, under names that fit riding
+const DAY_NAMES = {
+  topo:  { name: 'Hills',       desc: 'Steep climbs and descents', title: 'Hills (slope)', note: 'Slope from a 30 m elevation model: red = steep. Roads may run on gentler lines than the ground around them.' },
+  quiet: { name: 'Busy roads',  desc: 'Traffic noise: loud = busy road nearby', title: 'Traffic noise', note: 'Night-time traffic noise from road type and railways; loud areas mean busy roads.' },
+};
+const MODE_LAYERS = { night: ['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'], day: ['break', 'supply', 'shade', 'sights', 'swim', 'topo', 'quiet'] };
+const MODE_HOME = { night: 'score', day: 'break' };
+const layerInfo = k => isDay() && DAY_NAMES[k] ? { ...LAYERS[k], ...DAY_NAMES[k] } : LAYERS[k];
 const FACTOR_LAYERS = ['hidden', 'quiet', 'topo', 'terrain'];
 function buildLayerMenu() {
-  const item = k => `<button class="lm-item${settings.layer === k ? ' on' : ''}" data-l="${k}">${ic(LAYERS[k].icon, LAYERS[k].col)}<b>${LAYERS[k].name}</b><small>${LAYERS[k].desc}</small></button>`;
-  $('#layer-menu').innerHTML = `<div class="lm-h">Plan</div>${item('score')}<div class="lm-h">Why a spot scores</div>` +
-    ['hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].map(item).join('');
+  const item = k => { const L_ = layerInfo(k); return `<button class="lm-item${settings.layer === k ? ' on' : ''}" data-l="${k}">${ic(L_.icon, L_.col)}<b>${L_.name}</b><small>${L_.desc}</small></button>`; };
+  $('#layer-menu').innerHTML = isDay()
+    ? `<div class="lm-h">Day: on the bike</div>${['break', 'supply'].map(item).join('')}` +
+      `<details class="lm-more"${['break', 'supply'].includes(settings.layer) ? '' : ' open'}><summary class="lm-h">More layers to explore</summary>${['shade', 'sights', 'swim', 'topo', 'quiet'].map(item).join('')}</details>`
+    : `<div class="lm-h">Night: where to sleep</div>${item('score')}<div class="lm-h">Why a spot scores</div>` +
+      ['hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].map(item).join('');
   $('#layer-menu').querySelectorAll('.lm-item').forEach(b => b.onclick = () => { setLayer(b.dataset.l); showLayerMenu(false); });
 }
 function showLayerMenu(on) { $('#layer-menu').hidden = !on; $('#layer-btn').setAttribute('aria-expanded', on); if (on) buildLayerMenu(); }
 $('#layer-btn').onclick = e => { e.stopPropagation(); showLayerMenu($('#layer-menu').hidden); };
 document.addEventListener('click', e => { if (!$('#layer-menu').hidden && !e.target.closest('.layer-pick')) showLayerMenu(false); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#layer-menu').hidden) showLayerMenu(false); });
-$('#leg-back').onclick = () => setLayer('score');
+$('#leg-back').onclick = () => setLayer(MODE_HOME[settings.mode]);
 // rows in the card and in "Here" that belong to a layer: click shows it, the current one is highlighted
 document.addEventListener('click', e => {
   const t = e.target.closest('#spot-card [data-layer], #info [data-layer]');
@@ -2134,6 +2664,15 @@ function updateLegends() {
     for (let i = 0; i < 256; i++) T.set(TERR[Math.min(3, i >> 6)], i * 4);
     drawLegend('#leg', T, settings.opacity + 0.15);
     setLabels('#leg-labels', [[0, 'good'], [0.375, 'fair'], [0.625, 'poor'], [1, 'no']]);
+  } else if (l === 'break') {
+    drawLegend('#leg', LUT_B, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'poor'], [0.5, 'ok'], [1, 'great']]);
+  } else if (l === 'shade') {
+    const T = new Uint8ClampedArray(1024);
+    for (let i = 0; i < 256; i++) T.set(i < 128 ? [250, 205, 90, 70] : [40, 70, 120, 150], i * 4);
+    drawLegend('#leg', T, settings.opacity + 0.15);
+    const sun = R.valid ? (() => { const c = map.getCenter(); return sunAt(c.lat, c.lng, ohWhen()); })() : null;
+    setLabels('#leg-labels', sun && sun.alt < 0.03 ? [[0, `sun is down (${ohWhenText()})`]] : [[0, `sun · ${ohWhenText()}`], [1, 'shade']]);
   } else if (l === 'score') {
     drawLegend('#leg', LUT_S, settings.opacity + 0.15);
     setLabels('#leg-labels', [[0, 'avoid'], [0.2, 'ok'], [0.45, 'good'], [1, 'great']]);   // same words as scoreWord()
@@ -2142,17 +2681,20 @@ function updateLegends() {
     const L1 = Math.log1p(DMAX), at = v => Math.log1p(v) / L1;
     setLabels('#leg-labels', [[0, '0'], [at(10), '10'], [at(100), '100'], [1, `${DMAX}+`]]);   // unit is in the title
   } else {
-    drawLegend('#leg', LUT_A, settings.opacity + 0.15);
-    setLabels('#leg-labels', [[0, 'right here'], [0.5, fmtDist(settings.cutA / 2)], [1, fmtDist(settings.cutA)]]);
+    const nl = NEAREST[l];
+    drawLegend('#leg', nl.lut, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'right here'], [0.5, fmtDist(nl.cut() / 2)], [1, fmtDist(nl.cut())]]);
   }
-  const L_ = LAYERS[l];
+  const L_ = layerInfo(l);
   $('#layer-note').textContent = settings.cbSafe ? L_.note.replace(/^Green/, 'Blue-green') : L_.note;
   $('#leg-title').textContent = L_.title;
   if (L_.zoom && map.getZoom() < LAND_MIN_Z) setLabels('#leg-labels', [[0, 'zoom in to see this layer']]);
-  $('#leg-back').hidden = l === 'score';
+  $('#leg-back').hidden = l === MODE_HOME[settings.mode];
+  $('#leg-back').textContent = '← ' + LAYERS[MODE_HOME[settings.mode]].name;
   $('#layer-ic').innerHTML = ic(L_.icon, L_.col); $('#layer-name').textContent = L_.name;
 }
-map.on('zoomend', () => { if (LAYERS[settings.layer].zoom) updateLegends(); });
+map.on('zoomend', () => { if (layerInfo(settings.layer).zoom) updateLegends(); $('#map').classList.toggle('zin', map.getZoom() >= BADGE_MIN_Z); });
+$('#map').classList.toggle('zin', map.getZoom() >= BADGE_MIN_Z);
 // legend explanation folded away by default; remembered in this browser
 { const box = $('#legend-box'), btn = $('#leg-toggle');
   const set = o => { box.classList.toggle('open', o); btn.setAttribute('aria-expanded', o); };
@@ -2165,10 +2707,26 @@ function setLegendMark(t) {
   m.style.display = 'block'; m.style.left = Math.max(0, Math.min(1, t)) * 100 + '%';
 }
 function setLayer(l) {
-  settings.layer = l; saveSettings();
+  const m = MODE_LAYERS[settings.mode].includes(l) ? settings.mode : MODE_LAYERS.night.includes(l) ? 'night' : 'day';
+  if (m !== settings.mode) { setMode(m, l); return; }   // e.g. a card row that links to a night layer while in Day mode
+  settings.layer = l; if (isDay()) settings.dayLayer = l; else settings.nightLayer = l;
+  saveSettings();
   updateLegends(); requestRender(); markLayerRows(); setLegendMark(null);
-  if (LAYERS[l].zoom && map.getZoom() < LAND_MIN_Z) showHint(`${LAYERS[l].name}: zoom in a bit to see this layer`);
+  if (LAYERS[l].zoom && map.getZoom() < LAND_MIN_Z) showHint(`${layerInfo(l).name}: zoom in a bit to see this layer`);
 }
+// Night (where to sleep) or Day (riding): each has its own layers, markers, "Here" rows, route results and "Near you" list
+function setMode(m, layer) {
+  const changed = m !== settings.mode;
+  settings.mode = m;
+  document.body.classList.toggle('day', m === 'day');
+  document.querySelectorAll('#mode-seg button').forEach(b => { b.classList.toggle('on', b.dataset.mode === m); b.setAttribute('aria-pressed', b.dataset.mode === m); });
+  if (changed) { baseDirty = true; nearKey = ''; }  // day places get their distance fields only in Day mode
+  setLayer(layer || (m === 'day' ? settings.dayLayer : settings.nightLayer || 'score'));
+  if (changed) { rebuildMarkers(); updateHover(); renderRoute(); drawRoute(); showNear(); }
+}
+document.querySelectorAll('#mode-seg button').forEach(b => b.onclick = () => { if (b.dataset.mode !== settings.mode) {
+  setSpotType(b.dataset.mode === 'day' ? 'break' : 'camp', true); setMode(b.dataset.mode, MODE_HOME[b.dataset.mode]);
+  showHint(b.dataset.mode === 'day' ? 'Day: break spots and resupply on your way' : 'Night: where to sleep'); } });
 
 // Settings sheet (opens over the side panel; full screen on phones)
 function showSettings(open) {
@@ -2196,7 +2754,8 @@ $('#sheet-handle').addEventListener('touchend', e => {
 // Tool strip: decides what a click on the map does
 let tool = 'inspect';
 updateHover();                                   // empty rows + hint, same layout as with data
-const TOOL_HINTS = { inspect: 'Click the map to look at a spot', near: 'Click the map to find the best spots around that point', off: 'Map clicks are off' };
+const TOOL_HINTS = { inspect: () => `Click the map to look at a ${SPOT_TYPES[settings.spotType].label.toLowerCase()} spot`,
+  near: () => settings.spotType === 'supply' ? 'Click the map to find the nearest shops and water around that point' : `Click the map to find the best ${SPOT_TYPES[settings.spotType].label.toLowerCase()} spots around that point` };
 let hintT;
 // short message next to the tool strip (also visible on phones, where the status text is hidden); ms = 0 keeps it
 function showHint(text, ms = 1800) {
@@ -2207,9 +2766,29 @@ function setTool(t, quiet) {
   tool = t;
   document.querySelectorAll('.tools button[data-tool]').forEach(b => { b.classList.toggle('on', b.dataset.tool === t); b.setAttribute('aria-pressed', b.dataset.tool === t); });
   $('#map').style.cursor = t === 'off' ? '' : 'crosshair';
-  if (!quiet) showHint(TOOL_HINTS[t]);
+  if (!quiet) showHint(TOOL_HINTS[t]());
 }
-document.querySelectorAll('.tools button[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+document.querySelectorAll('.tools button[data-tool]').forEach(b => b.onclick = () => {
+  if (b.id === 'tool-spot' && tool === 'inspect') { showTypePop($('#type-pop').hidden); return; }   // second tap: choose the kind of spot
+  setTool(b.dataset.tool);
+});
+// Kind of spot (Camp / Break / Resupply): what a map click opens, and what "Find spots here" and "Locate me" look for
+function showTypePop(on) {
+  const pop = $('#type-pop');
+  pop.innerHTML = Object.entries(SPOT_TYPES).map(([k, t]) => `<button data-t="${k}" class="${settings.spotType === k ? 'on' : ''}" role="menuitem" title="${SPOT_WHAT[k]}">${ic(t.icon, t.col)}${t.label}</button>`).join('');
+  pop.querySelectorAll('button').forEach(b => b.onclick = e => { e.stopPropagation(); setSpotType(b.dataset.t); showTypePop(false); setTool('inspect'); });
+  pop.hidden = !on; $('#tool-spot').setAttribute('aria-expanded', on);
+}
+document.addEventListener('click', e => { if (!$('#type-pop').hidden && !e.target.closest('.tool-spot')) showTypePop(false); });
+function setSpotType(t, quiet) {
+  const was = settings.spotType; settings.spotType = typeKey(t); saveSettings();
+  const T = SPOT_TYPES[settings.spotType], b = $('#tool-spot');
+  b.querySelector('use').setAttribute('href', '#i-' + T.icon); b.style.color = T.col;
+  b.title = `${T.label} spots: click the map to look at one (${SPOT_WHAT[settings.spotType]}). Tap again to choose another kind.`;
+  b.setAttribute('aria-label', `Look at ${T.label.toLowerCase()} spots`);
+  if (was !== settings.spotType) { if (was === 'camp' || settings.spotType === 'camp') baseDirty = true; nearKey = ''; requestRender(); updateHover(); }
+  if (!quiet && was !== settings.spotType && nearAt) showNear();
+}
 
 // ── Locate me: GPS position (blue dot) and the best spots within NEAR_R of it
 const NEAR_R = 5000, NEAR_N = 5, NEAR_SEP = 1000;  // radius, number of spots, min. distance between them (m)
@@ -2282,7 +2861,7 @@ locBtn.onclick = () => {
 
 function showNear() {
   $('#near-sec').hidden = !nearAt;
-  if (nearAt && !nearKey) $('#near-list').innerHTML = '<div class="muted" style="font-size:12px">Looking for spots…</div>';
+  if (nearAt && !nearKey) $('#near-list').innerHTML = `<div class="muted" style="font-size:12px">${settings.spotType === 'supply' ? 'Looking for shops and water…' : `Looking for ${SPOT_TYPES[settings.spotType].label.toLowerCase()} spots…`}</div>`;
 }
 $('#near-close').onclick = () => { nearAt = null; nearKey = ''; nearManual = false; nearLayer.clearLayers(); nearCentreLayer.clearLayers(); showNear(); };
 
@@ -2290,12 +2869,15 @@ $('#near-close').onclick = () => { nearAt = null; nearKey = ''; nearManual = fal
 // Runs after each redraw, but only at zoom NEAR_Z with the whole circle drawn, so the list stays as it is
 // while you zoom in on a spot (and updates as tiles, terrain or settings change).
 function findNearby() {
+  if (settings.spotType === 'supply') { findNearbyDay(); return; }
   if (!nearAt || !R.valid || R.z !== NEAR_Z) return;
+  const brk = settings.spotType === 'break';
   const { W, S, gx0, gy0, pad, gw, gh, cellM, cov } = R;
   const p = map.project([nearAt.lat, nearAt.lon], R.z), cx = (p.x - gx0) / S, cy = (p.y - gy0) / S;
   const rc = NEAR_R / (R.cellMc * 0.97);
   if (cx - rc < pad || cy - rc < pad || cx + rc > pad + gw || cy + rc > pad + gh) return;
-  const score = scorer(), cand = [], R2 = NEAR_R * NEAR_R;
+  if (brk && !R.hmask) return;                   // break spots need the path maps (loaded with the terrain)
+  const score = brk ? breakScorer() : scorer(), cand = [], R2 = NEAR_R * NEAR_R;
   let covered = 0;
   for (let y = Math.floor(cy - rc); y <= Math.ceil(cy + rc); y++) {
     const m = cellM[y], dy = (y + 0.5 - cy) * m;
@@ -2315,7 +2897,7 @@ function findNearby() {
     picks.push({ lat: ll.lat, lon: ll.lng, s });
     if (picks.length === NEAR_N) break;
   }
-  const key = picks.map(q => `${q.lat.toFixed(4)},${q.lon.toFixed(4)},${Math.round(q.s * 100)}`).join(';') + '|' + covered;
+  const key = settings.spotType + '|' + picks.map(q => `${q.lat.toFixed(4)},${q.lon.toFixed(4)},${Math.round(q.s * 100)}`).join(';') + '|' + covered;
   if (key === nearKey) return;                   // nothing changed: leave the list and pins alone
   nearKey = key;
 
@@ -2326,16 +2908,41 @@ function findNearby() {
   list.innerHTML = picks.map((q, j) => {
     const [d, b] = frame(q.lat, q.lon), lc = landAt(q.lat, q.lon);
     return `<div class="spot-item" data-j="${j}" tabindex="0"><span class="nrank">${j + 1}</span>
-      <span class="nm">${Math.round(q.s * 100)} % · ${scoreWord(q.s)}${lc >= 0 ? ` · ${esc(LAND[lc][0])}` : ''}</span>
+      <span class="nm">${Math.round(q.s * 100)} % · ${brk ? breakWord(q.s) : scoreWord(q.s)}${lc >= 0 ? ` · ${esc(LAND[lc][0])}` : ''}</span>
       <span class="dd">${distDir(d, b)}</span></div>`;
   }).join('') + `<div class="note">Within ${fmtDist(NEAR_R)} of ${nearManual ? 'the search centre (drag the green marker to move it)' : me ? 'you' : 'where you were'}. Tap a number to look closer.</div>`;
-  const go = q => { openSpot({ lat: q.lat, lon: q.lon }); if (!map.getBounds().contains([q.lat, q.lon])) map.panTo([q.lat, q.lon]); };
+  const go = q => { openSpot({ lat: q.lat, lon: q.lon, type: settings.spotType }); if (!map.getBounds().contains([q.lat, q.lon])) map.panTo([q.lat, q.lon]); };
   list.querySelectorAll('.spot-item').forEach(el => {
     const q = picks[+el.dataset.j];
     el.onclick = () => go(q); el.onkeydown = e => { if (e.key === 'Enter') go(q); };
   });
   picks.forEach((q, j) => L.marker([q.lat, q.lon], { icon: L.divIcon({ className: '', html: `<div class="near-pin">${j + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
     title: `Spot ${j + 1}: ${Math.round(q.s * 100)} %`, keyboard: false }).on('click', () => go(q)).addTo(nearLayer));
+}
+
+// Day mode: the nearest place of each resupply kind within NEAR_R (from the loaded tiles), with opening state
+function findNearbyDay() {
+  if (!nearAt) return;
+  const frame = localFrame(nearAt.lat, nearAt.lon), best = {}, want = new Set(DAY_SUPPLY);
+  for (const t of tiles.values()) for (const p of t.pois) {
+    if (!want.has(p.c) || settings.weights[p.c] === 0) continue;
+    const [d, b] = frame(p.lat, p.lon);
+    if (d <= NEAR_R && (!best[p.c] || d < best[p.c].d)) best[p.c] = { d, b, p };
+  }
+  const found = DAY_SUPPLY.filter(k => best[k]);
+  const key = 'day|' + ohWhenText() + '|' + found.map(k => `${k}:${best[k].p.lat},${best[k].p.lon}:${ohState(best[k].p.o)}`).join(';');
+  if (key === nearKey) return;
+  nearKey = key; nearLayer.clearLayers();
+  const list = $('#near-list');
+  if (!found.length) { list.innerHTML = `<div class="muted" style="font-size:12px">No shops, cafés or water taps within ${fmtDist(NEAR_R)} (in the loaded map data).</div>`; return; }
+  list.innerHTML = found.map(k => { const { d, b, p } = best[k], c = CATS[k];
+    return `<div class="spot-item sup-stop" data-k="${k}" tabindex="0"><span class="ics">${ic(c.icon, c.color)}</span>
+      <span class="nm">${esc(p.n || c.label)}<small>${dayWhat(p, false, !!p.n)}</small></span><span class="dd">${distDir(d, b)}</span></div>`; }).join('') +
+    `<div class="note">Nearest of each kind within ${fmtDist(NEAR_R)} of ${nearManual ? 'the search centre' : me ? 'you' : 'where you were'}.</div>`;
+  list.querySelectorAll('.spot-item').forEach(el => {
+    const p = best[el.dataset.k].p, go = () => map.setView(centreFor(p.lat, p.lon, Math.max(map.getZoom(), 15)), Math.max(map.getZoom(), 15));
+    el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); };
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -2345,7 +2952,7 @@ function findNearby() {
 const ROUTE_KEY = 'wn:route', ROUTE_STEP = 6000, ROUTE_BIN = 2000, ROUTE_MIN = 0.25;
 const routeLayer = L.layerGroup().addTo(map), routePins = L.layerGroup().addTo(map);
 let route = (() => { try { const r = JSON.parse(localStorage.getItem(ROUTE_KEY)); return r && Array.isArray(r.pts) ? withCum(r) : null; } catch { return null; } })();
-let routeRes = null, routeRun = 0;
+let routeRes = null, routeRun = 0, routeSup = null;   // routeRes: night spots, routeSup: supplies (Day)
 if (settings.routeDay === undefined) settings.routeDay = 80;
 if (settings.routeOff === undefined) settings.routeOff = 2000;
 
@@ -2368,7 +2975,7 @@ function parseRoute(txt, fileName) {
   return withCum({ name: (nm && nm.textContent.trim()) || fileName.replace(/\.gpx$/i, ''), pts });
 }
 function setRoute(r) {
-  route = r; routeRes = null; routeRun++;
+  route = r; routeRes = null; routeSup = null; routeRun++;
   try { r ? localStorage.setItem(ROUTE_KEY, JSON.stringify({ name: r.name, pts: r.pts })) : localStorage.removeItem(ROUTE_KEY); }
   catch { setStatus('Route too large to remember in this browser', 'error'); }
   drawRoute(); renderRoute();
@@ -2381,8 +2988,17 @@ function drawRoute() {
   L.polyline(route.pts, { color: '#e8743a', weight: 4, opacity: 0.95, interactive: false }).addTo(routeLayer);
   const end = (ll, t) => L.circleMarker(ll, { radius: 6, color: '#fff', weight: 2, fillColor: '#e8743a', fillOpacity: 1 }).bindTooltip(t).addTo(routeLayer);
   end(route.pts[0], 'Start'); end(route.pts[route.pts.length - 1], 'Finish');
+  if (isDay() && routeSup && routeSup.stops) {    // resupply stops (amber) and sights (purple) along the route
+    for (const st of routeSup.stops) L.marker([st.lat, st.lon], { keyboard: false, title: `km ${Math.round(st.km / 1000)}`,
+      icon: L.divIcon({ className: '', html: `<div class="sup-pin">${ic('basket')}</div>`, iconSize: [18, 18], iconAnchor: [9, 9] }) })
+      .bindTooltip(`km ${Math.round(st.km / 1000)}: ${st.items.map(x => esc(x.p.n || DAY_TYPES[x.p.t] || CATS[x.p.c].label)).slice(0, 4).join(', ')}${st.items.length > 4 ? ' …' : ''}`)
+      .on('click', () => zoomStop(st)).addTo(routePins);
+    (routeSup.breaks || []).forEach((x, j) => { if (!x.none) L.marker([x.lat, x.lon], { keyboard: false, title: `Break ${j + 1}`,
+      icon: L.divIcon({ className: '', html: `<div class="brk-pin">${j + 1}</div>`, iconSize: [22, 22], iconAnchor: [11, 11] }) })
+      .on('click', () => { openSpot({ lat: x.lat, lon: x.lon, type: 'break' }); map.setView([x.lat, x.lon], Math.max(map.getZoom(), 15)); }).addTo(routePins); });
+  }
   if (!routeRes || !routeRes.nights) return;
-  for (const c of routeRes.others) L.circleMarker([c.lat, c.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#147337', fillOpacity: 1 })
+  if (!isDay()) for (const c of routeRes.others) L.circleMarker([c.lat, c.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#147337', fillOpacity: 1 })
     .bindTooltip(`km ${Math.round(c.km / 1000)} · ${Math.round(c.s * 100)} %`).on('click', () => goSpot(c)).addTo(routePins);
   routeRes.nights.forEach((c, j) => { if (c) L.marker([c.lat, c.lon], { keyboard: false, title: `Night ${j + 1}`,
     icon: L.divIcon({ className: '', html: `<div class="night-pin">${j + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) })
@@ -2393,11 +3009,12 @@ const goSpot = c => { openSpot({ lat: c.lat, lon: c.lon }); map.setView([c.lat, 
 function renderRoute() {
   const box = $('#route-box');
   if (!route) {
-    box.innerHTML = `<div class="note" style="margin-top:0">Load a GPX track (from Komoot, Strava, Garmin …) to find spots along it, one for each night.</div>
+    box.innerHTML = `<div class="note" style="margin-top:0">Load a GPX track (from Komoot, Strava, Garmin …) to find ${isDay() ? 'shops, cafés and water along it' : 'spots along it, one for each night'}.</div>
       <div class="btns"><button class="btn primary" id="rt-load">Load GPX route</button></div>`;
     $('#rt-load').onclick = () => $('#route-file').click();
     return;
   }
+  if (isDay()) { renderRouteDay(box); return; }
   const offs = [500, 1000, 2000, 3000, 5000];
   box.innerHTML = `<div class="irow"><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(route.name)}</span><b>${fmtDist(route.len)}</b></div>
     <div class="rt-opts"><label>Per day <input type="number" id="rt-day" min="0" max="400" step="5" value="${settings.routeDay}"> km</label>
@@ -2433,13 +3050,15 @@ async function tilesReady(list, ms = 20000) {
   return want.length;
 }
 
-async function analyseRoute() {
-  const run = ++routeRun, r = route, off = settings.routeOff, z = NEAR_Z, S = cellSize();
+// Scores the cells within `off` of the route piece by piece (6 km, off-screen grids at NEAR_Z) and keeps the best
+// cell per `binM` of route. makeScore(g, km) returns the scoring function for a grid (km = middle of the piece).
+async function scanRoute(run, off, binM, minS, makeScore, label) {
+  const r = route, z = NEAR_Z, S = cellSize();
   const bins = new Map(), msg = t => { const el = $('#route-res'); if (el) el.innerHTML = `<div class="note">${t}</div>`; };
   let noData = 0;
   for (let a = 0; a < r.len; a += ROUTE_STEP) {
-    if (run !== routeRun) return;                // route changed or analysis restarted
-    msg(`Scoring the route… km ${Math.round(a / 1000)} of ${Math.round(r.len / 1000)}`);
+    if (run !== routeRun) return null;           // route changed or analysis restarted
+    msg(`${label}… km ${Math.round(a / 1000)} of ${Math.round(r.len / 1000)}`);
     // route points of this piece (plus one on each side, so segments are complete)
     let i0 = r.cum.findIndex(c => c >= a); i0 = Math.max(0, i0 - 1);
     let i1 = r.cum.findIndex(c => c > a + ROUTE_STEP); i1 = i1 < 0 ? r.pts.length - 1 : i1;
@@ -2450,12 +3069,11 @@ async function analyseRoute() {
     const reach = neededReach() + 500;          // tiles around, for distances and density at the edges
     const list = tilesInBounds(L.latLngBounds([bb.getSouth() - dLat(reach), bb.getWest() - dLon(reach)], [bb.getNorth() + dLat(reach), bb.getEast() + dLon(reach)]), 200) || [];
     if (!(await tilesReady(list))) { noData++; continue; }
-    if (run !== routeRun) return;
+    if (run !== routeRun) return null;
     const p0 = map.project(bb.getNorthWest(), z), p1 = map.project(bb.getSouthEast(), z);
     const x0 = Math.floor(p0.x / S) * S, y0 = Math.floor(p0.y / S) * S;
     const g = buildGrid(z, S, x0, y0, Math.ceil((p1.x - x0) / S) + 1, Math.ceil((p1.y - y0) / S) + 1);
-    computeDensity(g);
-    const sc = scorer(g), { W, H, pad, gw, gh, gx0, gy0, cov } = g;
+    const sc = makeScore(g, Math.min(r.len, a + ROUTE_STEP / 2)), { W, H, pad, gw, gh, gx0, gy0, cov } = g;
     // distance of every cell to this piece of the route (distance field seeded along the track)
     const seeds = new Uint8Array(W * H);
     for (let k = 1; k < seg.length; k++) {
@@ -2470,17 +3088,22 @@ async function analyseRoute() {
       const i = y * W + x;
       if (!cov[i] || dR[i] > off) continue;
       const s = sc(i);
-      if (s < ROUTE_MIN) continue;
+      if (s < minS) continue;
       const ll = map.unproject([gx0 + (x + 0.5) * S, gy0 + (y + 0.5) * S], z);
       let best = 0, bd = Infinity;                // nearest route point -> distance along the route
       for (let k = 0; k < seg.length; k++) { const d = (seg[k][0] - ll.lat) ** 2 + (seg[k][1] - ll.lng) ** 2 * kx; if (d < bd) { bd = d; best = k; } }
-      const km = segCum[best], bin = Math.floor(km / ROUTE_BIN), old = bins.get(bin);
+      const km = segCum[best], bin = Math.floor(km / binM), old = bins.get(bin);
       if (!old || s > old.s) bins.set(bin, { s, lat: ll.lat, lon: ll.lng, km, off: dR[i] });
     }
     await new Promise(r2 => setTimeout(r2));    // let the page breathe between pieces
   }
-  if (run !== routeRun) return;
-  routeRes = { cands: [...bins.values()].sort((u, v) => u.km - v.km), noData, pieces: Math.ceil(r.len / ROUTE_STEP) };
+  return { cands: [...bins.values()].sort((u, v) => u.km - v.km), noData, pieces: Math.ceil(r.len / ROUTE_STEP) };
+}
+async function analyseRoute() {
+  const run = ++routeRun;
+  const res = await scanRoute(run, settings.routeOff, ROUTE_BIN, ROUTE_MIN, g => { computeDensity(g); return scorer(g); }, 'Scoring the route');
+  if (!res || run !== routeRun) return;
+  routeRes = res;
   showRouteRes();
 }
 
@@ -2516,12 +3139,158 @@ function showRouteRes() {
   });
   drawRoute();
 }
+// ── Day mode: resupply along the route. Every shop, café, water tap … within X of the track, with its km;
+// places close together form one stop (a village), and the longest stretches without groceries / water are shown.
+const SUP_OFFS = [250, 500, 1000, 2000], STOP_GAP = 1500;
+function renderRouteDay(box) {
+  box.innerHTML = `<div class="irow"><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(route.name)}</span><b>${fmtDist(route.len)}</b></div>
+    <div class="rt-opts"><label>Start <input type="time" id="rt-start" value="${settings.rideStart}" style="width:auto"></label>
+      <label><input type="number" id="rt-speed" min="5" max="40" value="${settings.speed}"> km/h</label>
+      <label>break every <input type="number" id="rt-every" min="0" max="8" step="0.5" value="${settings.breakEvery}"> h</label>
+      <label>per day <input type="number" id="rt-day" min="0" max="400" step="5" value="${settings.routeDay}"> km</label>
+      <label>shops up to <select id="rt-offs">${SUP_OFFS.map(o => `<option value="${o}"${o === settings.routeOffS ? ' selected' : ''}>${fmtDist(o)}</option>`).join('')}</select> off route</label></div>
+    <div class="btns"><button class="btn primary" id="rt-sup">Plan the day</button><button class="btn" id="rt-zoom">Show</button>
+      <button class="btn icon" id="rt-del" title="Remove the route" aria-label="Remove the route">${ic('x')}</button></div>
+    <div id="route-res"></div>`;
+  $('#rt-offs').onchange = e => { settings.routeOffS = +e.target.value; saveSettings(); };
+  $('#rt-start').onchange = e => { if (/^\d\d:\d\d$/.test(e.target.value)) { settings.rideStart = e.target.value; saveSettings(); if (routeSup) showSupplies(); } };
+  $('#rt-speed').onchange = e => { settings.speed = Math.max(5, Math.min(40, +e.target.value || 18)); saveSettings(); if (routeSup) showSupplies(); };
+  $('#rt-every').onchange = e => { settings.breakEvery = Math.max(0, +e.target.value || 0); saveSettings(); if (routeSup) showSupplies(); };
+  $('#rt-day').onchange = e => { settings.routeDay = Math.max(0, +e.target.value || 0); saveSettings(); if (routeSup) showSupplies(); };
+  $('#rt-sup').onclick = () => analyseSupplies();
+  $('#rt-zoom').onclick = () => map.fitBounds(L.latLngBounds(route.pts), { paddingBottomRight: [0, isPhone() ? 150 : 0] });
+  $('#rt-del').onclick = () => { if (confirm(`Remove the route “${route.name}”?`)) setRoute(null); };
+  if (routeSup) showSupplies();
+}
+// wait until the place files (buildings + points of interest) of a list of tiles are loaded
+async function jsonReady(list, ms = 20000) {
+  const want = list.filter(t => offline.has(tkey(t.x, t.y))), t0 = Date.now();
+  ensureTiles(want);
+  while (Date.now() - t0 < ms && !want.every(t => tiles.has(tkey(t.x, t.y)))) await sleep(100);
+  return want;
+}
+// When you pass a point of the route: start on the plan day (Settings → Plan for, or today) at the start time,
+// riding at the set speed; with a distance per day, each day starts again at the start time.
+function timeAtKm(m) {
+  const day = settings.routeDay * 1000, n = day > 0 ? Math.floor(m / day) : 0, d = settings.ohAt ? ohWhen() : new Date();
+  const [h, mi] = settings.rideStart.split(':').map(Number);
+  d.setDate(d.getDate() + n); d.setHours(h, mi, 0, 0);
+  return new Date(d.getTime() + (m - n * day) / 1000 / settings.speed * 3600e3);
+}
+const hhmm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+async function analyseSupplies() {
+  const run = ++routeRun, r = route, off = settings.routeOffS, pts = r.pts;
+  const msg = t => { const el = $('#route-res'); if (el) el.innerHTML = `<div class="note">${t}</div>`; };
+  msg('Looking along the route…');
+  // flat metric frame (fine for distances of a few km off the track)
+  const lat0 = pts[pts.length >> 1][0], kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110574;
+  const X = lo => lo * kx, Y = la => la * ky, cell = Math.max(off, 300);
+  const need = new Map();                        // tiles within `off` of the track
+  for (const [la, lo] of pts) for (const [a, o] of [[la - off / ky, lo - off / kx], [la + off / ky, lo + off / kx], [la - off / ky, lo + off / kx], [la + off / ky, lo - off / kx]]) {
+    const x = clampT(Math.floor(mercX(o) * N12)), y = clampT(Math.floor(mercY(a) * N12));
+    need.set(tkey(x, y), { x, y });
+  }
+  const want = await jsonReady([...need.values()]);
+  if (run !== routeRun) return;
+  const grid = new Map();                        // cell -> segment numbers passing through it (spatial index)
+  for (let k = 1; k < pts.length; k++) {
+    const x0 = Math.floor(Math.min(X(pts[k - 1][1]), X(pts[k][1])) / cell), x1 = Math.floor(Math.max(X(pts[k - 1][1]), X(pts[k][1])) / cell);
+    const y0 = Math.floor(Math.min(Y(pts[k - 1][0]), Y(pts[k][0])) / cell), y1 = Math.floor(Math.max(Y(pts[k - 1][0]), Y(pts[k][0])) / cell);
+    for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) { const key = cx + ',' + cy; (grid.get(key) || grid.set(key, []).get(key)).push(k); }
+  }
+  const items = [], cats = new Set([...DAY_SUPPLY, ...DAY_SIGHTS]);
+  for (const { x, y } of want) {
+    const t = tiles.get(tkey(x, y)); if (!t) continue;
+    for (const p of t.pois) {
+      if (!cats.has(p.c) || settings.weights[p.c] === 0) continue;
+      const px = X(p.lon), py = Y(p.lat), cx = Math.floor(px / cell), cy = Math.floor(py / cell);
+      let bd = Infinity, bkm = 0;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const k of grid.get((cx + dx) + ',' + (cy + dy)) || []) {
+        const ax = X(pts[k - 1][1]), ay = Y(pts[k - 1][0]), bx = X(pts[k][1]) - ax, by = Y(pts[k][0]) - ay, l2 = bx * bx + by * by;
+        const u = l2 ? Math.max(0, Math.min(1, ((px - ax) * bx + (py - ay) * by) / l2)) : 0, d = Math.hypot(px - ax - u * bx, py - ay - u * by);
+        if (d < bd) { bd = d; bkm = r.cum[k - 1] + u * (r.cum[k] - r.cum[k - 1]); }
+      }
+      if (bd <= off) items.push({ p, km: bkm, off: bd });
+    }
+  }
+  items.sort((u, v) => u.km - v.km);
+  // break spots: at most 200 m off the route, the best per km, scored with the shade at the time you pass
+  const br = await scanRoute(run, 200, 1000, 0.2, (g, km) => breakScorer(g, timeAtKm(km)), 'Looking for break spots');
+  if (!br || run !== routeRun) return;
+  routeSup = { items, breakCands: br.cands, noData: need.size - want.length, tiles: need.size };
+  showSupplies();
+}
+const zoomStop = st => map.fitBounds(L.latLngBounds(st.items.map(x => [x.p.lat, x.p.lon])).pad(0.3), { maxZoom: 16, paddingBottomRight: [0, isPhone() ? 150 : 0] });
+function showSupplies() {
+  const res = $('#route-res'); if (!res || !routeSup) return;
+  const km = m => `km ${Math.round(m / 1000)}`, sup = routeSup.items.filter(x => DAY_SUPPLY.includes(x.p.c));
+  const stops = [];                              // places close together along the route = one stop
+  for (const x of sup) {
+    const st = stops[stops.length - 1];
+    if (st && x.km - st.kmEnd <= STOP_GAP) { st.items.push(x); st.kmEnd = x.km; }
+    else stops.push({ km: x.km, kmEnd: x.km, items: [x] });
+  }
+  for (const st of stops) { const c = st.items.reduce((a, x) => x.off < a.off ? x : a); st.lat = c.p.lat; st.lon = c.p.lon; st.off = c.off; }
+  routeSup.stops = stops;
+  // longest stretch without groceries / drinking water / food (from the start, between places, to the finish)
+  const gaps = ['groceries', 'water', 'food'].filter(k => settings.weights[k] > 0).map(k => {
+    const at = [0, ...routeSup.items.filter(x => x.p.c === k).map(x => x.km), route.len];
+    let g = { len: 0, a: 0, b: 0 };
+    for (let j = 1; j < at.length; j++) if (at[j] - at[j - 1] > g.len) g = { len: at[j] - at[j - 1], a: at[j - 1], b: at[j] };
+    return { k, ...g, none: at.length === 2 };
+  });
+  const gapRow = g => { const c = CATS[g.k], col = g.len > 40000 ? 'var(--bad-text)' : g.len > 25000 ? 'var(--mid)' : 'var(--muted)';
+    return `<div class="rt-gap">${ic(c.icon, c.color)}<span>${g.none ? `No ${c.label.toLowerCase()} within ${fmtDist(settings.routeOffS)} of the route`
+      : `Longest stretch without ${c.label.toLowerCase()}: <b style="color:${col}">${fmtDist(g.len)}</b> (${km(g.a)}–${Math.round(g.b / 1000)})`}</span></div>`; };
+  const stopRow = (st, j) => {
+    const kinds = DAY_SUPPLY.filter(k => st.items.some(x => x.p.c === k));
+    const names = st.items.filter(x => x.p.c === 'groceries' || x.p.c === 'food').map(x => esc(x.p.n || DAY_TYPES[x.p.t] || '')).filter(Boolean);
+    const when = timeAtKm(st.km), open = st.items.filter(x => ohState(x.p.o, when) === 'open').length, hours = st.items.some(x => x.p.o);
+    const line = [names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3}` : ''),
+      open ? `<span class="oh-open">${open} open then</span>` : hours ? '<span class="oh-closed">closed then</span>' : ''].filter(Boolean).join(' · ');
+    return `<div class="spot-item sup-stop" data-j="${j}" tabindex="0"><span class="ics">${kinds.map(k => ic(CATS[k].icon, CATS[k].color)).join('')}</span>
+      <span class="nm">${km(st.km)}${st.kmEnd - st.km > 500 ? '–' + Math.round(st.kmEnd / 1000) : ''} · ~${hhmm(timeAtKm(st.km))}<small>${line || kinds.map(k => CATS[k].label).join(', ')}</small></span>
+      <span class="dd">${fmtDist(st.off)} off</span></div>`;
+  };
+  // breaks: one every `breakEvery` hours of riding (counted again from each day's start), best spot in a window around it
+  const breaks = [], every = settings.speed * settings.breakEvery * 1000, day = settings.routeDay * 1000 || route.len + 1;
+  if (every > 0) for (let d0 = 0; d0 < route.len; d0 += day) for (let t = d0 + every; t < Math.min(route.len, d0 + day) - every / 3; t += every) {
+    const c = (routeSup.breakCands || []).filter(x => x.km >= t - 0.25 * every && x.km <= t + 0.15 * every);
+    breaks.push(c.length ? c.reduce((u, v) => v.s > u.s + 0.03 || (Math.abs(v.s - u.s) <= 0.03 && Math.abs(v.km - t) < Math.abs(u.km - t)) ? v : u) : { none: true, km: t });
+  }
+  routeSup.breaks = breaks;
+  // nights found in Night mode (if any) go between the stops, so you see where to shop before camping
+  const nights = routeRes && routeRes.nights ? routeRes.nights.map((x, j) => x && { km: x.km, j }).filter(Boolean) : [];
+  const breakRow = (x, j) => { const when = timeAtKm(x.km);
+    if (x.none) return `<div class="spot-item sup-stop"><span class="ics">${ic('park', 'var(--muted)')}</span><span class="nm muted">Break ${j + 1} · ${km(x.km)} · ~${hhmm(when)}<small>no good break spot near the route here</small></span></div>`;
+    const sh = shadeAt(x.lat, x.lon, when), what = [sh && sh.shade ? 'shade' : sh && !sh.down ? 'sunny' : ''].filter(Boolean);
+    return `<div class="spot-item sup-stop" data-b="${j}" tabindex="0"><span class="ics"><span class="brk-dot">${j + 1}</span></span>
+      <span class="nm">Break ${j + 1} · ${km(x.km)} · ~${hhmm(when)}<small>${[...what, `${Math.round(x.s * 100)} %`].join(' · ')}</small></span><span class="dd">${fmtDist(x.off)} off</span></div>`; };
+  const ev = [...stops.map((st, j) => ({ km: st.km, html: stopRow(st, j) })), ...breaks.map((x, j) => ({ km: x.km, html: breakRow(x, j) })),
+    ...nights.map(n => ({ km: n.km + 0.5, html: `<div class="rt-night">${ic('moon')}Night ${n.j + 1} · ${km(n.km)}</div>` }))].sort((u, v) => u.km - v.km);
+  const rows = ev.map(e => e.html);
+  const sights = routeSup.items.filter(x => DAY_SIGHTS.includes(x.p.c));
+  res.innerHTML = gaps.map(gapRow).join('') +
+    (ev.length ? `<h3 class="rt-h">Along the way</h3>${rows.join('')}` : '') + (stops.length ? '' : `<div class="note">No shops, cafés or water within ${fmtDist(settings.routeOffS)} of the route.</div>`) +
+    (sights.length ? `<h3 class="rt-h">Sights on the way</h3>${sights.slice(0, 15).map((x, j) => `<div class="spot-item sup-stop" data-s="${j}" tabindex="0"><span class="ics">${ic(CATS[x.p.c].icon, CATS[x.p.c].color)}</span>
+      <span class="nm">${esc(x.p.n || DAY_TYPES[x.p.t] || CATS[x.p.c].label)}<small>${km(x.km)}${x.p.t ? ' · ' + (DAY_TYPES[x.p.t] || '') : ''}</small></span><span class="dd">${fmtDist(x.off)} off</span></div>`).join('')}` : '') +
+    (routeSup.noData ? `<div class="note">${routeSup.noData} of ${routeSup.tiles} map areas along the route are outside the offline data.</div>` : '') +
+    `<div class="note">Times: start ${settings.rideStart}${settings.ohAt ? ' on ' + DAY_WORDS[settings.ohAt.d] : ' today'} (day under Settings → Plan for), ${settings.speed} km/h, breaks not counted. “Open then” = open when you get there; opening hours are from OpenStreetMap and may be out of date${nights.length ? '' : '. Find night spots in Night mode to see them in this list'}.</div>`;
+  res.querySelectorAll('[data-j]').forEach(el => { const st = stops[+el.dataset.j]; el.onclick = () => zoomStop(st); el.onkeydown = e => { if (e.key === 'Enter') zoomStop(st); }; });
+  res.querySelectorAll('[data-b]').forEach(el => { const x = breaks[+el.dataset.b], go = () => { openSpot({ lat: x.lat, lon: x.lon, type: 'break' }); map.setView([x.lat, x.lon], Math.max(map.getZoom(), 15)); };
+    el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+  res.querySelectorAll('[data-s]').forEach(el => { const x = sights[+el.dataset.s], go = () => map.setView([x.p.lat, x.p.lon], Math.max(map.getZoom(), 15));
+    el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+  drawRoute();
+}
 drawRoute(); renderRoute();
 
 // Search
 $('#search').onsubmit = async e => {
   e.preventDefault();
   const q = $('#q').value.trim(); if (!q) return;
+  const mine = spots.find(s => s.name && s.name.toLowerCase().includes(q.toLowerCase()));
+  if (mine) { map.setView([mine.lat, mine.lon], Math.max(map.getZoom(), 14)); openSpot(mine); setStatus(`Your spot: ${mine.name}`, 'ok'); return; }
   setStatus('Searching…', 'busy');
   try {
     const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
@@ -2596,7 +3365,9 @@ map.on('moveend', () => {
 });
 window.addEventListener('resize', () => { baseDirty = true; requestRender(); });
 
-setLayer(settings.layer);
+if (isDay()) settings.layer = settings.dayLayer; else settings.nightLayer = settings.layer;
+setMode(settings.mode);
+setSpotType(settings.spotType, true);
 setTool('inspect', true);
 updateStats();
 requestRender();

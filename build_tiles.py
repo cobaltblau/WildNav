@@ -60,7 +60,7 @@ from PIL import Image, ImageDraw
 TILE_Z = 12
 N = 1 << TILE_Z
 KEYS = ('building', 'amenity', 'tourism', 'natural', 'leisure', 'man_made', 'waterway', 'landuse', 'boundary',
-        'highway', 'railway', 'barrier')
+        'highway', 'railway', 'barrier', 'shop', 'historic')
 
 # ── Hidden / noise / access maps (see hide_tile) ─────────────────────────────────────────────
 HP = 256                     # pixels per tile side (~24 m)
@@ -131,7 +131,7 @@ Q = 65535                    # Uint16 scale for water points
 
 
 def classify(t):
-    """Mirror of classify() in index.html."""
+    """Night-mode category of an object (CATS in index.html); day categories: day_class()."""
     b, am, tour = t.get('building'), t.get('amenity'), t.get('tourism')
     nat, leis, mm = t.get('natural'), t.get('leisure'), t.get('man_made')
     if am == 'hunting_stand':
@@ -149,6 +149,61 @@ def classify(t):
     if b and b not in ('no', 'ruins'):
         return 'buildings'
     return None
+
+
+# Day mode (riding): resupply and sights. (key, value) -> category; the value is stored as the type 't'
+# (the app turns it into words, DAY_TYPES in index.html). Mirror of the day categories in CATS.
+DAY_TAGS = {
+    **{('shop', v): 'groceries' for v in ('supermarket', 'convenience', 'bakery', 'pastry', 'butcher', 'greengrocer',
+                                          'farm', 'deli', 'general', 'kiosk')},
+    ('amenity', 'fuel'): 'groceries',            # petrol stations: snacks and drinks, often open on Sundays
+    **{('amenity', v): 'food' for v in ('restaurant', 'cafe', 'fast_food', 'pub', 'biergarten', 'ice_cream')},
+    ('shop', 'bicycle'): 'bike', ('amenity', 'bicycle_repair_station'): 'bike', ('amenity', 'compressed_air'): 'bike',
+    ('amenity', 'toilets'): 'toilets',
+    **{('tourism', v): 'sights' for v in ('attraction', 'museum')},
+    **{('historic', v): 'sights' for v in ('castle', 'ruins', 'monument', 'archaeological_site', 'fort')},
+    ('natural', 'peak'): 'sights',               # named peaks only (see day_class)
+    # break spots: somewhere to sit, to swim; train stations (to bail out, bikes go on regional trains)
+    ('amenity', 'bench'): 'benches', ('leisure', 'picnic_table'): 'benches',
+    ('leisure', 'bathing_place'): 'swim', ('leisure', 'swimming_area'): 'swim',
+    ('railway', 'station'): 'stations', ('railway', 'halt'): 'stations',
+}
+DAY_KEYS = ('shop', 'amenity', 'tourism', 'historic', 'natural', 'leisure', 'railway')
+
+
+def day_class(t):
+    """(category, type) for resupply points and sights, or None."""
+    for k in DAY_KEYS:
+        v = t.get(k)
+        cat = v and DAY_TAGS.get((k, v))
+        if not cat or (k == 'natural' and not t.get('name')):
+            continue
+        if cat == 'stations' and t.get('station') in ('subway', 'light_rail', 'monorail', 'funicular'):
+            continue                               # city transport, not for bikes
+        return cat, v
+    return None
+
+
+def poi_cats(t):
+    """All categories of an object: a shop in a building is both a house and a resupply point."""
+    cats = []
+    c = classify(t)
+    if c:
+        cats.append((c, None))
+    d = day_class(t)
+    if d:
+        cats.append(d)
+    return cats
+
+
+def make_poi(cat, typ, lat, lon, t):
+    p = {'c': cat, 'lat': round(lat, 6), 'lon': round(lon, 6), 'n': t.get('name', '')}
+    if typ:
+        p['t'] = typ
+        oh = t.get('opening_hours')
+        if oh:
+            p['o'] = oh[:120]
+    return p
 
 
 def land_class(t):
@@ -896,8 +951,8 @@ def read_region(ri, pbf, owner, tmp, part='all'):
         if o.is_node():
             if not do_items or not o.location.valid():
                 continue
-            cat = classify(o.tags)
-            if not cat:
+            cats = poi_cats(o.tags)
+            if not cats:
                 continue
             lat, lon = o.location.lat, o.location.lon
         elif o.is_way():
@@ -923,8 +978,8 @@ def read_region(ri, pbf, owner, tmp, part='all'):
                         own = owner.get(t)
                         if own == ri or own == -1:     # shared tiles: both extracts draw it, merged with max()
                             lines[t].append((kind, a))
-            cat = classify(tags)
-            if not cat:                                # e.g. landuse ways: only needed as areas
+            cats = poi_cats(tags)
+            if not cats:                               # e.g. landuse ways: only needed as areas
                 continue
             s_lat = s_lon = 0.0
             k = 0
@@ -944,20 +999,20 @@ def read_region(ri, pbf, owner, tmp, part='all'):
         own = owner.get((tx, ty))
         if own is None or (own >= 0 and own != ri):
             continue                                   # not covered, or filled by another extract
-        poi = None if cat == 'buildings' else {'c': cat, 'lat': round(lat, 6), 'lon': round(lon, 6),
-                                                'n': o.tags.get('name', '')}
-        if own == -1:
-            key = (o.is_way(), o.id)
-            if poi is None:
-                sb[(tx, ty)].append((key, mx - tx, my - ty))
+        for cat, typ in cats:
+            poi = None if cat == 'buildings' else make_poi(cat, typ, lat, lon, o.tags)
+            if own == -1:
+                key = (o.is_way(), o.id, cat)
+                if poi is None:
+                    sb[(tx, ty)].append((key, mx - tx, my - ty))
+                else:
+                    sp[(tx, ty)].append((key, poi))
+            elif poi is None:
+                a = b[(tx, ty)]
+                a.append(mx - tx)
+                a.append(my - ty)
             else:
-                sp[(tx, ty)].append((key, poi))
-        elif poi is None:
-            a = b[(tx, ty)]
-            a.append(mx - tx)
-            a.append(my - ty)
-        else:
-            p[(tx, ty)].append(poi)
+                p[(tx, ty)].append(poi)
         count += 1
         if count % 1_000_000 == 0:
             print(f'{name}: {count:,} objects  {time.time() - t0:.0f} s', flush=True)

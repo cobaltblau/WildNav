@@ -4,6 +4,11 @@ A web map for planning wild camping and bikepacking trips. It shows building den
 (places to stay away from) and how close useful places are: water sources, rivers and lakes,
 shelters, camp sites, viewpoints and fire pits.
 
+Two modes (switch at the top): **Night** finds places to sleep (hidden, quiet, flat, allowed);
+**Day** is for riding: shops, cafés, water taps, bike repair, toilets and sights (with opening hours
+from OpenStreetMap), hills and busy roads. With a GPX route, Day mode lists the resupply stops along it
+and the longest stretches without groceries or water.
+
 Live version: https://cobaltblau.github.io/WildNav/
 
 Wild camping is not allowed everywhere. Check the local rules and respect private land.
