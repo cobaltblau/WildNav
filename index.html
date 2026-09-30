@@ -2465,16 +2465,20 @@ function updateDayCard() {
   const aOk = !a.missing, nd = n => n ? distDir(n.d, n.b) : `over ${fmtDist(RADAR_MAX)}`, pct = v => Math.round(v * 100) + ' %';
   const nameLine = (k, n) => !aOk ? '…' : !n ? `none within ${fmtDist(RADAR_MAX)}` : [n.n ? esc(n.n) : k === 'rivers' ? 'river, stream or lake shore' : '', n.p && n.p.t ? dayWhat(n.p) : ''].filter(x => x && x !== '&nbsp;').join(' · ') || '<span class="dim">unnamed</span>';
   if (t === 'supply') {
-    const at = localFrame(cur.lat, cur.lon), list = [], want = new Set(DAY_SUPPLY);
+    const at = localFrame(cur.lat, cur.lon), list = [], all = {}, want = new Set(DAY_SUPPLY);
     for (const { x, y } of tilesAround(cur)) { const tt = tiles.get(tkey(x, y)); if (tt) for (const p of tt.pois) {
-      if (!want.has(p.c)) continue; const [d, b] = at(p.lat, p.lon); if (d <= 1000) list.push({ d, b, p }); } }
-    list.sort((u, v) => u.d - v.d);
+      if (!want.has(p.c)) continue; const [d, b] = at(p.lat, p.lon); if (d > RADAR_MAX) continue;
+      const it = { d, b, p, st: ohState(p.o) }; (all[p.c] || (all[p.c] = [])).push(it); if (d <= 1000) list.push(it); } }
+    list.sort((u, v) => u.d - v.d); for (const k in all) all[k].sort((u, v) => u.d - v.d);
     const in500 = list.filter(x => x.d <= 500), open = in500.filter(x => ohState(x.p.o) === 'open').length;
     $('#sc-top').innerHTML = `<div class="sc-score"><span class="big" style="color:#e0a030">${aOk ? in500.length : '…'}</span>
       <span><span class="word">${in500.length === 1 ? 'place' : 'places'} within 500 m</span><span class="why">${!aOk ? 'loading…' : open ? `<span class="oh-open">${open} open ${whenT}</span>` : in500.length ? `none known to be open ${whenT}` : 'look further in “Places”'}</span></span></div>`;
+    // the nearest place that is open at the time on the clock (no hours in the map = maybe open); a closer closed one is mentioned
     for (const k of ['groceries', 'food', 'water', 'toilets', 'bike', 'stations']) {
-      const n = a.near[k], c = CATS[k], st = n && n.p ? ohState(n.p.o) : null;
-      f(aOk ? ic(c.icon, c.color) : off, aOk ? nd(n) : '…', n && st ? `${c.label.split(' ')[0].toLowerCase()} · <span class="oh-${st}">${st}</span>` : c.label, n && n.d > 1000 ? 'warn' : '');
+      const c = CATS[k], l = all[k] || [], o = l.find(x => x.st !== 'closed'), closer = o ? l.indexOf(o) : l.length, nm = o ? (o.p.n || DAY_TYPES[o.p.t] || c.label) : '';
+      const lbl = !aOk ? c.label : o ? `${esc(nm.length > 17 ? nm.slice(0, 16) + '…' : nm)}${o.st === 'open' ? ' · <span class="oh-open">open</span>' : ''}` : l.length ? `<span class="oh-closed">all ${l.length} closed</span> · ${c.label.split(' ')[0].toLowerCase()}` : `none within ${fmtDist(RADAR_MAX)}`;
+      const tip = o ? `${nm}${o.p.o ? ' · ' + o.p.o : ''} · ${whenT}` : `${c.label}: none open within ${fmtDist(RADAR_MAX)} at ${whenT}`;
+      facts.push(`<div class="fact${closer ? ' warn' : ''}" title="${esc(tip)}">${aOk ? ic(c.icon, c.color) : off}<div><b>${aOk ? (o ? distDir(o.d, o.b) : '—') : '…'}</b><small>${lbl}${closer && o ? ` · <span class="oh-closed">${closer} nearer closed</span>` : ''}</small></div></div>`);
     }
     $('#sc-summary').innerHTML = facts.join('');
     $('#sc-places').innerHTML = !aOk ? cardRow(off, 'Places within 1 km', '', w) : !list.length ? cardRow(off, 'No shops, cafés or water within 1 km', '', 'see the tiles above for the nearest')
