@@ -8,18 +8,26 @@ The switch in the top bar (`#mode-seg`, `setMode`, `settings.mode`, `isDay()`) p
 - **Night** (where to sleep): everything below about the score, hidden, quiet night, terrain …
 - **Day** (riding): layers `supply` ("Resupply": groceries incl. petrol stations, cafés & food, water, bike shops & repair,
   toilets = `DAY_SUPPLY`) and `sights` ("Sights & views": castles, ruins, museums, attractions, named peaks + viewpoints =
-  `DAY_SIGHTS`), both distance maps like "Useful places" (`NEAREST`, cut-off "Worth a detour" `settings.cutS`); plus `topo`
-  and `quiet` under riding names (`DAY_NAMES`: "Hills", "Busy roads"). Layers per mode: `MODE_LAYERS`. Switching mode with the
+  `DAY_SIGHTS`), both distance maps like "Useful places" (`NEAREST`, cut-off "Worth a detour" `settings.cutS`); plus `topo`,
+  `quiet`, `access` ("Path access", distance to a rideable path) and `view` ("View", height above the land outside forest).
+  A layer has the **same name and short description in both modes** (owner's wish; e.g. `quiet` is "Traffic noise"
+  everywhere); `DAY_NAMES` only overrides the legend explanation. Layers per mode: `MODE_LAYERS`. Switching mode with the
   button shows that mode's main layer (`MODE_HOME`: Best spots / Break spots) and sets the kind of spot (Camp / Break); a page
   reload keeps the last layer (`settings.nightLayer` / `settings.dayLayer`); a card row linking to a night layer switches back
-  to Night. Layer menu: Night lists all its layers; Day lists Break spots + Resupply and folds the rest under
-  "More layers to explore" (owner's wish: keep Day simple).
+  to Night. Layer menu: the same structure in both modes (owner's wish): the combined layer (Best spots with a tent /
+  Break spots), then "Why a spot scores" with every factor layer (`DAY_WHY` in Day). Descriptions: a few simple words.
+  Markers: dense categories only when zoomed in (`CATS[k].minZ`: benches 16, toilets 15, food 14).
+  From zoom 13 badges that would overlap are merged (`rebuildMarkers`, chain clustering within `CLUSTER_PX` = 28 px on
+  screen): one pill with the icons of the three most common kinds + a count, a soft outline around the group's area
+  (convex hull `hull()`, thick round stroke), hover = list, click = zoom in at least one step until it splits.
 - Per mode: markers (`NIGHT_CATS` / `DAY_CATS`), "Here" (`updateHoverDay`: nearest place of each kind with name, type and
   open/closed now), "Near you" (`findNearbyDay`: nearest of each resupply kind within 5 km) and the route section
   (`renderRouteDay`: "Plan the day").
-- Day layers also: `break` (home layer of Day, "Break spots": `breakScorer` = close to a path × ground × traffic ×
-  (0.15 + 0.85 × extras: shade at the plan time, view, bench/table/shelter, water; weights `settings.bShade/bView/bSeat/bWater/
-  bQuiet`), `shade` (`shadeGrid`: forest (`SHADE_H`, 20 m) and hills (elevation `g.elv`) towards the sun from SunCalc; not
+- Day layers also: `break` (home layer of Day, "Break spots": `breakScorer` = close to a path (`breakAccess`: full at the path,
+  ~half at 35 m, ~0 from 60 m, so breaks follow the paths instead of filling forests with dense tracks) × ground × traffic ×
+  extras (`breakMix`, owner's rule): 0.15 + 0.65 × (shade at the plan time, water, view; weights `settings.bShade/bWater/bView`)
+  = **at most 80 % without somewhere to sit**, + 0.1 for a bench/table/shelter, + another 0.1 with a bench **and** a view or
+  sight nearby (= 100 %); sitting/view switched off (weight 0) count as fulfilled; `bQuiet` for traffic), `shade` (`shadeGrid`: forest (`SHADE_H`, 20 m) and hills (elevation `g.elv`) towards the sun from SunCalc; not
   buildings), `swim`. View = height above the land within ~350 m (`promGrid` / `promAt`) outside forest, or a viewpoint.
   "Plan for" at the top of Settings (`settings.ohAt`, `ohWhen()`) = time for opening hours and shade, and the day a route
   plan starts.

@@ -225,6 +225,18 @@ details.more summary::-webkit-details-marker{display:none}
 .poi-badge{width:22px;height:22px;border-radius:50%;background:var(--c);border:2px solid #fff;display:flex;align-items:center;justify-content:center;
   color:#fff;box-shadow:0 1px 4px #0008;filter:saturate(.75) brightness(.95)}
 .poi-badge .ic{width:14px;height:14px;filter:none}
+/* merged badges: a pill with up to three kinds + count, centred on the group; the group's area gets a soft outline */
+.poi-cluster{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 5px 2px;
+  border-radius:12px;background:rgba(32,40,42,.55);backdrop-filter:blur(2px);border:1.5px solid rgba(255,255,255,.85);box-shadow:0 1px 4px #0006;cursor:pointer}
+.poi-cluster .ics{display:flex}
+.poi-cluster i{display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--c);
+  border:1.5px solid #fff;filter:saturate(.75) brightness(.95)}
+.poi-cluster i+i{margin-left:-8px}                 /* icons overlap */
+.poi-cluster i .ic{width:12px;height:12px;color:#fff;filter:none}
+.poi-cluster b{font-size:11px;font-weight:700;color:#fff;line-height:1.1;text-shadow:0 0 3px #000}
+.poi-area{pointer-events:none}
+.leaflet-tooltip.cl-tip{white-space:normal;width:max-content;max-width:230px;line-height:1.35}
+.cl-tip small{display:block;margin-top:4px;color:var(--muted)}
 .spot-pin.on{transform:scale(1.2)}
 .spot-pin.pt-break{background:#3fa89a;color:#fff}.spot-pin.pt-shop{background:#e0a030}
 .sc-types{margin-top:8px}
@@ -648,12 +660,12 @@ const CATS = {
   firepits:   { label: 'Fire pits',       icon: 'campfire', color: '#e8743a', group: 'attract', weight: 0.8 },
   // Day mode (riding): resupply and sights; not part of the night score. Rules: day_class() in build_tiles.py
   groceries:  { label: 'Groceries',       icon: 'basket', color: '#e0a030', group: 'day', weight: 1 },
-  food:       { label: 'Cafés & food',    icon: 'coffee', color: '#c7794a', group: 'day', weight: 0.8 },
+  food:       { label: 'Cafés & food',    icon: 'coffee', color: '#c7794a', group: 'day', weight: 0.8, minZ: 14 },
   bike:       { label: 'Bike shops & repair', icon: 'wrench', color: '#5aa0c8', group: 'day', weight: 0.5 },
-  toilets:    { label: 'Toilets',         icon: 'toilet', color: '#8a9ba8', group: 'day', weight: 0.3 },
+  toilets:    { label: 'Toilets',         icon: 'toilet', color: '#8a9ba8', group: 'day', weight: 0.3, minZ: 15 },
   sights:     { label: 'Sights',          icon: 'castle-turret', color: '#b07fd0', group: 'day', weight: 1 },
   stations:   { label: 'Train stations',  icon: 'train-simple', color: '#7d8fa3', group: 'day', weight: 0.3 },
-  benches:    { label: 'Benches & tables', icon: 'park', color: '#9c8a5e', group: 'day', weight: 1, minZ: 14 },   // many: markers only close up
+  benches:    { label: 'Benches & tables', icon: 'park', color: '#9c8a5e', group: 'day', weight: 1, minZ: 16 },   // very many: markers only close up
   swim:       { label: 'Swimming spots',  icon: 'person-simple-swim', color: '#3aa6c9', group: 'day', weight: 1 },
 };
 // what the Day map uses: resupply (with water taps) and sights (with viewpoints)
@@ -1336,6 +1348,9 @@ function buildFactorLuts() {
     : [[70, 170, 100, 80], [225, 205, 110, 110], [230, 150, 70, 150], [200, 60, 50, 190]];
 }
 buildFactorLuts();
+// path access (close = teal, far = orange; 0..250 m) and view (none = clear, wide = violet)
+const LUT_P = lut([[0, 40, 150, 140, 170], [0.12, 60, 170, 150, 110], [0.3, 225, 200, 130, 40], [0.6, 225, 150, 70, 110], [1, 200, 100, 50, 160]]);
+const LUT_VIEW = lut([[0, 150, 120, 210, 0], [0.2, 150, 120, 210, 30], [0.6, 130, 90, 200, 140], [1, 95, 55, 175, 220]]);
 const terrClass = c => { const f = LAND_FACTOR[c]; return f >= 1 ? 0 : f >= 0.7 ? 1 : f >= 0.3 ? 2 : 3; };
 
 const imgs = {};
@@ -1500,18 +1515,27 @@ function promGrid(g) {
   return g.prom = out;
 }
 // break score from its parts (the map layer and the card use the same rule)
+// Break score (owner's rule): shade, water and a view make a good spot, but at most 80 % without somewhere to sit;
+// a bench / table / shelter adds up to 10 %, and together with a view or sight nearby another 10 % (= 100 %).
+// The weights under Settings shape the first 80 %; sitting and view on top are all-or-nothing switches: a factor
+// switched off (weight 0) counts as fulfilled, so it never holds a spot back.
 function breakMix(acc, qLand, qNoise, shade, view, seat, water) {
-  const miss = (1 - settings.bShade * (shade > 0 ? 1 : 0)) * (1 - settings.bView * view) * (1 - settings.bSeat * seat) * (1 - settings.bWater * water);
-  return [1 - miss, acc * qLand * qNoise * (0.15 + 0.85 * (1 - miss))];
+  const g = 1 - (1 - settings.bShade * (shade > 0 ? 1 : 0)) * (1 - settings.bWater * water) * (1 - settings.bView * view);
+  const S = settings.bSeat ? seat : 1, V = settings.bView ? view : 1;
+  const extra = 0.15 + 0.65 * g + 0.2 * S * (0.5 + 0.5 * V);
+  return [(extra - 0.15) / 0.85, acc * qLand * qNoise * extra];
 }
 const dayNoisePen = db => Math.max(0, Math.min(1, (db - 45) / 20));   // daytime: bothersome from 45 dB, full from 65
 const breakWord = s => s < 0.15 ? 'poor' : s < 0.35 ? 'ok' : s < 0.6 ? 'good' : 'great';
 const viewWord = v => v >= 0.7 ? 'wide view' : v >= 0.35 ? 'some view' : 'no real view';
+// a break is right by the path you ride on: full at the path (the path map has ~47 m cells, so "10 m" = the cell with the
+// path), about half at 35 m, almost nothing from 60 m -> break spots follow the paths instead of filling whole forests
+const breakAccess = bike => bike < 0 ? 1 : Math.exp(-((Math.max(0, bike - 10) / 30) ** 2));
 function breakScorer(g = R, d = ohWhen()) {
   const f = g.fields, LD = g.land, HM = g.hmask, SH = shadeGrid(g, d), PR = promGrid(g);
   const near = (F, i, r) => F ? Math.max(0, 1 - F[i] / r) : 0;
   return (i, out) => {
-    const bike = HM && HM[i] ? g.hbike[i] * 10 : -1, acc = bike < 0 ? 1 : bike <= 30 ? 1 : Math.max(0, 1 - (bike - 30) / 170);   // right by a path
+    const bike = HM && HM[i] ? g.hbike[i] * 10 : -1, acc = breakAccess(bike);   // right by a path
     const lc = LD ? LD[i] : 0, qLand = BREAK_LAND[lc] ?? 1;
     const db = HM && HM[i] ? g.hdb[i] : -1, qNoise = db < 0 ? 1 : 1 - settings.bQuiet * dayNoisePen(db);
     const shade = SH ? SH[i] : -1;
@@ -1565,7 +1589,7 @@ function composite() {
 
   if (FACTOR_LAYERS.includes(settings.layer)) {
     const img = getImg('h', gw, gh), px = img.data, l = settings.layer;
-    const { hmask: HM, hid: HI, hdb: HD, slp: SL, hol: HO, land: LD, prot: PR } = R;
+    const { hmask: HM, hid: HI, hdb: HD, slp: SL, hol: HO, land: LD, prot: PR } = R, PV = l === 'view' ? promGrid(R) : null;
     for (let y = 0; y < gh; y++) {
       let i = (y + pad) * W + pad, o = y * gw * 4;
       for (let x = 0; x < gw; x++, i++, o += 4) {
@@ -1573,6 +1597,9 @@ function composite() {
         if (!cov[i]) T = null;
         else if (l === 'hidden') { if (HM && HM[i]) { T = LUT_H; li = HI[i]; } }
         else if (l === 'quiet') { if (HM && HM[i]) { T = LUT_Q; li = Math.max(0, Math.min(255, (HD[i] - 30) * 8.5 | 0)); } }
+        else if (l === 'access') { if (HM && HM[i]) { T = LUT_P; li = Math.min(255, R.hbike[i] * 10.2 | 0); } }
+        else if (l === 'view') { if (PV) { const lc = LD ? LD[i] : 0, v = Math.max(0, Math.min(1, (PV[i] - 4) / 16)) * (CANOPY[lc] && lc !== 3 ? 0.15 : 1);
+          T = LUT_VIEW; li = v * 255 | 0; } }
         else if (l === 'topo') { if (SL && SL[i]) {
           if (HO && HO[i]) { px[o] = HOLLOW_RGBA[0]; px[o + 1] = HOLLOW_RGBA[1]; px[o + 2] = HOLLOW_RGBA[2]; px[o + 3] = HOLLOW_RGBA[3]; continue; }
           T = LUT_T; li = Math.min(255, (SL[i] - 1) * 3.1875 | 0); } }                 // ¼° units: 20° = 80 -> 255
@@ -1644,20 +1671,74 @@ function render() {
 // ════════════════════════════════════════════════════════════════════
 // MARKERS (points of interest only — buildings are shown by the overlay)
 // ════════════════════════════════════════════════════════════════════
+// Badges that would overlap (closer than CLUSTER_PX on screen) are merged into one bigger badge with the icons of the
+// most common kinds + a count, and a soft outline around the area they cover (convex hull, drawn with a thick round
+// stroke so two or three places get a capsule shape). Hover lists them, click zooms in until they split up.
+const CLUSTER_PX = 28;
+function hull(pts) {                               // convex hull (monotone chain) of [x, y] points
+  const p = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (p.length < 3) return p;
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
+  for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of p.reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+const poiTip = p => { const c = CATS[p.c]; return `${ic(c.icon, c.color)}${esc(p.n || c.label)}` + (p.t ? `<br><small>${dayWhat(p, true)}</small>` : ''); };
 function rebuildMarkers() {
   markerLayer.clearLayers();
   if (!settings.markers || map.getZoom() < MARKER_MIN_Z) return;
-  const b = map.getBounds().pad(0.2), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast(), badges = map.getZoom() >= BADGE_MIN_Z;
-  const show = new Set(isDay() ? DAY_CATS : NIGHT_CATS);
+  const z = map.getZoom(), b = map.getBounds().pad(0.2), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast(), badges = z >= BADGE_MIN_Z;
+  const show = new Set(isDay() ? DAY_CATS : NIGHT_CATS), vis = [];
   for (const t of tiles.values()) for (const p of t.pois) {
-    if (p.lat < s || p.lat > n || p.lon < w || p.lon > e || settings.weights[p.c] === 0 || !show.has(p.c) || CATS[p.c].minZ > map.getZoom()) continue;
-    const c = CATS[p.c], tip = `${ic(c.icon, c.color)}${esc(p.n || c.label)}` + (p.t ? `<br><small>${dayWhat(p, true)}</small>` : '');
-    // zoomed in: round badges with the category icon; further out plain dots (fast, many points)
-    if (badges) L.marker([p.lat, p.lon], { icon: L.divIcon({ className: '', html: `<div class="poi-badge" style="--c:${c.color}">${ic(c.icon)}</div>`,
-        iconSize: [22, 22], iconAnchor: [11, 11] }), keyboard: false, zIndexOffset: -500 })
-      .bindTooltip(tip, { direction: 'top', offset: [0, -11] }).addTo(markerLayer);
-    else L.circleMarker([p.lat, p.lon], { renderer: poiRenderer, radius: 5, weight: 1.5, color: '#fff', fillColor: c.color, fillOpacity: 1 })
-      .bindTooltip(tip, { direction: 'top', offset: [0, -5] }).addTo(markerLayer);
+    if (p.lat < s || p.lat > n || p.lon < w || p.lon > e || settings.weights[p.c] === 0 || !show.has(p.c) || CATS[p.c].minZ > z) continue;
+    if (!badges) {                               // further out: plain dots (fast, many points)
+      L.circleMarker([p.lat, p.lon], { renderer: poiRenderer, radius: 5, weight: 1.5, color: '#fff', fillColor: CATS[p.c].color, fillOpacity: 1 })
+        .bindTooltip(poiTip(p), { direction: 'top', offset: [0, -5] }).addTo(markerLayer);
+    } else vis.push(p);
+  }
+  if (!badges) return;
+  // chain clustering (single linkage on a screen grid): places closer than CLUSTER_PX to any member join the group,
+  // so a zoo or a market square becomes one group with its real shape
+  const G = CLUSTER_PX, P = vis.map(p => map.project([p.lat, p.lon], z)), par = vis.map((_, i) => i), cells = new Map();
+  const find = i => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; };
+  P.forEach((pt, i) => {
+    const gx = Math.floor(pt.x / G), gy = Math.floor(pt.y / G);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++)
+      for (const j of cells.get(`${gx + dx},${gy + dy}`) || []) if (Math.hypot(P[j].x - pt.x, P[j].y - pt.y) < G) par[find(i)] = find(j);
+    const k = `${gx},${gy}`; (cells.get(k) || cells.set(k, []).get(k)).push(i);
+  });
+  const groups = new Map();
+  vis.forEach((p, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, { m: [], pts: [] }); const g = groups.get(r); g.m.push(p); g.pts.push([P[i].x, P[i].y]); });
+  const clusters = [...groups.values()];
+  for (const c of clusters) {
+    if (c.m.length === 1) {
+      const p = c.m[0], cat = CATS[p.c];
+      L.marker([p.lat, p.lon], { icon: L.divIcon({ className: '', html: `<div class="poi-badge" style="--c:${cat.color}">${ic(cat.icon)}</div>`,
+          iconSize: [22, 22], iconAnchor: [11, 11] }), keyboard: false, zIndexOffset: -500 })
+        .bindTooltip(poiTip(p), { direction: 'top', offset: [0, -11] }).addTo(markerLayer);
+      continue;
+    }
+    const kinds = Object.entries(c.m.reduce((o, p) => (o[p.c] = (o[p.c] || 0) + 1, o), {})).sort((u, v) => v[1] - u[1]);
+    const main = CATS[kinds[0][0]].color;
+    // outline around the area: hull of the members, thick round stroke = padding around them
+    const ring = hull(c.pts).map(q => map.unproject(q, z));
+    L.polygon(ring, { color: main, weight: 22, opacity: 0.2, fillColor: main, fillOpacity: 0.16, lineJoin: 'round', lineCap: 'round',
+      interactive: false, className: 'poi-area' }).addTo(markerLayer);
+    L.polygon(ring, { color: main, weight: 2, opacity: 0.85, dashArray: '5 4', fill: false, interactive: false }).addTo(markerLayer);
+    const cx = c.pts.reduce((a, q) => a + q[0], 0) / c.pts.length, cy = c.pts.reduce((a, q) => a + q[1], 0) / c.pts.length;
+    const icons = kinds.slice(0, 3).map(([k]) => `<i style="--c:${CATS[k].color}">${ic(CATS[k].icon)}</i>`).join('');
+    const tip = kinds.map(([k, nk]) => `${ic(CATS[k].icon, CATS[k].color)}${nk} × ${CATS[k].label}`).join('<br>') +
+      (named => named.length ? '<small>' + named.slice(0, 5).map(p => esc(p.n)).join('<br>') + (named.length > 5 ? `<br>+ ${named.length - 5} more` : '') + '</small>' : '')(c.m.filter(p => p.n));
+    const bounds = L.latLngBounds(c.m.map(p => [p.lat, p.lon]));
+    L.marker(map.unproject([cx, cy], z), { icon: L.divIcon({ className: '', html: `<div class="poi-cluster"><span class="ics">${icons}</span><b>${c.m.length}</b></div>`,
+        iconSize: null, iconAnchor: [0, 0] }), keyboard: false, zIndexOffset: -400, title: `${c.m.length} places` })
+      .bindTooltip(tip, { direction: 'top', offset: [0, -16], className: 'cl-tip' })
+      .on('click', () => {                      // zoom in (at least one step) until the group splits up
+        if (map.getZoom() >= map.getMaxZoom()) return;
+        const fit = map.getBoundsZoom(bounds.pad(0.3));
+        map.setView(bounds.getCenter(), Math.min(map.getMaxZoom(), z + 3, Math.max(z + 1, fit)));
+      })
+      .addTo(markerLayer);
   }
 }
 
@@ -1700,10 +1781,11 @@ function updateHover() {
   else if (settings.layer === 'hidden') setLegendMark(R.hmask && R.hmask[i] ? R.hid[i] / 255 : null);
   else if (settings.layer === 'quiet') setLegendMark(R.hmask && R.hmask[i] ? (R.hdb[i] - 30) / 30 : null);
   else if (settings.layer === 'topo') setLegendMark(R.slp && R.slp[i] ? (R.slp[i] - 1) / 80 : null);
+  else if (settings.layer === 'access') setLegendMark(R.hmask && R.hmask[i] ? R.hbike[i] * 10 / 250 : null);
   else if (settings.layer === 'terrain') setLegendMark(R.land ? (terrClass(R.land[i]) + 0.5) / 4 : null);
   else if (settings.layer === 'density') setLegendMark(R.density ? Math.log1p(Math.max(0, R.density[i])) / Math.log1p(DMAX) : null);
   else setLegendMark(nearestT(i));
-  rows.push(`<div class="irow" data-layer="score"><span>${ic('star', 'var(--blaze)')}Spot score</span><b>${has ? dv(scoreWord(s), `${Math.round(s * 100)} %`) : none}</b></div>`);
+  rows.push(`<div class="irow" data-layer="score"><span>${ic('tent', 'var(--blaze)')}Spot score</span><b>${has ? dv(scoreWord(s), `${Math.round(s * 100)} %`) : none}</b></div>`);
   rows.push(row(has && R.land ? landIc(R.land[i]) : ic('circle-dashed'), 'Terrain', has && R.land ? LAND[R.land[i]][0] : landVal));
   if (has && R.slp && R.slp[i]) { const d = (R.slp[i] - 1) / 4, sl = slopeAt(hoverLL.lat, hoverLL.lng), ho = isHollow(sl);
     rows.push(row(topoIc(d, ho), 'Topography', dv(ho ? 'cold hollow' : slopeWord(d).split(',')[0], `${Math.round(d)}°`))); }
@@ -2212,7 +2294,7 @@ function breakAt(s, a) {                         // break parts at a point (exac
   const hd = hideAt(s.lat, s.lon), lc = landAt(s.lat, s.lon), when = ohWhen(), sh = shadeAt(s.lat, s.lon, when), prom = promAt(s.lat, s.lon);
   if (!hd || lc < 0 || !a || a.missing) return null;
   const nr = (k, r) => a.near[k] ? Math.max(0, 1 - a.near[k].d / r) : 0;
-  const acc = hd.bike <= 30 ? 1 : Math.max(0, 1 - (hd.bike - 30) / 170), qLand = BREAK_LAND[lc] ?? 1, qNoise = 1 - settings.bQuiet * dayNoisePen(hd.db);
+  const acc = breakAccess(hd.bike), qLand = BREAK_LAND[lc] ?? 1, qNoise = 1 - settings.bQuiet * dayNoisePen(hd.db);
   const forest = CANOPY[lc] && lc !== 3;
   const view = Math.max(prom === null ? 0 : Math.max(0, Math.min(1, (prom - 4) / 16)) * (forest ? 0.15 : 1), nr('viewpoints', 250), nr('sights', 150) * 0.6);
   const seat = Math.max(nr('benches', 150), nr('shelters', 150)), water = Math.max(nr('water', 400), nr('rivers', 200), nr('swim', 300));
@@ -2288,10 +2370,11 @@ function updateDayCard() {
     row(ic('ear', '#b39ddb'), 'Away from traffic', pct(b.qNoise), `${b.hd.db} dB · ${noiseWord(b.hd.db)}`),
     row(ic('umbrella-simple', '#6f8fc0'), 'Shade', b.shade ? 'yes' : 'no', sh && sh.down ? 'the sun is down' : `${whenT}${settings.bShade ? '' : ' · not counted'}`),
     row(ic('eye', 'var(--good)'), 'View', pct(b.view), b.prom !== null ? `${Math.round(b.prom)} m above the land within 350 m` : 'no elevation data'),
-    row(ic('park', CATS.benches.color), 'Somewhere to sit', pct(b.seat), 'bench, table or shelter within 150 m'),
+    row(ic('park', CATS.benches.color), 'Somewhere to sit', pct(b.seat), 'bench or shelter nearby · none: max 80 %'),
     row(ic('drop', CATS.water.color), 'Water', pct(b.water), 'tap, river, lake or bathing spot'),
   ].join('');
-  setSum('bscore', b ? (b.acc < 0.7 ? `far from a path (${fmtDist(b.hd.bike)})` : `extras ${pct(b.bonus)}`) : '…');
+  setSum('bscore', b ? (b.acc < 0.7 ? `far from a path (${fmtDist(b.hd.bike)})`
+    : settings.bSeat && b.seat < 0.3 ? `no bench nearby: at most 80 %` : `extras ${pct(b.bonus)}`) : '…');
   $('#sc-bnear').innerHTML = ['benches', 'shelters', 'water', 'rivers', 'swim', 'viewpoints', 'sights'].map(k =>
     cardRow(ic(CATS[k].icon, CATS[k].color), CATS[k].label, aOk ? (a.near[k] ? distDir(a.near[k].d, a.near[k].b) : '—') : '…', nameLine(k, a.near[k]))).join('');
   setSum('bnear', !aOk ? 'loading…' : ['benches', 'water', 'swim', 'viewpoints'].filter(k => a.near[k]).sort((u, v) => a.near[u].d - a.near[v].d).slice(0, 3)
@@ -2589,46 +2672,51 @@ function drawLegend(sel, table, op = settings.opacity) {
 function setLabels(sel, items) { $(sel).innerHTML = items.map(([t, s]) => `<span style="left:${t * 100}%">${s}</span>`).join(''); }
 // Map layers: "Best spots" (everything combined) and the factors behind it, so you can see why a spot scores
 const LAYERS = {
-  score:   { name: 'Best spots',      icon: 'star',           col: 'var(--blaze)', title: 'Best spots',       desc: 'Everything combined: where to sleep',
+  score:   { name: 'Best spots',      icon: 'tent',           col: 'var(--blaze)', title: 'Best spots',       desc: 'Where to sleep',
              note: 'Green = hidden, quiet, dry, allowed and close to useful places. Adjust what counts under Settings.' },
-  hidden:  { name: 'Hidden',          icon: 'eye-slash',      col: 'var(--good)',  title: 'Hidden',           desc: 'Can people on paths, roads or in houses see you?',
+  hidden:  { name: 'Hidden',          icon: 'eye-slash',      col: 'var(--good)',  title: 'Hidden',           desc: 'Out of sight of paths and houses',
              note: 'Forest, scrub, hedges and hills hide you; open fields don\'t. The biggest part of the score.', zoom: true },
-  quiet:   { name: 'Quiet night',     icon: 'ear',            col: '#b39ddb',      title: 'Road noise', desc: 'Traffic noise at night, blocked by forest and hills',
+  quiet:   { name: 'Traffic noise',   icon: 'ear',            col: '#b39ddb',      title: 'Traffic noise', desc: 'Road and railway noise',
              note: 'Full penalty from 55 dB. Forest, buildings and hills dampen the noise. Road levels calibrated against DLR Noise2NAKO (CC BY 4.0).', zoom: true },
-  topo:    { name: 'Topography',      icon: 'mountains',      col: 'var(--mid)',   title: 'Topography',       desc: 'Slopes, and cold hollows in blue',
+  topo:    { name: 'Topography',      icon: 'mountains',      col: 'var(--mid)',   title: 'Topography',       desc: 'Slopes and cold hollows',
              note: 'Slope from a 30 m elevation model, so small flat patches may not show. Blue = cold hollow: cold air and dew on clear nights.', zoom: true },
-  terrain: { name: 'Terrain & rules', icon: 'tree-evergreen', col: 'var(--good)',  title: 'Terrain & rules',  desc: 'Ground for a tent, and protected areas',
+  terrain: { name: 'Terrain & rules', icon: 'tree-evergreen', col: 'var(--good)',  title: 'Terrain & rules',  desc: 'Ground and protected areas',
              note: 'Colour = how good the ground is for a tent. Hatched = protected: red no camping, orange check the rules.', zoom: true },
-  density: { name: 'Houses',          icon: 'house',          col: '#d64545',      title: 'Houses per km²',   desc: 'How built-up the area is',
+  density: { name: 'Houses',          icon: 'house',          col: '#d64545',      title: 'Houses per km²',   desc: 'How built-up it is',
              note: 'Houses per km², smoothed. Hunting stands are shown as markers.' },
-  nearby:  { name: 'Useful places',   icon: 'drop',           col: '#22b8d6',      title: 'Useful places', desc: 'Water, huts, fire pits and more nearby',
+  nearby:  { name: 'Useful places',   icon: 'drop',           col: '#22b8d6',      title: 'Useful places', desc: 'Water, huts, fire pits',
              note: 'Distance to the nearest useful place, weighted under Settings.' },
   // Day mode (riding)
-  break:   { name: 'Break spots',     icon: 'park',           col: '#3fa89a',      title: 'Break spots',   desc: 'Shade, a view, a bench, water, close to a path',
+  break:   { name: 'Break spots',     icon: 'park',           col: '#3fa89a',      title: 'Break spots',   desc: 'Where to take a break',
              note: 'Stronger = better break. Shade is for the time under Settings → Plan for (now by default); what counts is under Settings → Break.', mode: 'day', zoom: true },
-  shade:   { name: 'Shade',           icon: 'umbrella-simple', col: '#6f8fc0',     title: 'Shade',         desc: 'Where forests or hills block the sun',
+  shade:   { name: 'Shade',           icon: 'umbrella-simple', col: '#6f8fc0',     title: 'Shade',         desc: 'Shade from forest and hills',
              note: 'Blue = shade from forests and hills, yellow = sun, at the time under Settings → Plan for. Single trees, hedges and buildings are not in the map.', mode: 'day', zoom: true },
-  supply:  { name: 'Resupply',        icon: 'basket',         col: '#e0a030',      title: 'Resupply',      desc: 'Groceries, cafés, water, bike repair, toilets',
+  supply:  { name: 'Resupply',        icon: 'basket',         col: '#e0a030',      title: 'Resupply',      desc: 'Shops, cafés, water, toilets',
              note: 'Distance to the nearest shop, café, water tap, bike shop or toilet, weighted under Settings → Resupply. Hover a marker for opening hours.', mode: 'day' },
-  sights:  { name: 'Sights & views',  icon: 'castle-turret',  col: '#b07fd0',      title: 'Sights & views', desc: 'Castles, ruins, museums, peaks and viewpoints',
+  sights:  { name: 'Sights & views',  icon: 'castle-turret',  col: '#b07fd0',      title: 'Sights & views', desc: 'Castles, museums, viewpoints',
              note: 'Distance to the nearest sight or viewpoint.', mode: 'day' },
-  swim:    { name: 'Swimming spots',  icon: 'person-simple-swim', col: '#3aa6c9',  title: 'Swimming spots', desc: 'Bathing places and swimming areas',
+  swim:    { name: 'Swimming spots',  icon: 'person-simple-swim', col: '#3aa6c9',  title: 'Swimming spots', desc: 'Bathing places',
              note: 'Mapped bathing places only; other lakes and rivers may be fine too, check the rules and the water.', mode: 'day' },
+  access:  { name: 'Path access',     icon: 'bicycle',        col: '#e8743a',      title: 'Path access',    desc: 'Distance to a path or track',
+             note: 'Distance to the nearest road, track or path you can ride on. Break spots count only right by a path.', mode: 'day', zoom: true },
+  view:    { name: 'View',            icon: 'binoculars',     col: '#9b7fe0',      title: 'View',           desc: 'Higher than the land around',
+             note: 'Height above the land within ~350 m, outside forest (trees block the view). Viewpoints and sights are in “Sights & views”.', mode: 'day', zoom: true },
 };
-// Topography and road noise are also on the Day map, under names that fit riding
+// Same name and description in both modes (owner's wish); only the legend explanation can differ by day
 const DAY_NAMES = {
-  topo:  { name: 'Hills',       desc: 'Steep climbs and descents', title: 'Hills (slope)', note: 'Slope from a 30 m elevation model: red = steep. Roads may run on gentler lines than the ground around them.' },
-  quiet: { name: 'Busy roads',  desc: 'Traffic noise: loud = busy road nearby', title: 'Traffic noise', note: 'Night-time traffic noise from road type and railways; loud areas mean busy roads.' },
+  topo:  { note: 'Slope from a 30 m elevation model: red = steep. Roads may run on gentler lines than the ground around them.' },
+  quiet: { note: 'Traffic noise from road type and railways, calibrated against DLR Noise2NAKO (CC BY 4.0). By day it bothers from 45 dB.' },
 };
-const MODE_LAYERS = { night: ['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'], day: ['break', 'supply', 'shade', 'sights', 'swim', 'topo', 'quiet'] };
+const DAY_WHY = ['shade', 'view', 'access', 'quiet', 'topo', 'supply', 'sights', 'swim'];
+const MODE_LAYERS = { night: ['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'], day: ['break', ...DAY_WHY] };
 const MODE_HOME = { night: 'score', day: 'break' };
 const layerInfo = k => isDay() && DAY_NAMES[k] ? { ...LAYERS[k], ...DAY_NAMES[k] } : LAYERS[k];
-const FACTOR_LAYERS = ['hidden', 'quiet', 'topo', 'terrain'];
+const FACTOR_LAYERS = ['hidden', 'quiet', 'topo', 'terrain', 'access', 'view'];
 function buildLayerMenu() {
   const item = k => { const L_ = layerInfo(k); return `<button class="lm-item${settings.layer === k ? ' on' : ''}" data-l="${k}">${ic(L_.icon, L_.col)}<b>${L_.name}</b><small>${L_.desc}</small></button>`; };
+  // same structure in both modes: the combined layer, then everything behind its score
   $('#layer-menu').innerHTML = isDay()
-    ? `<div class="lm-h">Day: on the bike</div>${['break', 'supply'].map(item).join('')}` +
-      `<details class="lm-more"${['break', 'supply'].includes(settings.layer) ? '' : ' open'}><summary class="lm-h">More layers to explore</summary>${['shade', 'sights', 'swim', 'topo', 'quiet'].map(item).join('')}</details>`
+    ? `<div class="lm-h">Day: where to rest</div>${item('break')}<div class="lm-h">Why a spot scores</div>${DAY_WHY.map(item).join('')}`
     : `<div class="lm-h">Night: where to sleep</div>${item('score')}<div class="lm-h">Why a spot scores</div>` +
       ['hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].map(item).join('');
   $('#layer-menu').querySelectorAll('.lm-item').forEach(b => b.onclick = () => { setLayer(b.dataset.l); showLayerMenu(false); });
@@ -2664,6 +2752,12 @@ function updateLegends() {
     for (let i = 0; i < 256; i++) T.set(TERR[Math.min(3, i >> 6)], i * 4);
     drawLegend('#leg', T, settings.opacity + 0.15);
     setLabels('#leg-labels', [[0, 'good'], [0.375, 'fair'], [0.625, 'poor'], [1, 'no']]);
+  } else if (l === 'access') {
+    drawLegend('#leg', LUT_P, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'on a path'], [0.24, '60 m'], [0.48, '120 m'], [1, '250 m+']]);
+  } else if (l === 'view') {
+    drawLegend('#leg', LUT_VIEW, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'no view'], [0.5, 'some'], [1, 'wide view']]);
   } else if (l === 'break') {
     drawLegend('#leg', LUT_B, settings.opacity + 0.15);
     setLabels('#leg-labels', [[0, 'poor'], [0.5, 'ok'], [1, 'great']]);
