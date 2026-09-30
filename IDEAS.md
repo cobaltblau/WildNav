@@ -174,6 +174,7 @@ that's already loaded, plus one small library.
     verify the exact format and length limits before building.
   - Needs: a simple "straight line / corridor" search for the direction-of-travel mode before the real
     route exists. The amenity data is there now (Day mode, below).
+  - → Now planned as the **route window** of the new structure, see section 7.
 - ✅ **Supply points along the route** (Day mode): groceries (incl. petrol stations), cafés & food, water,
   bike shops & repair, toilets, sights, with opening hours; stops per village, longest stretch without
   groceries / water, nights from Night mode in between.
@@ -230,6 +231,67 @@ that's already loaded, plus one small library.
 5. ✅ GPX route planning (nights per day distance) and weather (Open-Meteo, per night in the spot card).
    Supply points along the route: done as the Day mode (6).
 6. ✅ Day mode (riding): resupply with opening hours, sights, hills, busy roads; supplies along a GPX route.
+7. **Next:** simplify into four activities + the route window (section 7); first as a clickable mockup
+   (`mockups/route_concept.html`), then built into the app.
+
+## 7. Simplify: four activities on the same level + a route window (concept, 2026-09-30)
+
+**Problem:** three switches answer the same question "what am I looking for?" — the Night/Day switch, the layer
+menu and the spot-type button (camp / break / resupply) — and the route lives in the side panel. Too many ways in.
+
+**Idea: one choice, four activities**, as tabs in the top bar, each with the same basic usability
+(map layer, what a click opens, what "near me / here" finds):
+
+| Activity | Map shows | Click opens | "Near me / here" |
+|---|---|---|---|
+| **Sleep** (tent) | Best spots | camp card | best camp spots |
+| **Break** (bench) | Break spots | break card | best break spots |
+| **Resupply** (basket) | shops, water, food; open/closed at the chosen time | nearest places + opening hours | nearest open places |
+| **Route** (path) | route + its nights, breaks, stops | route window (timeline) | — |
+
+- **No Night/Day switch**: the activity says it. The time for opening hours and shade ("Plan for") becomes one
+  small clock button next to the tabs.
+- **The "why" layers move into the legend** of the current activity ("Why this score ▸ Hidden · Traffic noise ·
+  Topography …"), instead of being top-level choices. They explain, they don't switch modes.
+- **Consistency:** choosing an activity sets the map layer, the markers and the card type; switching a spot's type
+  in its card switches the activity (and the map) too. Saved spots keep their type.
+- **Resupply needs more work** to be equal to the others: its own card (nearest open shop / water / food with
+  distance and hours), grouping per village, "open when I get there" on a route.
+
+**Route window** (bottom of the screen, collapsible; full width on desktop, a sheet on phones):
+- **Plan without routing software:** start (search or map click) and either a **destination** or a **direction +
+  total distance**, plus **km per day**. Draw a straight corridor; distances × ~1.3 detour factor. Place a night
+  at the end of each day's stretch (best camp spot in the corridor ± 5 km, plus a backup), breaks every ~2–3 h,
+  resupply stops, and flag long gaps without water / food.
+- **Real routing elsewhere:** "Open in bikerouter.de" with start, nights and stops as via points; load the GPX
+  from there (or Komoot etc.) back in → the timeline switches from corridor estimate to the exact track.
+- **Timeline:** km from left to right, **one box per day** (day number, km, climb if known), a **tent** at each
+  night (with its score), break and resupply icons along the day, warnings for long gaps. Hover = highlight on
+  the map; click = open that spot's card; drag a tent along the line = move the night (re-picks the best spot).
+- **Functions in the window:** Plan · Nights/day km · Start date & time · Speed · Open in bikerouter.de · Load GPX ·
+  Export GPX · Clear.
+- **GPX:** loaded in the Route tab (or via "Load GPX" there); the route then stays on the map in every tab (faded),
+  so Sleep / Break / Resupply can show what is near it. It is only edited in the Route tab.
+- **Timeline, more per day** (mockup v2): elevation profile along the route and ↑ climb per day, arrival time vs.
+  **sunset** (red when you arrive in the last half hour of daylight or later), **weather per night** under each tent,
+  a **backup spot** (faint tent) next to each generated night, longest stretch without open food in red.
+
+**My spots** (owner: "is there a list somewhere with all of them?"): a "★ My spots (n)" button in the top bar opens
+a list of all saved spots: filter All / Sleep / Break / Resupply, stars, where it is relative to the route ("in the
+route · km 41 · night 1" or "5 km from the route"), click = fly there. Drag to **reorder**, tick = **in the route**.
+
+**Routes mixing saved and generated stops:**
+- Ticked saved spots are **fixed** stops; the planner fills the gaps: saved night spots split the trip into sections
+  and each section gets as many generated nights as its length / km-per-day needs; generated breaks every ~2.5 h
+  unless a saved break is near; resupply along the way.
+- **"Route through ticked spots, in this order"** builds the route start → ticked spots in list order → destination.
+- In the timeline and on the map: **saved** = ★, **generated** = dashed ring. Click a stop: generated → "Keep (save)"
+  (becomes a saved spot, fixed in the route) or "Other spot" (next best nearby); saved → "Take out of the route".
+  Drag a generated night along the timeline to move it.
+- Tested in `mockups/route_concept.html` (v2). Also checked: bikerouter.de accepts our link
+  (`#map=…&lonlats=lon,lat;lon,lat;…`) and routes it (it adds its own `&profile=…`).
+- **Open questions:** is the corridor estimate useful enough before real routing? Timeline on phones (horizontal
+  scroll or a vertical list of days)? Should overlapping stops in the timeline stack (they can collide now)?
 
 ---
 

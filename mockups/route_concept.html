@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WildNav – route concept (mockup)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5/latin-400.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow@5/latin-600.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/barlow-semi-condensed@5/latin-700.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- MOCKUP ONLY (IDEAS.md 7): invented data. Four activities, "My spots" list, routes mixing saved and generated stops. -->
+<style>
+:root{--slate:#20282a;--surface:#2a3437;--line:#3a4749;--ink:#e6ebe8;--muted:#a4b3b0;--dim:#6b7a77;--blaze:#f2c14e;
+  --sleep:#f2c14e;--break:#3fa89a;--supply:#e0a030;--route:#e8743a;--bad:#e07a5f;--good:#6cc38a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Barlow,system-ui,sans-serif;font-size:13px;color:var(--ink);background:var(--slate);position:fixed;inset:0;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
+.ic{width:1.3em;height:1.3em;flex-shrink:0;vertical-align:-.28em;filter:saturate(.72) brightness(.94)}
+header{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--line);z-index:1003}
+.brand{font-family:"Barlow Semi Condensed";font-weight:700;font-size:19px;margin-right:6px}
+.search{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 9px;width:200px;color:var(--muted)}
+.tabs{display:flex;gap:4px;margin-left:8px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px}
+.tab{display:flex;align-items:center;gap:6px;border:0;background:none;padding:5px 12px;border-radius:7px;cursor:pointer;color:var(--muted);font-weight:600}
+.tab .ic{width:18px;height:18px}
+.tab.on{background:var(--slate);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line),inset 0 -2px 0 var(--c)}
+.tab.on .ic{color:var(--c)}
+.chip{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 9px;cursor:pointer}
+.chip.on{border-color:var(--blaze)}
+.chip b{font-weight:700}
+.spacer{flex:1}
+.wrap{flex:1;position:relative}
+#map{position:absolute;inset:0;background:#cfd6d3}
+.leaflet-tile-pane{filter:grayscale(1) brightness(1.06) contrast(.88)}
+.card{position:absolute;background:var(--slate);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 5px #0006;z-index:1000}
+.legend{left:10px;top:10px;width:250px;padding:9px 11px}
+h3{font-family:"Barlow Semi Condensed";font-size:15px;display:flex;align-items:center;gap:7px}
+.legend .bar{height:9px;border-radius:3px;margin:7px 0 3px}
+.legend .lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.legend details{margin-top:8px;font-size:12px}
+.legend summary{cursor:pointer;color:var(--muted);list-style:none}
+.legend summary::before{content:"▸ "}.legend details[open] summary::before{content:"▾ "}
+.why{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.why span{display:flex;align-items:center;gap:4px;background:var(--surface);border-radius:12px;padding:2px 8px 2px 5px;font-size:11.5px}
+.note{font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:6px}
+/* My spots */
+#spots{left:10px;top:10px;width:300px;padding:10px 11px;display:none;max-height:calc(100% - 260px);overflow:auto}
+#spots.open{display:block}
+.filters{display:flex;gap:4px;margin:8px 0 4px}
+.filters button{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:1px 9px;cursor:pointer;color:var(--muted);font-size:12px}
+.filters button.on{color:var(--ink);border-color:var(--muted)}
+.sp{display:grid;grid-template-columns:14px 22px 1fr 26px;gap:6px;align-items:center;padding:6px 4px;border-radius:7px;cursor:pointer}
+.sp:hover{background:var(--surface)}
+.sp.drag{opacity:.4}
+.sp .h{color:var(--dim);cursor:grab}.sp .h .ic{width:14px;height:14px}
+.sp .t .ic{width:20px;height:20px}
+.sp b{font-weight:600;display:block;line-height:1.2}
+.sp small{color:var(--muted);font-size:11.5px}
+.sp small.on{color:var(--route)}
+.sp .st{color:var(--blaze);font-size:11px;margin-left:3px}
+.tick{width:24px;height:24px;border-radius:6px;border:1.5px solid var(--line);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:transparent}
+.tick.on{background:var(--route);border-color:var(--route);color:#fff}
+.tick .ic{width:15px;height:15px;filter:none}
+.mk{position:relative;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--c);border:2px solid #fff;
+  box-shadow:0 1px 4px #0008;color:#fff;transition:transform .12s}
+.mk .ic{width:15px;height:15px;filter:none}
+.mk.hi{transform:scale(1.35);box-shadow:0 0 0 4px #fff6,0 1px 6px #000}
+.mk.auto{border:2px dashed #fff}
+.mk.ghost{opacity:.55;transform:scale(.8)}
+.mk.saved::after{content:"★";position:absolute;right:-7px;top:-8px;font-size:11px;color:var(--blaze);text-shadow:0 0 2px #000}
+.mk.night{width:30px;height:30px;color:#1d1a10}
+.mk small{position:absolute;top:-15px;font-size:10.5px;font-weight:700;color:#fff;text-shadow:0 0 3px #000;white-space:nowrap}
+/* route window */
+#rw{left:10px;right:10px;bottom:10px;padding:10px 12px 8px;transition:transform .2s}
+#rw.min{transform:translateY(calc(100% - 42px))}
+.rw-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rw-head h3{font-size:16px;margin-right:6px;cursor:pointer}
+.rw-head label{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px}
+.rw-head input,.rw-head select{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 7px;color:var(--ink);width:100px}
+.rw-head input.num{width:50px}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:2px}
+.seg button{border:0;background:none;padding:2px 9px;border-radius:5px;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--slate);color:var(--ink)}
+.btn{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--blaze);border-color:var(--blaze);color:#1d1a10}
+.btn.small{padding:1px 8px;font-size:12px}
+.btn .ic{width:16px;height:16px}
+.x{margin-left:auto;background:none;border:0;color:var(--muted);cursor:pointer;display:flex}
+.bar2{display:flex;align-items:center;gap:8px;margin-top:6px;min-height:24px;font-size:12px;color:var(--muted)}
+.bar2 .sel{color:var(--ink);display:flex;align-items:center;gap:6px}
+.tl-wrap{overflow:hidden;margin-top:6px}
+.tl{position:relative;height:150px}
+.day{position:absolute;top:0;height:128px;border:1.5px solid var(--line);border-radius:8px;background:#ffffff06}
+.day .t{position:absolute;left:7px;top:4px;right:6px;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.day .t b{color:var(--ink);font-weight:600}
+.day .t .late{color:var(--bad)}
+.prof{position:absolute;left:0;top:70px;height:48px;pointer-events:none}
+.line{position:absolute;top:66px;height:4px;border-radius:2px;background:var(--route)}
+.gap{position:absolute;top:72px;height:4px;border-radius:2px;background:var(--bad)}
+.gapl{position:absolute;top:77px;font-size:10.5px;color:var(--bad);white-space:nowrap}
+.it{position:absolute;top:54px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer}
+.it .mk{width:24px;height:24px}
+.it .mk.night{width:30px;height:30px;cursor:grab}
+.it .cap{font-size:10.5px;color:var(--muted);white-space:nowrap;margin-top:1px}
+.it.nightit{top:22px}
+.it.nightit .cap{color:var(--ink)}
+.it .wx{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:2px;white-space:nowrap}
+.it .wx .ic{width:13px;height:13px}
+.it.sel .mk{box-shadow:0 0 0 3px var(--blaze)}
+.axis{position:absolute;top:132px;left:0;right:0;height:14px;font-size:10.5px;color:var(--dim)}
+.axis span{position:absolute;transform:translateX(-50%)}
+.hint{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--slate);border:1px solid var(--blaze);border-radius:8px;
+  padding:6px 12px;z-index:1004;display:none}
+.leaflet-tooltip{background:var(--slate);color:var(--ink);border:1px solid var(--line);font-family:Barlow}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-tent" viewBox="0 0 256 256" fill="currentColor"><path d="M136,192H8L72,48Z" opacity="0.2"/><path d="M255.31,188.75l-64-144A8,8,0,0,0,184,40H72a8,8,0,0,0-7.27,4.69.21.21,0,0,0,0,.06l0,.12,0,0L.69,188.75A8,8,0,0,0,8,200H248a8,8,0,0,0,7.31-11.25ZM64,184H20.31L64,85.7Zm16,0V85.7L123.69,184Zm61.2,0L84.31,56H178.8l56.89,128Z"/></symbol>
+<symbol id="i-park" viewBox="0 0 256 256" fill="currentColor"><path d="M224,160H160L192,32Z" opacity="0.2"/><path d="M232,192H200V168h24a8,8,0,0,0,7.76-9.94l-32-128a8,8,0,0,0-15.52,0l-32,128A8,8,0,0,0,160,168h24v24H120V176h8a8,8,0,0,0,0-16h-8V144h8a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16h8v16H40a8,8,0,0,0,0,16h8v16H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16ZM192,65l21.75,87h-43.5ZM64,144h40v16H64Zm0,32h40v16H64Zm52-80A28,28,0,1,0,88,68,28,28,0,0,0,116,96Zm0-40a12,12,0,1,1-12,12A12,12,0,0,1,116,56Z"/></symbol>
+<symbol id="i-basket" viewBox="0 0 256 256" fill="currentColor"><path d="M232,88,216.93,201.06A8,8,0,0,1,209,208H47a8,8,0,0,1-7.93-6.94L24,88Z" opacity="0.2"/><path d="M136,120v56a8,8,0,0,1-16,0V120a8,8,0,0,1,16,0Zm36.84-.8-5.6,56A8,8,0,0,0,174.4,184a7.32,7.32,0,0,0,.81,0,8,8,0,0,0,7.95-7.2l5.6-56a8,8,0,0,0-15.92-1.6Zm-89.68,0a8,8,0,0,0-15.92,1.6l5.6,56a8,8,0,0,0,8,7.2,7.32,7.32,0,0,0,.81,0,8,8,0,0,0,7.16-8.76ZM239.93,89.06,224.86,202.12A16.06,16.06,0,0,1,209,216H47a16.06,16.06,0,0,1-15.86-13.88L16.07,89.06A8,8,0,0,1,24,80H68.37L122,18.73a8,8,0,0,1,12,0L187.63,80H232a8,8,0,0,1,7.93,9.06ZM89.63,80h76.74L128,36.15ZM222.86,96H33.14L47,200H209Z"/></symbol>
+<symbol id="i-path" viewBox="0 0 256 256" fill="currentColor"><path d="M224,200a24,24,0,1,1-24-24A24,24,0,0,1,224,200Z" opacity="0.2"/><path d="M200,168a32.06,32.06,0,0,0-31,24H72a32,32,0,0,1,0-64h96a40,40,0,0,0,0-80H72a8,8,0,0,0,0,16h96a24,24,0,0,1,0,48H72a48,48,0,0,0,0,96h97a32,32,0,1,0,31-40Zm0,48a16,16,0,1,1,16-16A16,16,0,0,1,200,216Z"/></symbol>
+<symbol id="i-coffee" viewBox="0 0 256 256" fill="currentColor"><path d="M208,88v48a88,88,0,0,1-51.3,80H83.3A88,88,0,0,1,32,136V88Z" opacity="0.2"/><path d="M80,56V24a8,8,0,0,1,16,0V56a8,8,0,0,1-16,0Zm40,8a8,8,0,0,0,8-8V24a8,8,0,0,0-16,0V56A8,8,0,0,0,120,64Zm32,0a8,8,0,0,0,8-8V24a8,8,0,0,0-16,0V56A8,8,0,0,0,152,64Zm96,56v8a40,40,0,0,1-37.51,39.91,96.59,96.59,0,0,1-27,40.09H208a8,8,0,0,1,0,16H32a8,8,0,0,1,0-16H56.54A96.3,96.3,0,0,1,24,136V88a8,8,0,0,1,8-8H208A40,40,0,0,1,248,120ZM200,96H40v40a80.27,80.27,0,0,0,45.12,72h69.76A80.27,80.27,0,0,0,200,136Zm32,24a24,24,0,0,0-16-22.62V136a95.78,95.78,0,0,1-1.2,15A24,24,0,0,0,232,128Z"/></symbol>
+<symbol id="i-drop" viewBox="0 0 256 256" fill="currentColor"><path d="M208,144a80,80,0,0,1-160,0c0-72,80-128,80-128S208,72,208,144Z" opacity="0.2"/><path d="M174,47.75a254.19,254.19,0,0,0-41.45-38.3,8,8,0,0,0-9.18,0A254.19,254.19,0,0,0,82,47.75C54.51,79.32,40,112.6,40,144a88,88,0,0,0,176,0C216,112.6,201.49,79.32,174,47.75ZM128,216a72.08,72.08,0,0,1-72-72c0-57.23,55.47-105,72-118,16.53,13,72,60.75,72,118A72.08,72.08,0,0,1,128,216Zm55.89-62.66a57.6,57.6,0,0,1-46.56,46.55A8.75,8.75,0,0,1,136,200a8,8,0,0,1-1.32-15.89c16.57-2.79,30.63-16.85,33.44-33.45a8,8,0,0,1,15.78,2.68Z"/></symbol>
+<symbol id="i-warning" viewBox="0 0 256 256" fill="currentColor"><path d="M215.46,216H40.54C27.92,216,20,202.79,26.13,192.09L113.59,40.22c6.3-11,22.52-11,28.82,0l87.46,151.87C236,202.79,228.08,216,215.46,216Z" opacity="0.2"/><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z"/></symbol>
+<symbol id="i-magnifying-glass" viewBox="0 0 256 256" fill="currentColor"><path d="M192,112a80,80,0,1,1-80-80A80,80,0,0,1,192,112Z" opacity="0.2"/><path d="M229.66,218.34,179.6,168.28a88.21,88.21,0,1,0-11.32,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+<symbol id="i-gear" viewBox="0 0 256 256" fill="currentColor"><path d="M207.86,123.18l16.78-21a99.14,99.14,0,0,0-10.07-24.29l-26.7-3a81,81,0,0,0-6.81-6.81l-3-26.71a99.43,99.43,0,0,0-24.3-10l-21,16.77a81.59,81.59,0,0,0-9.64,0l-21-16.78A99.14,99.14,0,0,0,77.91,41.43l-3,26.7a81,81,0,0,0-6.81,6.81l-26.71,3a99.43,99.43,0,0,0-10,24.3l16.77,21a81.59,81.59,0,0,0,0,9.64l-16.78,21a99.14,99.14,0,0,0,10.07,24.29l26.7,3a81,81,0,0,0,6.81,6.81l3,26.71a99.43,99.43,0,0,0,24.3,10l21-16.77a81.59,81.59,0,0,0,9.64,0l21,16.78a99.14,99.14,0,0,0,24.29-10.07l3-26.7a81,81,0,0,0,6.81-6.81l26.71-3a99.43,99.43,0,0,0,10-24.3l-16.77-21A81.59,81.59,0,0,0,207.86,123.18ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.6,107.6,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.29,107.29,0,0,0-26.25-10.86,8,8,0,0,0-7.06,1.48L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.6,107.6,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.21,107.21,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06Zm-16.1-6.5a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8.06,8.06,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8.06,8.06,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z"/></symbol>
+<symbol id="i-caret-right" viewBox="0 0 256 256" fill="currentColor"><path d="M176,128,96,208V48Z" opacity="0.2"/><path d="M181.66,122.34l-80-80A8,8,0,0,0,88,48V208a8,8,0,0,0,13.66,5.66l80-80A8,8,0,0,0,181.66,122.34ZM104,188.69V67.31L164.69,128Z"/></symbol>
+<symbol id="i-x" viewBox="0 0 256 256" fill="currentColor"><path d="M216,56V200a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40H200A16,16,0,0,1,216,56Z" opacity="0.2"/><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+<symbol id="i-map-pin-area" viewBox="0 0 256 256" fill="currentColor"><path d="M184,80c0,56-56,88-56,88S72,136,72,80a56,56,0,0,1,112,0Z" opacity="0.2"/><path d="M112,80a16,16,0,1,1,16,16A16,16,0,0,1,112,80ZM64,80a64,64,0,0,1,128,0c0,59.95-57.58,93.54-60,94.95a8,8,0,0,1-7.94,0C121.58,173.54,64,140,64,80Zm16,0c0,42.2,35.84,70.21,48,78.5,12.15-8.28,48-36.3,48-78.5a48,48,0,0,0-96,0Zm122.77,67.63a8,8,0,0,0-5.54,15C213.74,168.74,224,176.92,224,184c0,13.36-36.52,32-96,32s-96-18.64-96-32c0-7.08,10.26-15.26,26.77-21.36a8,8,0,0,0-5.54-15C29.22,156.49,16,169.41,16,184c0,31.18,57.71,48,112,48s112-16.82,112-48C240,169.41,226.78,156.49,202.77,147.63Z"/></symbol>
+<symbol id="i-gps-fix" viewBox="0 0 256 256" fill="currentColor"><path d="M128,48a80,80,0,1,0,80,80A80,80,0,0,0,128,48Zm0,112a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z" opacity="0.2"/><path d="M240,120H215.63A88.13,88.13,0,0,0,136,40.37V16a8,8,0,0,0-16,0V40.37A88.13,88.13,0,0,0,40.37,120H16a8,8,0,0,0,0,16H40.37A88.13,88.13,0,0,0,120,215.63V240a8,8,0,0,0,16,0V215.63A88.13,88.13,0,0,0,215.63,136H240a8,8,0,0,0,0-16ZM128,200a72,72,0,1,1,72-72A72.08,72.08,0,0,1,128,200Zm0-112a40,40,0,1,0,40,40A40,40,0,0,0,128,88Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,152Z"/></symbol>
+<symbol id="i-eye-slash" viewBox="0 0 256 256" fill="currentColor"><path d="M128,56C48,56,16,128,16,128s32,72,112,72,112-72,112-72S208,56,128,56Zm0,112a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a127.11,127.11,0,0,0,52.07-10.83l22,24.21a8,8,0,1,0,11.84-10.76Zm47.33,75.84,41.67,45.85a32,32,0,0,1-41.67-45.85ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,19.75a48,48,0,0,0,63.66,70l14.73,16.2A112,112,0,0,1,128,192Zm6-95.43a8,8,0,0,1,3-15.72,48.16,48.16,0,0,1,38.77,42.64,8,8,0,0,1-7.22,8.71,6.39,6.39,0,0,1-.75,0,8,8,0,0,1-8-7.26A32.09,32.09,0,0,0,134,96.57Zm113.28,34.69c-.42.94-10.55,23.37-33.36,43.8a8,8,0,1,1-10.67-11.92A132.77,132.77,0,0,0,231.05,128a133.15,133.15,0,0,0-23.12-30.77C185.67,75.19,158.78,64,128,64a118.37,118.37,0,0,0-19.36,1.57A8,8,0,1,1,106,49.79,134,134,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41A8,8,0,0,1,247.31,131.26Z"/></symbol>
+<symbol id="i-ear" viewBox="0 0 256 256" fill="currentColor"><path d="M208,104c0,40-14.44,72-48,112-8.07,9.77-18.34,16-32,16a44,44,0,0,1-44-44c0-41.49-36-28-36-84a80,80,0,0,1,160,0Z" opacity="0.2"/><path d="M216,104a8,8,0,0,1-16,0,72,72,0,0,0-144,0c0,26.7,8.53,34.92,17.57,43.64C82.21,156,92,165.41,92,188a36,36,0,0,0,36,36c10.24,0,18.45-4.16,25.83-13.09a8,8,0,1,1,12.34,10.18C155.81,233.64,143,240,128,240a52.06,52.06,0,0,1-52-52c0-15.79-5.68-21.27-13.54-28.84C52.46,149.5,40,137.5,40,104a88,88,0,0,1,176,0Zm-38.13,57.08A8,8,0,0,0,166.93,164,8,8,0,0,1,152,160c0-9.33,4.82-15.76,10.4-23.2,6.37-8.5,13.6-18.13,13.6-32.8a48,48,0,0,0-96,0,8,8,0,0,0,16,0,32,32,0,0,1,64,0c0,9.33-4.82,15.76-10.4,23.2-6.37,8.5-13.6,18.13-13.6,32.8a24,24,0,0,0,44.78,12A8,8,0,0,0,177.87,161.08Z"/></symbol>
+<symbol id="i-mountains" viewBox="0 0 256 256" fill="currentColor"><path d="M144,52a20,20,0,1,1,20,20A20,20,0,0,1,144,52Zm49.44,55.92a8,8,0,0,0-13.77,0l-33,55.75-21-35.67H50.35L8,200H248Z" opacity="0.2"/><path d="M164,80a28,28,0,1,0-28-28A28,28,0,0,0,164,80Zm0-40a12,12,0,1,1-12,12A12,12,0,0,1,164,40Zm90.88,155.92-54.56-92.08A15.87,15.87,0,0,0,186.55,96h0a15.85,15.85,0,0,0-13.76,7.84L146.63,148l-44.84-76.1a16,16,0,0,0-27.58,0L1.11,195.94A8,8,0,0,0,8,208H248a8,8,0,0,0,6.88-12.08ZM88,80l23.57,40H64.43ZM22,192l33-56h66l33,56Zm150.57,0-16.66-28.28L186.55,112,234,192Z"/></symbol>
+<symbol id="i-umbrella-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M224,136H32a8,8,0,0,1-8-8.71,104.37,104.37,0,0,1,207.94,0A8,8,0,0,1,224,136Z" opacity="0.2"/><path d="M240,126.63A112.44,112.44,0,0,0,51.75,53.75a111.56,111.56,0,0,0-35.7,72.88A16,16,0,0,0,32,144h88v56a32,32,0,0,0,64,0,8,8,0,0,0-16,0,16,16,0,0,1-32,0V144h88a16,16,0,0,0,16-17.37ZM32,128l0,0A96.43,96.43,0,0,1,193.4,65.52,95.32,95.32,0,0,1,224,128Z"/></symbol>
+<symbol id="i-binoculars" viewBox="0 0 256 256" fill="currentColor"><path d="M104,168a40,40,0,1,1-40-40A40,40,0,0,1,104,168Zm88-40a40,40,0,1,0,40,40A40,40,0,0,0,192,128Z" opacity="0.2"/><path d="M237.2,151.87v0a47.1,47.1,0,0,0-2.35-5.45L193.26,51.8a7.82,7.82,0,0,0-1.66-2.44,32,32,0,0,0-45.26,0A8,8,0,0,0,144,55V80H112V55a8,8,0,0,0-2.34-5.66,32,32,0,0,0-45.26,0,7.82,7.82,0,0,0-1.66,2.44L21.15,146.4a47.1,47.1,0,0,0-2.35,5.45v0A48,48,0,1,0,112,168V96h32v72a48,48,0,1,0,93.2-16.13ZM76.71,59.75a16,16,0,0,1,19.29-1v73.51a47.9,47.9,0,0,0-46.79-9.92ZM64,200a32,32,0,1,1,32-32A32,32,0,0,1,64,200ZM160,58.74a16,16,0,0,1,19.29,1l27.5,62.58A47.9,47.9,0,0,0,160,132.25ZM192,200a32,32,0,1,1,32-32A32,32,0,0,1,192,200Z"/></symbol>
+<symbol id="i-bicycle" viewBox="0 0 256 256" fill="currentColor"><path d="M248,160a40,40,0,1,1-40-40A40,40,0,0,1,248,160ZM48,120a40,40,0,1,0,40,40A40,40,0,0,0,48,120Z" opacity="0.2"/><path d="M208,112a47.81,47.81,0,0,0-16.93,3.09L165.93,72H192a8,8,0,0,1,8,8,8,8,0,0,0,16,0,24,24,0,0,0-24-24H152a8,8,0,0,0-6.91,12l11.65,20H99.26L82.91,60A8,8,0,0,0,76,56H48a8,8,0,0,0,0,16H71.41L85.12,95.51,69.41,117.06a48.13,48.13,0,1,0,12.92,9.44l11.59-15.9L125.09,164A8,8,0,1,0,138.91,156l-30.32-52h57.48l11.19,19.17A48,48,0,1,0,208,112ZM80,160a32,32,0,1,1-20.21-29.74l-18.25,25a8,8,0,1,0,12.92,9.42l18.25-25A31.88,31.88,0,0,1,80,160Zm128,32a32,32,0,0,1-22.51-54.72L201.09,164A8,8,0,1,0,214.91,156L199.3,129.21A32,32,0,1,1,208,192Z"/></symbol>
+<symbol id="i-download-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48V208H40V48A16,16,0,0,1,56,32H200A16,16,0,0,1,216,48Z" opacity="0.2"/><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
+<symbol id="i-upload-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48V208H40V48A16,16,0,0,1,56,32H200A16,16,0,0,1,216,48Z" opacity="0.2"/><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0ZM93.66,77.66,120,51.31V144a8,8,0,0,0,16,0V51.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,77.66Z"/></symbol>
+<symbol id="i-star" viewBox="0 0 256 256" fill="currentColor"><path d="M229.06,108.79l-48.7,42,14.88,62.79a8.4,8.4,0,0,1-12.52,9.17L128,189.09,73.28,222.74a8.4,8.4,0,0,1-12.52-9.17l14.88-62.79-48.7-42A8.46,8.46,0,0,1,31.73,94L95.64,88.8l24.62-59.6a8.36,8.36,0,0,1,15.48,0l24.62,59.6L224.27,94A8.46,8.46,0,0,1,229.06,108.79Z" opacity="0.2"/><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a16.36,16.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61c.08-.17.11-.25.35-.25s.27.08.35.25L153,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></symbol>
+<symbol id="i-flag-checkered" viewBox="0 0 256 256" fill="currentColor"><path d="M224,56v60c-19.89,17.23-38.23,18.39-56,13.48v-60C185.76,74.39,204.11,73.23,224,56ZM104,102.52v-60C86.24,37.61,67.89,38.77,48,56v60c19.89-17.22,38.23-18.39,56-13.48v60c21.62,6,42.38,21,64,27v-60c-21.62-6-42.38-21-64-27Z" opacity="0.2"/><path d="M227.32,48.75A8,8,0,0,0,218.76,50c-28,24.22-51.72,12.48-79.21-1.13C111.07,34.76,78.78,18.79,42.76,50A8,8,0,0,0,40,56V224a8,8,0,0,0,16,0V179.77c26.79-21.16,49.87-9.75,76.45,3.41,28.49,14.09,60.77,30.06,96.79-1.13a8,8,0,0,0,2.76-6V56A8,8,0,0,0,227.32,48.75ZM216,71.6v40.65c-14,11.06-27,13.22-40,10.88V79.34A60.05,60.05,0,0,0,216,71.6Zm-56,3.76v43c-6.66-2.67-13.43-6-20.45-9.48-8.82-4.37-18-8.91-27.55-12.18v-43c6.66,2.66,13.43,6,20.45,9.48C141.27,67.55,150.46,72.09,160,75.36ZM96,48.91V92.69a60.06,60.06,0,0,0-40,7.75V59.78C70,48.72,83,46.57,96,48.91ZM86.58,152A60.06,60.06,0,0,0,56,160.43V119.78c14-11.06,27-13.22,40-10.88v43.8A65.61,65.61,0,0,0,86.58,152ZM112,156.67v-43c6.66,2.66,13.43,6,20.45,9.48,8.82,4.37,18,8.9,27.55,12.17v43c-6.66-2.67-13.43-6-20.45-9.48C130.73,164.47,121.54,159.94,112,156.67Zm64,26.45v-43.8a65.61,65.61,0,0,0,9.42.72A60.11,60.11,0,0,0,216,131.57v40.68C202,183.31,189,185.46,176,183.12Z"/></symbol>
+<symbol id="i-arrow-square-out" viewBox="0 0 256 256" fill="currentColor"><path d="M184,80V208a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H176A8,8,0,0,1,184,80Z" opacity="0.2"/><path d="M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z"/></symbol>
+<symbol id="i-compass" viewBox="0 0 256 256" fill="currentColor"><path d="M128,32a96,96,0,1,0,96,96A96,96,0,0,0,128,32Zm16,112L80,176l32-64,64-32Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM172.42,72.84l-64,32a8.05,8.05,0,0,0-3.58,3.58l-32,64A8,8,0,0,0,80,184a8.1,8.1,0,0,0,3.58-.84l64-32a8.05,8.05,0,0,0,3.58-3.58l32-64a8,8,0,0,0-10.74-10.74ZM138,138,97.89,158.11,118,118l40.15-20.07Z"/></symbol>
+<symbol id="i-toilet" viewBox="0 0 256 256" fill="currentColor"><path d="M167.92,222.87A8,8,0,0,1,160,232H96a8,8,0,0,1-7.92-9.13l4.34-30.36h0a88.21,88.21,0,0,0,71.14,0h0ZM184,32H72a8,8,0,0,0-8,8v72H192V40A8,8,0,0,0,184,32Z" opacity="0.2"/><path d="M120,64a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h16A8,8,0,0,1,120,64Zm52.32,133.14,3.52,24.6A16,16,0,0,1,160,240H96a16,16,0,0,1-15.84-18.26l3.52-24.6A96.09,96.09,0,0,1,32,112a8,8,0,0,1,8-8H56V40A16,16,0,0,1,72,24H184a16,16,0,0,1,16,16v64h16a8,8,0,0,1,8,8A96.09,96.09,0,0,1,172.32,197.14ZM72,104H184V40H72Zm85.07,99.5a96.15,96.15,0,0,1-58.14,0L96,224h64ZM207.6,120H48.4a80,80,0,0,0,159.2,0Z"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 256 256" fill="currentColor"><path d="M224,96a64,64,0,0,1-94.94,56L73,217A24,24,0,0,1,39,183L104,126.94a64,64,0,0,1,80-90.29L144,80l5.66,26.34L176,112l43.35-40A63.8,63.8,0,0,1,224,96Z" opacity="0.2"/><path d="M226.76,69a8,8,0,0,0-12.84-2.88l-40.3,37.19-17.23-3.7-3.7-17.23,37.19-40.3A8,8,0,0,0,187,29.24,72,72,0,0,0,88,96,72.34,72.34,0,0,0,94,124.94L33.79,177c-.15.12-.29.26-.43.39a32,32,0,0,0,45.26,45.26c.13-.13.27-.28.39-.42L131.06,162A72,72,0,0,0,232,96,71.56,71.56,0,0,0,226.76,69ZM160,152a56.14,56.14,0,0,1-27.07-7,8,8,0,0,0-9.92,1.77L67.11,211.51a16,16,0,0,1-22.62-22.62L109.18,133a8,8,0,0,0,1.77-9.93,56,56,0,0,1,58.36-82.31l-31.2,33.81a8,8,0,0,0-1.94,7.1L141.83,108a8,8,0,0,0,6.14,6.14l26.35,5.66a8,8,0,0,0,7.1-1.94l33.81-31.2A56.06,56.06,0,0,1,160,152Z"/></symbol>
+<symbol id="i-caret-down" viewBox="0 0 256 256" fill="currentColor"><path d="M208,96l-80,80L48,96Z" opacity="0.2"/><path d="M215.39,92.94A8,8,0,0,0,208,88H48a8,8,0,0,0-5.66,13.66l80,80a8,8,0,0,0,11.32,0l80-80A8,8,0,0,0,215.39,92.94ZM128,164.69,67.31,104H188.69Z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 256 256" fill="currentColor"><path d="M216,56V200a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40H200A16,16,0,0,1,216,56Z" opacity="0.2"/><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+<symbol id="i-cloud-moon" viewBox="0 0 256 256" fill="currentColor"><path d="M106.31,130.38ZM102.38,17.62h0A64.06,64.06,0,0,1,25.62,94.38h0A64.12,64.12,0,0,0,63,138.93h0a44.08,44.08,0,0,1,43.33-8.54,68.13,68.13,0,0,1,45.47-47.32l.15,0c0-1,.07-2,.07-3A64,64,0,0,0,102.38,17.62Z" opacity="0.2"/><path d="M172,72a76.45,76.45,0,0,0-12.36,1A71.93,71.93,0,0,0,104.17,9.83a8,8,0,0,0-9.59,9.58A56.05,56.05,0,0,1,40,88a56.45,56.45,0,0,1-12.59-1.42,8,8,0,0,0-9.59,9.59,72.22,72.22,0,0,0,32.29,45.06A52,52,0,0,0,92,224h80a76,76,0,0,0,0-152ZM37.37,104c.87,0,1.75,0,2.63,0a72.08,72.08,0,0,0,72-72c0-.89,0-1.78,0-2.67a55.63,55.63,0,0,1,32,48,76.28,76.28,0,0,0-43,43.4A52,52,0,0,0,62,129.59,56.22,56.22,0,0,1,37.37,104ZM172,208H92a36,36,0,1,1,4.78-71.69c-.37,2.37-.63,4.79-.77,7.23a8,8,0,0,0,16,.92,58.91,58.91,0,0,1,1.88-11.81c0-.16.09-.32.12-.48A60.06,60.06,0,1,1,172,208Z"/></symbol>
+<symbol id="i-sun-horizon" viewBox="0 0 256 256" fill="currentColor"><path d="M192,144a64.33,64.33,0,0,1-2,16H66a64,64,0,1,1,126-16Z" opacity="0.2"/><path d="M240,152H199.55a73.54,73.54,0,0,0,.45-8,72,72,0,0,0-144,0,73.54,73.54,0,0,0,.45,8H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM72,144a56,56,0,1,1,111.41,8H72.59A56.13,56.13,0,0,1,72,144Zm144,56a8,8,0,0,1-8,8H48a8,8,0,0,1,0-16H208A8,8,0,0,1,216,200ZM72.84,43.58a8,8,0,0,1,14.32-7.16l8,16a8,8,0,0,1-14.32,7.16Zm-56,48.84a8,8,0,0,1,10.74-3.57l16,8a8,8,0,0,1-7.16,14.31l-16-8A8,8,0,0,1,16.84,92.42Zm192,15.16a8,8,0,0,1,3.58-10.73l16-8a8,8,0,1,1,7.16,14.31l-16,8a8,8,0,0,1-10.74-3.58Zm-48-55.16,8-16a8,8,0,0,1,14.32,7.16l-8,16a8,8,0,1,1-14.32-7.16Z"/></symbol>
+<symbol id="i-tree-evergreen" viewBox="0 0 256 256" fill="currentColor"><path d="M32,192l56-72H48L128,16l80,104H168l56,72Z" opacity="0.2"/><path d="M230.31,187.09,184.36,128H208a8,8,0,0,0,6.34-12.88l-80-104a8,8,0,0,0-12.68,0l-80,104A8,8,0,0,0,48,128H71.64L25.69,187.09A8,8,0,0,0,32,200h88v40a8,8,0,0,0,16,0V200h88a8,8,0,0,0,6.31-12.91ZM48.36,184l46-59.09A8,8,0,0,0,88,112H64.25L128,29.12,191.75,112H168a8,8,0,0,0-6.31,12.91L207.64,184Z"/></symbol>
+<symbol id="i-moon-stars" viewBox="0 0 256 256" fill="currentColor"><path d="M210.69,158.18A88,88,0,1,1,97.82,45.31,96.08,96.08,0,0,0,192,160,96.78,96.78,0,0,0,210.69,158.18Z" opacity="0.2"/><path d="M240,96a8,8,0,0,1-8,8H216v16a8,8,0,0,1-16,0V104H184a8,8,0,0,1,0-16h16V72a8,8,0,0,1,16,0V88h16A8,8,0,0,1,240,96ZM144,56h8v8a8,8,0,0,0,16,0V56h8a8,8,0,0,0,0-16h-8V32a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16Zm72.77,97a8,8,0,0,1,1.43,8A96,96,0,1,1,95.07,37.8a8,8,0,0,1,10.6,9.06A88.07,88.07,0,0,0,209.14,150.33,8,8,0,0,1,216.77,153Zm-19.39,14.88c-1.79.09-3.59.14-5.38.14A104.11,104.11,0,0,1,88,64c0-1.79,0-3.59.14-5.38A80,80,0,1,0,197.38,167.86Z"/></symbol>
+<symbol id="i-cloud-rain" viewBox="0 0 256 256" fill="currentColor"><path d="M224,92a68,68,0,0,1-68,68H76A44,44,0,1,1,90.2,74.34v.11A68.06,68.06,0,0,1,224,92Z" opacity="0.2"/><path d="M158.66,196.44l-32,48a8,8,0,1,1-13.32-8.88l32-48a8,8,0,0,1,13.32,8.88ZM232,92a76.08,76.08,0,0,1-76,76H132.28l-29.62,44.44a8,8,0,1,1-13.32-8.88L113.05,168H76A52,52,0,0,1,76,64a53.26,53.26,0,0,1,8.92.76A76.08,76.08,0,0,1,232,92Zm-16,0A60.06,60.06,0,0,0,96,88.46a8,8,0,0,1-16-.92q.21-3.66.77-7.23A38.11,38.11,0,0,0,76,80a36,36,0,0,0,0,72h80A60.07,60.07,0,0,0,216,92Z"/></symbol>
+<symbol id="i-dots-six-vertical" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32V224a16,16,0,0,1-16,16H64a16,16,0,0,1-16-16V32A16,16,0,0,1,64,16H192A16,16,0,0,1,208,32Z" opacity="0.2"/><path d="M104,60A12,12,0,1,1,92,48,12,12,0,0,1,104,60Zm60,12a12,12,0,1,0-12-12A12,12,0,0,0,164,72ZM92,116a12,12,0,1,0,12,12A12,12,0,0,0,92,116Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,116ZM92,184a12,12,0,1,0,12,12A12,12,0,0,0,92,184Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,184Z"/></symbol>
+<symbol id="i-check" viewBox="0 0 256 256" fill="currentColor"><path d="M232,56V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56Z" opacity="0.2"/><path d="M205.66,85.66l-96,96a8,8,0,0,1-11.32,0l-40-40a8,8,0,0,1,11.32-11.32L104,164.69l90.34-90.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+<symbol id="i-arrows-clockwise" viewBox="0 0 256 256" fill="currentColor"><path d="M216,128a88,88,0,1,1-88-88A88,88,0,0,1,216,128Z" opacity="0.2"/><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></symbol>
+<symbol id="i-push-pin" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,98.34,172.39,155.8c11.46,22.93-1.72,45.86-10.11,57a8,8,0,0,1-12,.83L42.34,105.76A8,8,0,0,1,43,93.85c29.65-23.92,57.4-10,57.4-10l57.27-57.46a8,8,0,0,1,11.31,0L229.66,87A8,8,0,0,1,229.66,98.34Z" opacity="0.2"/><path d="M235.32,81.37,174.63,20.69a16,16,0,0,0-22.63,0L98.37,74.49c-10.66-3.34-35-7.37-60.4,13.14a16,16,0,0,0-1.29,23.78L85,159.71,42.34,202.34a8,8,0,0,0,11.32,11.32L96.29,171l48.29,48.29A16,16,0,0,0,155.9,224c.38,0,.75,0,1.13,0a15.93,15.93,0,0,0,11.64-6.33c19.64-26.1,17.75-47.32,13.19-60L235.33,104A16,16,0,0,0,235.32,81.37ZM224,92.69h0l-57.27,57.46a8,8,0,0,0-1.49,9.22c9.46,18.93-1.8,38.59-9.34,48.62L48,100.08c12.08-9.74,23.64-12.31,32.48-12.31A40.13,40.13,0,0,1,96.81,91a8,8,0,0,0,9.25-1.51L163.32,32,224,92.68Z"/></symbol>
+</svg>
+<header>
+  <div class="brand">WildNav</div>
+  <div class="search"><svg class="ic"><use href="#i-magnifying-glass"/></svg>Go to a place…</div>
+  <div class="tabs" id="tabs"></div>
+  <div class="chip" title="Time for opening hours and shade"><svg class="ic"><use href="#i-clock"/></svg>Sat 10:00</div>
+  <div class="spacer"></div>
+  <div class="chip" id="btn-spots" title="Your saved spots"><svg class="ic" style="color:var(--blaze)"><use href="#i-star"/></svg>My spots <b id="nspots"></b></div>
+  <div class="chip"><svg class="ic"><use href="#i-gear"/></svg>Settings</div>
+</header>
+<div class="wrap">
+  <div id="map"></div>
+  <div class="card legend" id="legend"></div>
+  <div class="card" id="spots">
+    <h3><svg class="ic" style="color:var(--blaze)"><use href="#i-star"/></svg>My spots<button class="x" id="spots-x"><svg class="ic"><use href="#i-x"/></svg></button></h3>
+    <div class="filters" id="filters"></div>
+    <div id="splist"></div>
+    <div class="note">Tick spots to put them in the route; drag <svg class="ic" style="width:12px;height:12px"><use href="#i-dots-six-vertical"/></svg> to change their order.</div>
+    <button class="btn primary" id="through" style="margin-top:8px;width:100%;justify-content:center"><svg class="ic"><use href="#i-path"/></svg>Route through ticked spots, in this order</button>
+  </div>
+  <div class="hint" id="hint"></div>
+  <div class="card" id="rw">
+    <div class="rw-head">
+      <h3 id="rw-title"><svg class="ic" style="color:var(--route)"><use href="#i-path"/></svg>Route</h3>
+      <label>From <input value="Bielefeld"></label>
+      <div class="seg" id="seg-to"><button class="on" data-m="dest">To</button><button data-m="dir">Direction</button></div>
+      <span id="to-dest"><input value="Hameln"></span>
+      <span id="to-dir" style="display:none"><select><option>East</option><option>North-east</option><option>South</option></select>
+        <input class="num" value="180"> km</span>
+      <label>per day <input class="num" id="perday" value="55"> km</label>
+      <label>start <input value="Sat 09:00" style="width:78px"></label>
+      <button class="btn primary" id="plan">Plan</button>
+      <button class="btn" id="br"><svg class="ic"><use href="#i-arrow-square-out"/></svg>bikerouter.de</button>
+      <button class="btn" id="gpx"><svg class="ic"><use href="#i-upload-simple"/></svg>Load GPX</button>
+      <button class="btn"><svg class="ic"><use href="#i-download-simple"/></svg>Export</button>
+      <button class="x" id="rw-min" title="Show less"><svg class="ic"><use href="#i-caret-down"/></svg></button>
+    </div>
+    <div class="bar2" id="bar2"></div>
+    <div class="tl-wrap"><div class="tl" id="tl"></div></div>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const ic = (n, col) => `<svg class="ic"${col ? ` style="color:${col}"` : ''}><use href="#i-${n}"/></svg>`;
+const KIND = { sleep: { icon: 'tent', c: 'var(--sleep)', name: 'Sleep' }, break: { icon: 'park', c: 'var(--break)', name: 'Break' }, supply: { icon: 'basket', c: 'var(--supply)', name: 'Resupply' } };
+const ACTS = {
+  sleep:  { name: 'Sleep', icon: 'tent', c: 'var(--sleep)', bar: 'linear-gradient(90deg,#d9b0a4,#e3dfc5,#9ccc9e,#2f7c4d)', lbl: ['avoid', 'ok', 'great'],
+            title: 'Best spots', why: [['eye-slash', 'Hidden'], ['ear', 'Traffic noise'], ['mountains', 'Topography'], ['tree-evergreen', 'Terrain'], ['drop', 'Useful places']],
+            note: 'Click the map for a camp card. With a route loaded: best spots near the route.' },
+  break:  { name: 'Break', icon: 'park', c: 'var(--break)', bar: 'linear-gradient(90deg,#e6e8e4,#9fd2c8,#3fa89a,#1b7a70)', lbl: ['poor', 'ok', 'great'],
+            title: 'Break spots', why: [['umbrella-simple', 'Shade'], ['binoculars', 'View'], ['bicycle', 'Path access'], ['ear', 'Traffic noise'], ['park', 'Benches']],
+            note: 'At most 80 % without a bench. Click the map for a break card.' },
+  supply: { name: 'Resupply', icon: 'basket', c: 'var(--supply)', bar: 'linear-gradient(90deg,#e0a030,#f1d59a,#f3efe3)', lbl: ['right here', '1 km', '2 km'],
+            title: 'Resupply', why: [['basket', 'Groceries'], ['coffee', 'Cafés & food'], ['drop', 'Water'], ['toilet', 'Toilets'], ['wrench', 'Bike repair']],
+            note: 'Open / closed at Sat 10:00 (the clock). Click for the nearest places and their hours.' },
+  route:  { name: 'Route', icon: 'path', c: 'var(--route)', bar: '', lbl: [], title: 'Route', why: [],
+            note: 'The route stays on the map in the other tabs (faded). Edit it here: timeline below.' },
+};
+// ── saved spots (invented), in the user's order; `in` = part of the route
+let saved = [
+  { id: 1, name: 'Meadow below the Hermannsdenkmal', kind: 'sleep', lat: 51.912, lon: 8.838, stars: 4, in: false },
+  { id: 2, name: 'Externsteine bench', kind: 'break', lat: 51.869, lon: 8.918, stars: 5, in: true },
+  { id: 3, name: 'Forest edge near Nieheim', kind: 'sleep', lat: 51.806, lon: 9.118, stars: 3, in: false },
+  { id: 4, name: 'Weser beach, Corvey', kind: 'break', lat: 51.779, lon: 9.405, stars: 4, in: true },
+  { id: 5, name: 'Bakery in Höxter', kind: 'supply', lat: 51.774, lon: 9.383, stars: 3, in: false },
+  { id: 6, name: 'Köterberg view', kind: 'break', lat: 51.852, lon: 9.315, stars: 5, in: false },
+  { id: 7, name: 'Hilltop camp in the Ith', kind: 'sleep', lat: 51.955, lon: 9.598, stars: 4, in: false },
+];
+let nextId = 8, filter = 'all', sel = null;
+// ── route: corridor through waypoints (× detour factor) or an exact GPX track
+const START = [52.021, 8.532], END = [52.104, 9.360];
+let WPTS = [START, [51.936, 8.879], [51.776, 9.381], [51.830, 9.452], END], exact = false, cum = [0], TOTAL = 0;
+const DETOUR = () => exact ? 1 : 1.3, SPEED = 16;
+const hd = (a, b) => { const R = 6371, dLa = (b[0] - a[0]) * Math.PI / 180, dLo = (b[1] - a[1]) * Math.PI / 180, x = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) * Math.sin(dLo / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
+function setRoute(pts, isExact) { WPTS = pts; exact = !!isExact; cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + hd(pts[i - 1], pts[i]) * DETOUR()); TOTAL = cum[cum.length - 1]; }
+function at(km, off = 0) {
+  let i = 1; while (i < cum.length - 1 && cum[i] < km) i++;
+  const f = Math.max(0, Math.min(1, (km - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1))), a = WPTS[i - 1], b = WPTS[i];
+  const lat = a[0] + (b[0] - a[0]) * f, lon = a[1] + (b[1] - a[1]) * f;
+  const dy = b[0] - a[0], dx = (b[1] - a[1]) * Math.cos(lat * Math.PI / 180), L = Math.hypot(dx, dy) || 1;
+  return [lat + (dx / L) * off / 111, lon - (dy / L) * off / 111 / Math.cos(lat * Math.PI / 180)];
+}
+function proj(p) {                                 // km along the route and distance from it (km)
+  let best = { km: 0, off: 1e9 };
+  for (let i = 1; i < WPTS.length; i++) {
+    const a = WPTS[i - 1], b = WPTS[i], k = Math.cos(a[0] * Math.PI / 180), ax = a[1] * k, bx = b[1] * k, px = p[1] * k;
+    const dx = bx - ax, dy = b[0] - a[0], t = Math.max(0, Math.min(1, ((px - ax) * dx + (p[0] - a[0]) * dy) / (dx * dx + dy * dy || 1)));
+    const off = Math.hypot(px - ax - t * dx, p[0] - a[0] - t * dy) * 111;
+    if (off < best.off) best = { km: cum[i - 1] + t * (cum[i] - cum[i - 1]), off };
+  }
+  return best;
+}
+const fmtT = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.round((h % 1) * 60) % 60).padStart(2, '0')}`;
+const elev = km => 140 + 110 * Math.sin(km / 13) + 70 * Math.sin(km / 4.7 + 1) + 90 * Math.max(0, Math.sin(km / 31 - .5));
+const WX = [['moon-stars', '9° clear'], ['cloud-rain', '11° · 2 mm'], ['cloud-moon', '10° dry'], ['moon-stars', '7° clear']];
+const SUP_NAMES = [['Bakery', 'bakery', 'open'], ['EDEKA', 'supermarket', 'open'], ['Café am Markt', 'café', 'open'], ['Petrol station', 'fuel · 24 h', 'open'],
+  ['NETTO', 'supermarket', 'closed then'], ['Water tap', 'water', 'open'], ['Bakery', 'bakery', 'open'], ['REWE', 'supermarket', 'open']];
+const SUP_AT = [0.06, 0.16, 0.28, 0.46, 0.73, 0.78, 0.88, 0.97];
+let perDay = 55, auto = {};                        // auto: generated stops the user swapped ("Other") -> alternative offset/score
+// ── plan: saved spots in the route are fixed; the planner fills the gaps
+function plan() {
+  const inRoute = saved.filter(s => s.in).map(s => ({ ...s, ...proj([s.lat, s.lon]) }));
+  const fixedN = inRoute.filter(s => s.kind === 'sleep').sort((a, b) => a.km - b.km);
+  const anchors = [0, ...fixedN.map(s => s.km), TOTAL], nights = [];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    if (i > 0) nights.push({ ...fixedN[i - 1], saved: true });
+    const a = anchors[i], b = anchors[i + 1], n = Math.max(1, Math.round((b - a) / perDay));
+    for (let j = 1; j < n; j++) { const km = a + j * (b - a) / n, id = 'n' + Math.round(km / 5);
+      const alt = auto[id] || 0; nights.push({ id, kind: 'sleep', km, off: 1.2 + alt * 1.5, score: [78, 64, 71, 69, 74][(Math.round(km / 5) + alt) % 5], saved: false }); }
+  }
+  const days = [0, ...nights.map(n => n.km), TOTAL], breaks = [];
+  const fixedB = inRoute.filter(s => s.kind === 'break');
+  for (let d = 0; d < days.length - 1; d++) {
+    for (let k = days[d] + 32; k < days[d + 1] - 10; k += 40) {
+      const near = fixedB.find(s => Math.abs(s.km - k) < 14);
+      if (!near) { const id = 'b' + Math.round(k); breaks.push({ id, kind: 'break', km: k, off: -0.8 - (auto[id] || 0), saved: false, name: ['Bench at the forest edge', 'Picnic table by the Emmer', 'Shelter on the Hermannsweg', 'Bench by the lake'][Math.round(k) % 4] }); }
+    }
+  }
+  fixedB.forEach(s => breaks.push({ ...s, saved: true }));
+  const supply = SUP_AT.map((f, i) => ({ id: 's' + i, kind: 'supply', km: f * TOTAL, off: .5, name: SUP_NAMES[i][0], type: SUP_NAMES[i][1], open: SUP_NAMES[i][2] === 'open', saved: false }));
+  inRoute.filter(s => s.kind === 'supply').forEach(s => supply.push({ ...s, open: true, type: 'saved', saved: true }));
+  return { nights, breaks, supply, days };
+}
+// ── map
+const map = L.map('map', { zoomControl: false });
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap contributors' }).addTo(map);
+L.control.zoom({ position: 'topright' }).addTo(map);
+const layers = { route: L.layerGroup(), sleep: L.layerGroup(), break: L.layerGroup(), supply: L.layerGroup(), mine: L.layerGroup() };
+const mkIcon = (icon, c, cls = '', label = '') => L.divIcon({ className: '', iconSize: [30, 30], iconAnchor: [15, 15],
+  html: `<div class="mk ${cls}" style="background:${c}">${label ? `<small>${label}</small>` : ''}${ic(icon)}</div>` });
+const byId = {};
+let P = null;
+function where(it) { return it.saved && it.lat ? [it.lat, it.lon] : at(it.km, it.off); }
+function drawMap() {
+  Object.values(layers).forEach(l => l.clearLayers());
+  L.polyline(WPTS, { color: '#e8743a', weight: 5, opacity: .85, dashArray: exact ? null : '10 8' })
+    .bindTooltip(exact ? 'Route from GPX (exact)' : 'Corridor estimate (straight lines × 1.3): route it in bikerouter.de').addTo(layers.route);
+  L.marker(WPTS[0], { icon: mkIcon('map-pin-area', '#e8743a') }).bindTooltip('Start').addTo(layers.route);
+  L.marker(WPTS[WPTS.length - 1], { icon: mkIcon('flag-checkered', '#e8743a') }).bindTooltip('Destination').addTo(layers.route);
+  const add = (it, layer, cls, label, tip) => {
+    const m = L.marker(where(it), { icon: mkIcon(KIND[it.kind].icon, it.kind === 'supply' && !it.open ? '#8a8f8c' : KIND[it.kind].c, cls, label) }).bindTooltip(tip);
+    m.on('mouseover', () => hi(it.id, true)).on('mouseout', () => hi(it.id, false)).on('click', () => select(it.id));
+    m.addTo(layers[layer]); byId['m' + it.id] = m;
+  };
+  P.nights.forEach((n, j) => {
+    add(n, 'sleep', `night ${n.saved ? 'saved' : 'auto'}`, n.saved ? '★' : n.score + ' %', `Night ${j + 1}: ${n.saved ? n.name + ' (saved)' : `best spot here, ${n.score} % (generated)`}`);
+    if (!n.saved) L.marker(at(n.km + 1.5, -1.4), { icon: mkIcon('tent', 'var(--sleep)', 'ghost') }).bindTooltip(`Backup for night ${j + 1}: 61 %, 1.5 km on`).addTo(layers.sleep);
+  });
+  P.breaks.forEach(b => add(b, 'break', b.saved ? 'saved' : 'auto', '', `${b.saved ? b.name + ' (saved)' : b.name + ' (generated)'}`));
+  P.supply.forEach(s => add(s, 'supply', s.saved ? 'saved' : '', '', `${s.name} · ${s.type} · ${s.open ? 'open then' : 'closed then'}`));
+  // saved spots not in the route: faint, in the tab of their kind
+  saved.filter(s => !s.in).forEach(s => L.marker([s.lat, s.lon], { icon: mkIcon(KIND[s.kind].icon, KIND[s.kind].c, 'saved ghost') })
+    .bindTooltip(`${s.name} (saved, not in the route)`).addTo(layers[s.kind]));
+}
+function hi(id, on) {
+  const m = byId['m' + id]; if (m && m.getElement()) m.getElement().querySelector('.mk').classList.toggle('hi', on);
+  const t = document.querySelector(`.it[data-id="${id}"] .mk`); if (t) t.classList.toggle('hi', on);
+}
+// ── timeline: day boxes with elevation profile, arrival vs sunset, weather per night
+const SUNSET = 19.2;
+function drawTimeline() {
+  const W = $('.tl-wrap').clientWidth - 40, px = W / TOTAL, x = k => 20 + k * px, { nights, breaks, supply, days } = P;
+  let h = '';
+  days.slice(0, -1).forEach((k, d) => {
+    const len = days[d + 1] - k, hrs = len / SPEED + (breaks.filter(b => b.km > k && b.km < days[d + 1]).length * 0.5), arr = 9 + hrs;
+    let up = 0; for (let q = k; q < days[d + 1]; q += 1) up += Math.max(0, elev(q + 1) - elev(q));
+    h += `<div class="day" style="left:${x(k) + 2}px;width:${len * px - 4}px"><div class="t"><b>Day ${d + 1}</b> · ${Math.round(len)} km · ↑ ${Math.round(up / 10) * 10} m · ` +
+      `arrive <span class="${arr > SUNSET - .5 ? 'late' : ''}">${fmtT(arr)}</span> · ${ic('sun-horizon', '#e8743a')} ${fmtT(SUNSET)}</div></div>`;
+  });
+  // elevation profile along the whole route
+  const pts = []; for (let k = 0; k <= TOTAL; k += TOTAL / 200) pts.push([x(k), 46 - (elev(k) - 20) / 400 * 44]);
+  h += `<svg class="prof" width="${W + 40}" height="48"><path d="M${x(0)},48 ${pts.map(p => `L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')} L${x(TOTAL)},48Z" fill="#a4b3b01f" stroke="#a4b3b066" stroke-width="1"/></svg>`;
+  h += `<div class="line" style="left:${x(0)}px;width:${TOTAL * px}px;${exact ? '' : 'background:repeating-linear-gradient(90deg,var(--route) 0 10px,transparent 10px 16px)'}"></div>`;
+  // longest stretch without open food
+  const open = supply.filter(s => s.open).map(s => s.km).sort((a, b) => a - b); let g = [0, 0];
+  [0, ...open, TOTAL].reduce((p, c) => { if (c - p > g[1] - g[0]) g = [p, c]; return c; });
+  if (g[1] - g[0] > 30) h += `<div class="gap" style="left:${x(g[0])}px;width:${(g[1] - g[0]) * px}px"></div><div class="gapl" style="left:${x(g[0]) + 4}px">${ic('warning', 'var(--bad)')} ${Math.round(g[1] - g[0])} km without open food</div>`;
+  const item = (it, cls, cap, extra = '') => `<div class="it ${cls}${sel === it.id ? ' sel' : ''}" data-id="${it.id}" style="left:${x(it.km)}px">
+      <div class="mk ${it.kind === 'sleep' ? 'night ' : ''}${it.saved ? 'saved' : 'auto'}" style="background:${it.kind === 'supply' && !it.open ? '#8a8f8c' : KIND[it.kind].c}">${ic(KIND[it.kind].icon)}</div><div class="cap">${cap}</div>${extra}</div>`;
+  nights.forEach((n, j) => h += item(n, 'nightit', n.saved ? '★ saved' : n.score + ' %', `<div class="wx">${ic(WX[j % 4][0])}${WX[j % 4][1]}</div>`));
+  breaks.forEach(b => h += item(b, '', b.saved ? '★' : ''));
+  supply.forEach(s => h += item(s, '', s.saved ? '★' : s.open ? s.type.split(' ')[0] : 'closed'));
+  h += `<div class="it" style="left:${x(0)}px"><div class="mk" style="background:#e8743a">${ic('map-pin-area')}</div></div>`;
+  h += `<div class="it" style="left:${x(TOTAL)}px"><div class="mk" style="background:#e8743a">${ic('flag-checkered')}</div></div>`;
+  h += '<div class="axis">' + Array.from({ length: Math.floor(TOTAL / 20) + 1 }, (_, i) => `<span style="left:${x(i * 20)}px">${i * 20} km</span>`).join('') + '</div>';
+  $('#tl').innerHTML = h;
+  document.querySelectorAll('.it[data-id]').forEach(el => {
+    el.onmouseenter = () => hi(el.dataset.id, true); el.onmouseleave = () => hi(el.dataset.id, false);
+    el.onclick = () => select(el.dataset.id);
+  });
+  document.querySelectorAll('.it.nightit .mk.auto').forEach(mk => mk.onmousedown = e => {   // drag a generated night
+    e.preventDefault(); const id = mk.parentElement.dataset.id, n = P.nights.find(q => q.id === id), x0 = e.clientX, k0 = n.km, j = P.nights.indexOf(n);
+    const lo = (P.nights[j - 1] || { km: 0 }).km + 15, hiK = (P.nights[j + 1] || { km: TOTAL }).km - 15;
+    const mv = ev => { n.km = Math.max(lo, Math.min(hiK, k0 + (ev.clientX - x0) / px)); drawMap(); drawTimeline(); showAct(act, true); };
+    const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); hint(`Night moved to km ${Math.round(n.km)}: picking the best spot near there…`); };
+    addEventListener('mousemove', mv); addEventListener('mouseup', up);
+  });
+  const nS = [...nights, ...breaks, ...supply].filter(i => i.saved).length;
+  if (!sel) $('#bar2').innerHTML = `${days.length - 1} days · ~${Math.round(TOTAL)} km ${exact ? '(GPX)' : '(corridor estimate)'} · <span style="color:var(--blaze)">★ ${nS} saved</span> + ${nights.filter(n => !n.saved).length + breaks.filter(b => !b.saved).length} generated stops · click a stop to keep or swap it, drag a tent to move a night`;
+}
+function select(id) {
+  sel = sel === id ? null : id; const all = [...P.nights, ...P.breaks, ...P.supply], it = all.find(i => i.id == id);
+  drawTimeline();
+  if (!sel || !it) return;
+  map.panTo(where(it));
+  const name = it.saved ? it.name : it.kind === 'sleep' ? `Night at km ${Math.round(it.km)} · ${it.score} %` : it.kind === 'break' ? it.name : `${it.name} · ${it.type}`;
+  $('#bar2').innerHTML = `<span class="sel">${ic(KIND[it.kind].icon, KIND[it.kind].c)}<b>${name}</b> ${it.saved ? '<span style="color:var(--blaze)">★ saved</span>' : '· generated'}</span>` +
+    (it.saved ? `<button class="btn small" id="a-out">Take out of the route</button>`
+      : `<button class="btn small" id="a-keep">${ic('star', 'var(--blaze)')}Keep (save)</button>` + (it.kind !== 'supply' ? `<button class="btn small" id="a-other">${ic('arrows-clockwise')}Other spot</button>` : '')) +
+    `<button class="btn small" id="a-open">Open card</button>`;
+  const re = () => { P = plan(); sel = null; drawMap(); drawTimeline(); showAct(act, true); renderSpots(); };
+  if ($('#a-keep')) $('#a-keep').onclick = () => { const p = where(it);
+    saved.push({ id: nextId++, name: it.kind === 'sleep' ? `Night spot at km ${Math.round(it.km)}` : it.name, kind: it.kind, lat: p[0], lon: p[1], stars: 0, in: true }); re(); hint('Saved to My spots and fixed in the route'); };
+  if ($('#a-other')) $('#a-other').onclick = () => { auto[it.id] = ((auto[it.id] || 0) + 1) % 3; re(); hint('Swapped for the next best spot nearby'); };
+  if ($('#a-out')) $('#a-out').onclick = () => { const s = saved.find(q => q.id === it.id); if (s) s.in = false; re(); hint('Taken out of the route (still in My spots)'); };
+  $('#a-open').onclick = () => hint('(mockup) this opens the spot card');
+}
+function hint(t) { const h = $('#hint'); h.textContent = t; h.style.display = 'block'; clearTimeout(hint.t); hint.t = setTimeout(() => h.style.display = 'none', 2600); }
+// ── My spots list: filter, order (drag), tick = in the route
+function renderSpots() {
+  $('#nspots').textContent = saved.length;
+  $('#filters').innerHTML = [['all', 'All'], ['sleep', 'Sleep'], ['break', 'Break'], ['supply', 'Resupply']].map(([k, n]) => `<button data-f="${k}" class="${filter === k ? 'on' : ''}">${n}</button>`).join('');
+  document.querySelectorAll('#filters button').forEach(b => b.onclick = () => { filter = b.dataset.f; renderSpots(); });
+  $('#splist').innerHTML = saved.filter(s => filter === 'all' || s.kind === filter).map(s => {
+    const p = proj([s.lat, s.lon]), j = P.nights.findIndex(n => n.id === s.id);
+    const where_ = s.in ? `<small class="on">in the route · km ${Math.round(p.km)}${j >= 0 ? ` · night ${j + 1}` : ''}</small>` : `<small>${p.off < 1 ? 'on the route' : Math.round(p.off) + ' km from the route'}</small>`;
+    return `<div class="sp" draggable="true" data-id="${s.id}"><span class="h">${ic('dots-six-vertical')}</span><span class="t">${ic(KIND[s.kind].icon, KIND[s.kind].c)}</span>
+      <span><b>${s.name}<span class="st">${'★'.repeat(s.stars)}</span></b>${where_}</span><button class="tick${s.in ? ' on' : ''}" title="In the route">${ic('check')}</button></div>`;
+  }).join('');
+  document.querySelectorAll('.sp').forEach(el => {
+    const s = saved.find(q => q.id === +el.dataset.id);
+    el.querySelector('.tick').onclick = e => { e.stopPropagation(); s.in = !s.in; P = plan(); drawMap(); drawTimeline(); showAct(act, true); renderSpots(); };
+    el.onclick = () => map.setView([s.lat, s.lon], 13);
+    el.ondragstart = () => { el.classList.add('drag'); renderSpots.drag = s.id; };
+    el.ondragend = () => el.classList.remove('drag');
+    el.ondragover = e => e.preventDefault();
+    el.ondrop = e => { e.preventDefault(); const from = saved.findIndex(q => q.id === renderSpots.drag), to = saved.findIndex(q => q.id === s.id);
+      const [m] = saved.splice(from, 1); saved.splice(to, 0, m); renderSpots(); };
+  });
+}
+$('#btn-spots').onclick = () => { $('#spots').classList.toggle('open'); $('#btn-spots').classList.toggle('on', $('#spots').classList.contains('open')); };
+$('#spots-x').onclick = () => $('#btn-spots').click();
+$('#through').onclick = () => {
+  const t = saved.filter(s => s.in);
+  if (!t.length) { hint('Tick some spots first'); return; }
+  setRoute([START, ...t.map(s => [s.lat, s.lon]), END]); P = plan(); drawMap(); drawTimeline(); showAct('route'); renderSpots(); fit();
+  hint(`Route through ${t.length} saved spots in your order; nights and breaks fill the gaps`);
+};
+// ── activities
+let act = 'route';
+function showAct(a, keep) {
+  act = a;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.a === a));
+  Object.entries(layers).forEach(([k, l]) => { const on = a === 'route' || k === a || k === 'route'; if (on) l.addTo(map); else l.remove(); });
+  layers.route.eachLayer(l => l.setStyle && l.setStyle({ opacity: a === 'route' ? .85 : .35 }));
+  const A = ACTS[a];
+  $('#legend').innerHTML = `<h3>${ic(A.icon, A.c)}${A.title}</h3>` + (A.bar ? `<div class="bar" style="background:${A.bar}"></div><div class="lbl">${A.lbl.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
+    (A.why.length ? `<details><summary>Why this score</summary><div class="why">${A.why.map(([i, n]) => `<span>${ic(i)}${n}</span>`).join('')}</div></details>` : '') +
+    `<div class="note">${A.note}</div>`;
+  if (!keep) $('#rw').classList.toggle('min', a !== 'route');
+}
+$('#tabs').innerHTML = Object.entries(ACTS).map(([k, A]) => `<button class="tab" data-a="${k}" style="--c:${A.c}">${ic(A.icon)}${A.name}</button>`).join('');
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => showAct(t.dataset.a));
+$('#rw-min').onclick = () => $('#rw').classList.toggle('min');
+$('#rw-title').onclick = () => $('#rw').classList.remove('min');
+document.querySelectorAll('#seg-to button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#seg-to button').forEach(x => x.classList.toggle('on', x === b));
+  $('#to-dest').style.display = b.dataset.m === 'dest' ? '' : 'none'; $('#to-dir').style.display = b.dataset.m === 'dir' ? '' : 'none';
+});
+$('#plan').onclick = () => { perDay = Math.max(25, +$('#perday').value || 55); P = plan(); sel = null; drawMap(); drawTimeline(); showAct(act, true); renderSpots(); hint(`Planned: ${P.days.length - 1} days of ~${perDay} km`); };
+$('#gpx').onclick = () => {                        // (mockup) pretend a GPX track came back from bikerouter.de: wiggly, exact
+  const pts = []; for (let i = 1; i < WPTS.length; i++) for (let t = 0; t < 1; t += 0.05) { const a = WPTS[i - 1], b = WPTS[i];
+    pts.push([a[0] + (b[0] - a[0]) * t + Math.sin(t * 17 + i) * 0.012, a[1] + (b[1] - a[1]) * t + Math.cos(t * 13 + i) * 0.015]); }
+  pts.push(WPTS[WPTS.length - 1]); setRoute(pts, true); P = plan(); drawMap(); drawTimeline(); showAct(act, true); renderSpots();
+  hint('(mockup) GPX loaded: exact track, real km; it stays on the map in every tab');
+};
+$('#br').onclick = () => {
+  const pts = [WPTS[0], ...P.nights.map(n => where(n)), WPTS[WPTS.length - 1]].map(p => `${p[1].toFixed(5)},${p[0].toFixed(5)}`).join(';');
+  window.open(`https://bikerouter.de/#map=9/52.02/8.95/standard&lonlats=${pts}`, '_blank');
+};
+const fit = () => map.fitBounds(L.latLngBounds(WPTS).pad(0.2), { paddingBottomRight: [0, 250], paddingTopLeft: [0, 0] });
+addEventListener('resize', drawTimeline);
+setRoute(WPTS); P = plan(); fit(); drawMap(); drawTimeline(); showAct('route'); renderSpots();
+</script>
+</body>
+</html>

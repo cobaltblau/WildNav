@@ -249,6 +249,9 @@ the nights found in Night mode between the stops. It also scans for break spots 
     README and data/LICENSE.md). Loaded with the terrain maps (`decodeSlope`, `slopeAt`).
 - `calibrate_noise.py` – recalibrates the road noise levels in `WAYS` against the DLR road noise map
   (`collect` samples per region from a .osm.pbf, `fit` prints the shift per road type). Run after a build.
+- `mockups/` – clickable concept mockups with invented data (not published, not part of the app).
+  `route_concept.html`: the four activities (Sleep · Break · Resupply · Route), "My spots" list and the route window
+  with a timeline mixing saved and generated stops (IDEAS.md section 7).
 - `raw/` – Geofabrik downloads. Large – never commit (in `.gitignore`).
 - `start.bat` – starts a local server on port 8765 and opens the app.
 - `IDEAS.md` – planned features (e.g. the "hidden spot" score) with research notes and algorithm sketches.
