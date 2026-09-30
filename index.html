@@ -318,6 +318,9 @@ details.more summary::-webkit-details-marker{display:none}
 .sup-stop .nm small{display:block;color:var(--muted);font-size:11.5px;line-height:1.35}
 .rt-gap{font-size:12px;line-height:1.4;margin-top:4px;display:flex;gap:6px;align-items:flex-start}
 .rt-gap .ic{width:16px;height:16px;margin-top:1px}
+.brk-pin{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#3fa89a;color:#fff;
+  font-weight:700;font-size:12px;border:2px solid #fff;box-shadow:0 1px 5px #000a;cursor:pointer}
+.brk-dot{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#3fa89a;color:#fff;font-size:11px;font-weight:700}
 .rt-night{font-size:11.5px;color:#b39ddb;margin:6px 0 2px;display:flex;align-items:center;gap:5px}
 .set-h{font-size:12.5px;font-weight:600;margin:14px 0 0}
 .oh-pick{display:flex;gap:6px;margin-top:5px}
@@ -659,7 +662,7 @@ const ATT = CAT_KEYS.filter(k => CATS[k].group === 'attract');
 const DEFAULTS = { basemap: 'grey', layer: 'score', markers: true, grey: false,
   cbSafe: false, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {},
   hideW: 1, quietW: 0.7, slopeW: 1, mode: 'night', dayLayer: 'break', cutS: 2000, routeOffS: 1000, ohAt: null,
-  bShade: 1, bView: 0.8, bSeat: 0.7, bWater: 0.5, bQuiet: 0.6 };
+  bShade: 1, bView: 0.8, bSeat: 0.7, bWater: 0.5, bQuiet: 0.6, speed: 18, breakEvery: 2, rideStart: '09:00' };
 CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
 const settings = (() => {
   try {
@@ -670,6 +673,7 @@ const settings = (() => {
 if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.layer)) settings.layer = 'score';
 if (!['break', 'supply', 'shade', 'sights', 'swim', 'topo', 'quiet'].includes(settings.dayLayer)) settings.dayLayer = 'break';
 if (settings.mode !== 'day') settings.mode = 'night';
+if (!/^\d\d:\d\d$/.test(settings.rideStart)) settings.rideStart = '09:00';
 if (settings.ohAt && !(settings.ohAt.d >= 0 && settings.ohAt.d <= 6 && /^\d\d:\d\d$/.test(settings.ohAt.t))) settings.ohAt = null;
 if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.nightLayer)) delete settings.nightLayer;
 const isDay = () => settings.mode === 'day';
@@ -2946,6 +2950,9 @@ function drawRoute() {
       icon: L.divIcon({ className: '', html: `<div class="sup-pin">${ic('basket')}</div>`, iconSize: [18, 18], iconAnchor: [9, 9] }) })
       .bindTooltip(`km ${Math.round(st.km / 1000)}: ${st.items.map(x => esc(x.p.n || DAY_TYPES[x.p.t] || CATS[x.p.c].label)).slice(0, 4).join(', ')}${st.items.length > 4 ? ' …' : ''}`)
       .on('click', () => zoomStop(st)).addTo(routePins);
+    (routeSup.breaks || []).forEach((x, j) => { if (!x.none) L.marker([x.lat, x.lon], { keyboard: false, title: `Break ${j + 1}`,
+      icon: L.divIcon({ className: '', html: `<div class="brk-pin">${j + 1}</div>`, iconSize: [22, 22], iconAnchor: [11, 11] }) })
+      .on('click', () => { openSpot({ lat: x.lat, lon: x.lon, type: 'break' }); map.setView([x.lat, x.lon], Math.max(map.getZoom(), 15)); }).addTo(routePins); });
   }
   if (!routeRes || !routeRes.nights) return;
   if (!isDay()) for (const c of routeRes.others) L.circleMarker([c.lat, c.lon], { radius: 5, color: '#fff', weight: 1.5, fillColor: '#147337', fillOpacity: 1 })
@@ -3000,13 +3007,15 @@ async function tilesReady(list, ms = 20000) {
   return want.length;
 }
 
-async function analyseRoute() {
-  const run = ++routeRun, r = route, off = settings.routeOff, z = NEAR_Z, S = cellSize();
+// Scores the cells within `off` of the route piece by piece (6 km, off-screen grids at NEAR_Z) and keeps the best
+// cell per `binM` of route. makeScore(g, km) returns the scoring function for a grid (km = middle of the piece).
+async function scanRoute(run, off, binM, minS, makeScore, label) {
+  const r = route, z = NEAR_Z, S = cellSize();
   const bins = new Map(), msg = t => { const el = $('#route-res'); if (el) el.innerHTML = `<div class="note">${t}</div>`; };
   let noData = 0;
   for (let a = 0; a < r.len; a += ROUTE_STEP) {
-    if (run !== routeRun) return;                // route changed or analysis restarted
-    msg(`Scoring the route… km ${Math.round(a / 1000)} of ${Math.round(r.len / 1000)}`);
+    if (run !== routeRun) return null;           // route changed or analysis restarted
+    msg(`${label}… km ${Math.round(a / 1000)} of ${Math.round(r.len / 1000)}`);
     // route points of this piece (plus one on each side, so segments are complete)
     let i0 = r.cum.findIndex(c => c >= a); i0 = Math.max(0, i0 - 1);
     let i1 = r.cum.findIndex(c => c > a + ROUTE_STEP); i1 = i1 < 0 ? r.pts.length - 1 : i1;
@@ -3017,12 +3026,11 @@ async function analyseRoute() {
     const reach = neededReach() + 500;          // tiles around, for distances and density at the edges
     const list = tilesInBounds(L.latLngBounds([bb.getSouth() - dLat(reach), bb.getWest() - dLon(reach)], [bb.getNorth() + dLat(reach), bb.getEast() + dLon(reach)]), 200) || [];
     if (!(await tilesReady(list))) { noData++; continue; }
-    if (run !== routeRun) return;
+    if (run !== routeRun) return null;
     const p0 = map.project(bb.getNorthWest(), z), p1 = map.project(bb.getSouthEast(), z);
     const x0 = Math.floor(p0.x / S) * S, y0 = Math.floor(p0.y / S) * S;
     const g = buildGrid(z, S, x0, y0, Math.ceil((p1.x - x0) / S) + 1, Math.ceil((p1.y - y0) / S) + 1);
-    computeDensity(g);
-    const sc = scorer(g), { W, H, pad, gw, gh, gx0, gy0, cov } = g;
+    const sc = makeScore(g, Math.min(r.len, a + ROUTE_STEP / 2)), { W, H, pad, gw, gh, gx0, gy0, cov } = g;
     // distance of every cell to this piece of the route (distance field seeded along the track)
     const seeds = new Uint8Array(W * H);
     for (let k = 1; k < seg.length; k++) {
@@ -3037,17 +3045,22 @@ async function analyseRoute() {
       const i = y * W + x;
       if (!cov[i] || dR[i] > off) continue;
       const s = sc(i);
-      if (s < ROUTE_MIN) continue;
+      if (s < minS) continue;
       const ll = map.unproject([gx0 + (x + 0.5) * S, gy0 + (y + 0.5) * S], z);
       let best = 0, bd = Infinity;                // nearest route point -> distance along the route
       for (let k = 0; k < seg.length; k++) { const d = (seg[k][0] - ll.lat) ** 2 + (seg[k][1] - ll.lng) ** 2 * kx; if (d < bd) { bd = d; best = k; } }
-      const km = segCum[best], bin = Math.floor(km / ROUTE_BIN), old = bins.get(bin);
+      const km = segCum[best], bin = Math.floor(km / binM), old = bins.get(bin);
       if (!old || s > old.s) bins.set(bin, { s, lat: ll.lat, lon: ll.lng, km, off: dR[i] });
     }
     await new Promise(r2 => setTimeout(r2));    // let the page breathe between pieces
   }
-  if (run !== routeRun) return;
-  routeRes = { cands: [...bins.values()].sort((u, v) => u.km - v.km), noData, pieces: Math.ceil(r.len / ROUTE_STEP) };
+  return { cands: [...bins.values()].sort((u, v) => u.km - v.km), noData, pieces: Math.ceil(r.len / ROUTE_STEP) };
+}
+async function analyseRoute() {
+  const run = ++routeRun;
+  const res = await scanRoute(run, settings.routeOff, ROUTE_BIN, ROUTE_MIN, g => { computeDensity(g); return scorer(g); }, 'Scoring the route');
+  if (!res || run !== routeRun) return;
+  routeRes = res;
   showRouteRes();
 }
 
@@ -3088,11 +3101,19 @@ function showRouteRes() {
 const SUP_OFFS = [250, 500, 1000, 2000], STOP_GAP = 1500;
 function renderRouteDay(box) {
   box.innerHTML = `<div class="irow"><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(route.name)}</span><b>${fmtDist(route.len)}</b></div>
-    <div class="rt-opts"><label>up to <select id="rt-offs">${SUP_OFFS.map(o => `<option value="${o}"${o === settings.routeOffS ? ' selected' : ''}>${fmtDist(o)}</option>`).join('')}</select> off route</label></div>
-    <div class="btns"><button class="btn primary" id="rt-sup">Find supplies</button><button class="btn" id="rt-zoom">Show</button>
+    <div class="rt-opts"><label>Start <input type="time" id="rt-start" value="${settings.rideStart}" style="width:auto"></label>
+      <label><input type="number" id="rt-speed" min="5" max="40" value="${settings.speed}"> km/h</label>
+      <label>break every <input type="number" id="rt-every" min="0" max="8" step="0.5" value="${settings.breakEvery}"> h</label>
+      <label>per day <input type="number" id="rt-day" min="0" max="400" step="5" value="${settings.routeDay}"> km</label>
+      <label>shops up to <select id="rt-offs">${SUP_OFFS.map(o => `<option value="${o}"${o === settings.routeOffS ? ' selected' : ''}>${fmtDist(o)}</option>`).join('')}</select> off route</label></div>
+    <div class="btns"><button class="btn primary" id="rt-sup">Plan the day</button><button class="btn" id="rt-zoom">Show</button>
       <button class="btn icon" id="rt-del" title="Remove the route" aria-label="Remove the route">${ic('x')}</button></div>
     <div id="route-res"></div>`;
   $('#rt-offs').onchange = e => { settings.routeOffS = +e.target.value; saveSettings(); };
+  $('#rt-start').onchange = e => { if (/^\d\d:\d\d$/.test(e.target.value)) { settings.rideStart = e.target.value; saveSettings(); if (routeSup) showSupplies(); } };
+  $('#rt-speed').onchange = e => { settings.speed = Math.max(5, Math.min(40, +e.target.value || 18)); saveSettings(); if (routeSup) showSupplies(); };
+  $('#rt-every').onchange = e => { settings.breakEvery = Math.max(0, +e.target.value || 0); saveSettings(); if (routeSup) showSupplies(); };
+  $('#rt-day').onchange = e => { settings.routeDay = Math.max(0, +e.target.value || 0); saveSettings(); if (routeSup) showSupplies(); };
   $('#rt-sup').onclick = () => analyseSupplies();
   $('#rt-zoom').onclick = () => map.fitBounds(L.latLngBounds(route.pts), { paddingBottomRight: [0, isPhone() ? 150 : 0] });
   $('#rt-del').onclick = () => { if (confirm(`Remove the route “${route.name}”?`)) setRoute(null); };
@@ -3105,6 +3126,15 @@ async function jsonReady(list, ms = 20000) {
   while (Date.now() - t0 < ms && !want.every(t => tiles.has(tkey(t.x, t.y)))) await sleep(100);
   return want;
 }
+// When you pass a point of the route: start on the plan day (Settings → Day, or today) at the start time,
+// riding at the set speed; with a distance per day, each day starts again at the start time.
+function timeAtKm(m) {
+  const day = settings.routeDay * 1000, n = day > 0 ? Math.floor(m / day) : 0, d = settings.ohAt ? ohWhen() : new Date();
+  const [h, mi] = settings.rideStart.split(':').map(Number);
+  d.setDate(d.getDate() + n); d.setHours(h, mi, 0, 0);
+  return new Date(d.getTime() + (m - n * day) / 1000 / settings.speed * 3600e3);
+}
+const hhmm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 async function analyseSupplies() {
   const run = ++routeRun, r = route, off = settings.routeOffS, pts = r.pts;
   const msg = t => { const el = $('#route-res'); if (el) el.innerHTML = `<div class="note">${t}</div>`; };
@@ -3141,7 +3171,10 @@ async function analyseSupplies() {
     }
   }
   items.sort((u, v) => u.km - v.km);
-  routeSup = { items, noData: need.size - want.length, tiles: need.size };
+  // break spots: at most 200 m off the route, the best per km, scored with the shade at the time you pass
+  const br = await scanRoute(run, 200, 1000, 0.2, (g, km) => breakScorer(g, timeAtKm(km)), 'Looking for break spots');
+  if (!br || run !== routeRun) return;
+  routeSup = { items, breakCands: br.cands, noData: need.size - want.length, tiles: need.size };
   showSupplies();
 }
 const zoomStop = st => map.fitBounds(L.latLngBounds(st.items.map(x => [x.p.lat, x.p.lon])).pad(0.3), { maxZoom: 16, paddingBottomRight: [0, isPhone() ? 150 : 0] });
@@ -3169,28 +3202,40 @@ function showSupplies() {
   const stopRow = (st, j) => {
     const kinds = DAY_SUPPLY.filter(k => st.items.some(x => x.p.c === k));
     const names = st.items.filter(x => x.p.c === 'groceries' || x.p.c === 'food').map(x => esc(x.p.n || DAY_TYPES[x.p.t] || '')).filter(Boolean);
-    const open = st.items.filter(x => ohState(x.p.o) === 'open').length;
-    const line = [names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3}` : ''), open ? `<span class="oh-open">${open} open ${ohWhenText()}</span>` : ''].filter(Boolean).join(' · ');
+    const when = timeAtKm(st.km), open = st.items.filter(x => ohState(x.p.o, when) === 'open').length, hours = st.items.some(x => x.p.o);
+    const line = [names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3}` : ''),
+      open ? `<span class="oh-open">${open} open then</span>` : hours ? '<span class="oh-closed">closed then</span>' : ''].filter(Boolean).join(' · ');
     return `<div class="spot-item sup-stop" data-j="${j}" tabindex="0"><span class="ics">${kinds.map(k => ic(CATS[k].icon, CATS[k].color)).join('')}</span>
-      <span class="nm">${km(st.km)}${st.kmEnd - st.km > 500 ? '–' + Math.round(st.kmEnd / 1000) : ''}<small>${line || kinds.map(k => CATS[k].label).join(', ')}</small></span>
+      <span class="nm">${km(st.km)}${st.kmEnd - st.km > 500 ? '–' + Math.round(st.kmEnd / 1000) : ''} · ~${hhmm(timeAtKm(st.km))}<small>${line || kinds.map(k => CATS[k].label).join(', ')}</small></span>
       <span class="dd">${fmtDist(st.off)} off</span></div>`;
   };
+  // breaks: one every `breakEvery` hours of riding (counted again from each day's start), best spot in a window around it
+  const breaks = [], every = settings.speed * settings.breakEvery * 1000, day = settings.routeDay * 1000 || route.len + 1;
+  if (every > 0) for (let d0 = 0; d0 < route.len; d0 += day) for (let t = d0 + every; t < Math.min(route.len, d0 + day) - every / 3; t += every) {
+    const c = (routeSup.breakCands || []).filter(x => x.km >= t - 0.25 * every && x.km <= t + 0.15 * every);
+    breaks.push(c.length ? c.reduce((u, v) => v.s > u.s + 0.03 || (Math.abs(v.s - u.s) <= 0.03 && Math.abs(v.km - t) < Math.abs(u.km - t)) ? v : u) : { none: true, km: t });
+  }
+  routeSup.breaks = breaks;
   // nights found in Night mode (if any) go between the stops, so you see where to shop before camping
   const nights = routeRes && routeRes.nights ? routeRes.nights.map((x, j) => x && { km: x.km, j }).filter(Boolean) : [];
-  const rows = []; let ni = 0;
-  stops.forEach((st, j) => {
-    while (ni < nights.length && nights[ni].km < st.km) { rows.push(`<div class="rt-night">${ic('moon')}Night ${nights[ni].j + 1} · ${km(nights[ni].km)}</div>`); ni++; }
-    rows.push(stopRow(st, j));
-  });
-  while (ni < nights.length) { rows.push(`<div class="rt-night">${ic('moon')}Night ${nights[ni].j + 1} · ${km(nights[ni].km)}</div>`); ni++; }
+  const breakRow = (x, j) => { const when = timeAtKm(x.km);
+    if (x.none) return `<div class="spot-item sup-stop"><span class="ics">${ic('park', 'var(--muted)')}</span><span class="nm muted">Break ${j + 1} · ${km(x.km)} · ~${hhmm(when)}<small>no good break spot near the route here</small></span></div>`;
+    const sh = shadeAt(x.lat, x.lon, when), what = [sh && sh.shade ? 'shade' : sh && !sh.down ? 'sunny' : ''].filter(Boolean);
+    return `<div class="spot-item sup-stop" data-b="${j}" tabindex="0"><span class="ics"><span class="brk-dot">${j + 1}</span></span>
+      <span class="nm">Break ${j + 1} · ${km(x.km)} · ~${hhmm(when)}<small>${[...what, `${Math.round(x.s * 100)} %`].join(' · ')}</small></span><span class="dd">${fmtDist(x.off)} off</span></div>`; };
+  const ev = [...stops.map((st, j) => ({ km: st.km, html: stopRow(st, j) })), ...breaks.map((x, j) => ({ km: x.km, html: breakRow(x, j) })),
+    ...nights.map(n => ({ km: n.km + 0.5, html: `<div class="rt-night">${ic('moon')}Night ${n.j + 1} · ${km(n.km)}</div>` }))].sort((u, v) => u.km - v.km);
+  const rows = ev.map(e => e.html);
   const sights = routeSup.items.filter(x => DAY_SIGHTS.includes(x.p.c));
   res.innerHTML = gaps.map(gapRow).join('') +
-    (stops.length ? `<h3 class="rt-h">Stops (${stops.length})</h3>${rows.join('')}` : `<div class="note">No shops, cafés or water within ${fmtDist(settings.routeOffS)} of the route.</div>`) +
+    (ev.length ? `<h3 class="rt-h">Along the way</h3>${rows.join('')}` : '') + (stops.length ? '' : `<div class="note">No shops, cafés or water within ${fmtDist(settings.routeOffS)} of the route.</div>`) +
     (sights.length ? `<h3 class="rt-h">Sights on the way</h3>${sights.slice(0, 15).map((x, j) => `<div class="spot-item sup-stop" data-s="${j}" tabindex="0"><span class="ics">${ic(CATS[x.p.c].icon, CATS[x.p.c].color)}</span>
       <span class="nm">${esc(x.p.n || DAY_TYPES[x.p.t] || CATS[x.p.c].label)}<small>${km(x.km)}${x.p.t ? ' · ' + (DAY_TYPES[x.p.t] || '') : ''}</small></span><span class="dd">${fmtDist(x.off)} off</span></div>`).join('')}` : '') +
     (routeSup.noData ? `<div class="note">${routeSup.noData} of ${routeSup.tiles} map areas along the route are outside the offline data.</div>` : '') +
-    `<div class="note">Open / closed ${settings.ohAt ? 'on ' : ''}${ohWhenText()} (change under Settings → Day). Opening hours are from OpenStreetMap and may be out of date${nights.length ? '' : '. Find night spots in Night mode to see them in this list'}.</div>`;
+    `<div class="note">Times: start ${settings.rideStart}${settings.ohAt ? ' on ' + DAY_WORDS[settings.ohAt.d] : ' today'} (day under Settings → Day), ${settings.speed} km/h, breaks not counted. “Open then” = open when you get there; opening hours are from OpenStreetMap and may be out of date${nights.length ? '' : '. Find night spots in Night mode to see them in this list'}.</div>`;
   res.querySelectorAll('[data-j]').forEach(el => { const st = stops[+el.dataset.j]; el.onclick = () => zoomStop(st); el.onkeydown = e => { if (e.key === 'Enter') zoomStop(st); }; });
+  res.querySelectorAll('[data-b]').forEach(el => { const x = breaks[+el.dataset.b], go = () => { openSpot({ lat: x.lat, lon: x.lon, type: 'break' }); map.setView([x.lat, x.lon], Math.max(map.getZoom(), 15)); };
+    el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
   res.querySelectorAll('[data-s]').forEach(el => { const x = sights[+el.dataset.s], go = () => map.setView([x.p.lat, x.p.lon], Math.max(map.getZoom(), 15));
     el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
   drawRoute();

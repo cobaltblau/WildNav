@@ -13,7 +13,15 @@ The switch in the top bar (`#mode-seg`, `setMode`, `settings.mode`, `isDay()`) p
   layer (`settings.nightLayer` / `settings.dayLayer`); a card row linking to a night layer switches back to Night.
 - Per mode: markers (`NIGHT_CATS` / `DAY_CATS`), "Here" (`updateHoverDay`: nearest place of each kind with name, type and
   open/closed now), "Near you" (`findNearbyDay`: nearest of each resupply kind within 5 km) and the route section
-  (`renderRouteDay`: "Find supplies").
+  (`renderRouteDay`: "Plan the day").
+- Day layers also: `break` (home layer of Day, "Break spots": `breakScorer` = close to a path × ground × traffic ×
+  (0.15 + 0.85 × extras: shade at the plan time, view, bench/table/shelter, water; weights `settings.bShade/bView/bSeat/bWater/
+  bQuiet`), `shade` (`shadeGrid`: forest (`SHADE_H`, 20 m) and hills (elevation `g.elv`) towards the sun from SunCalc; not
+  buildings), `swim`. View = height above the land within ~350 m (`promGrid` / `promAt`) outside forest, or a viewpoint.
+  "Plan for" under Settings → Day (`settings.ohAt`, `ohWhen()`) = time for opening hours and shade.
+- Spot types (`SPOT_TYPES`: camp, break, shop): a map click opens the type of the current layer (`typeOfLayer`), the switch
+  in the card changes it; saved spots store `type` (pin icon, list filter, GPX `<sym>`/`<type>`, share link `&t=`).
+  Camp card = everything below; break/shop cards: `updateDayCard` (camp updaters hand over to it).
 - Day categories have `group: 'day'` in `CATS` and are not part of the night score; their distance fields are only computed
   in Day mode (`buildGrid`). Types (`p.t`) are shown in words via `DAY_TYPES`; opening hours (`p.o`) are read by `ohState()`
   ('open' / 'closed' / null when not understood: months, sunrise, "+" …; later rules replace earlier ones, PH ignored),
@@ -135,11 +143,14 @@ off-screen in 6 km pieces: `tilesReady` waits for the offline tiles, `buildGrid`
 cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best spot between 85 % and
 105 % of each day's distance) plus other good spots ≥ 3 km apart; purple numbered pins = nights.
 `buildGrid(z, S, x0, y0, gw, gh)` is the view-independent grid builder (`computeBase` uses it for the view).
-Day mode: "Find supplies" (`analyseSupplies`) loads only the place files along the track (`jsonReady`), finds every
+Day mode: "Plan the day" (`analyseSupplies`) loads only the place files along the track (`jsonReady`), finds every
 day place within "up to X off route" (`settings.routeOffS`, spatial index of the track segments) with its km;
 `showSupplies` groups places ≤ 1.5 km apart along the route into stops (amber pins, hidden from zoom 13 where the badges
 show), lists the longest stretch without groceries / water / food (orange > 25 km, red > 40 km), sights on the way, and
-the nights found in Night mode between the stops.
+the nights found in Night mode between the stops. It also scans for break spots (`scanRoute`, shared with the night search:
+≤ 200 m off, best per km, shade at the time you pass) and picks one every `breakEvery` hours; `timeAtKm` = start time
+(`settings.rideStart`, day = "Plan for" day) + km / `settings.speed`, restarting each day ("per day" km); stops show
+"open then" at that time.
 
 ## Files
 - `index.html` – the whole app in one file (Leaflet 1.9.4 from CDN + plain JavaScript, no build step).
