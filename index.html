@@ -2008,6 +2008,7 @@ const SPOT_TYPES = {
   supply: { label: 'Resupply', icon: 'basket', col: '#e0a030',   gpx: 'Shopping Center' },
 };
 const SPOT_WHAT = { camp: 'a place to sleep', break: 'a place for a break: shade, a view, a bench', supply: 'shops, cafés, water, toilets' };
+const ACT_OF_TYPE = { camp: 'sleep', break: 'break', supply: 'supply' };      // kind of spot -> activity (tab)
 const typeKey = t => t === 'shop' ? 'supply' : SPOT_TYPES[t] ? t : 'camp';      // 'shop' = old name of 'supply'
 const spotType = s => typeKey(s.type);
 const pinIcon = (cls, type = 'camp') => L.divIcon({ className: `spot-pin ${cls} pt-${type}`, html: cls === 'temp' ? '' : ic(SPOT_TYPES[type].icon), iconSize: [26, 26], iconAnchor: [13, 13] });
@@ -2891,7 +2892,6 @@ const ACTS = {
   route:  { name: 'Route',    icon: 'path',   col: '#e8743a',      type: null,     home: 'route',  why: [], whyT: '' },
 };
 ACTS.sleep.cats = NIGHT_CATS; ACTS.break.cats = ['benches', 'shelters', 'swim', 'viewpoints', 'sights']; ACTS.supply.cats = DAY_SUPPLY; ACTS.route.cats = [];
-const ACT_OF_TYPE = { camp: 'sleep', break: 'break', supply: 'supply' };
 const actOwns = (a, l) => ACTS[a].home === l || ACTS[a].why.includes(l);
 const layerInfo = k => isDay() && DAY_NAMES[k] ? { ...LAYERS[k], ...DAY_NAMES[k] } : LAYERS[k];
 const FACTOR_LAYERS = ['hidden', 'quiet', 'topo', 'terrain', 'access', 'view'];
