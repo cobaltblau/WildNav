@@ -4,3 +4,7 @@ raw/
 # Python cache
 __pycache__/
 *.py[cod]
+
+# generated offline data: published to the gh-pages branch by publish_site.py, not kept on main
+data/*
+!data/LICENSE.md

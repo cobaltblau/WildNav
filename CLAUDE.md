@@ -95,7 +95,8 @@ cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best
   skipped without numba). They pin the calibration (meadow/forest/ridge/noise/path distance), check
   numba == numpy, the file formats and the slope/hollow maths. Run them after changing build_tiles.py.
   Current data: Niedersachsen + Nordrhein-Westfalen (Geofabrik 2026-09-28).
-- `data/` – generated offline tiles (committed, served as static files):
+- `data/` – generated offline tiles, served as static files. **Not committed on `main`** (only
+  `data/LICENSE.md`; the rest is in .gitignore): `publish_site.py` publishes them, see "Publishing".
   - `data/index.json` – `{z: 12, built, bfmt: "u16", tiles: ["x/y", ...]}` (`built` = cache version)
   - `data/12/<x>/<y>.b16` – building centres, Uint16 pairs (tile-relative Mercator x,y × 65535, ~10 cm).
     Older data had `.bin` with Float32 pairs; the app reads `.b16` when index.json says `bfmt: "u16"`.
@@ -152,6 +153,17 @@ cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best
   as counts instead of points. Overpass results are cached in IndexedDB for 30 days.
 - `classify()` in `index.html` and in `build_tiles.py` must stay in sync.
 
+## Publishing (GitHub Pages serves the `gh-pages` branch)
+- `main` holds the code and its history; `gh-pages` holds the website: `index.html`, `sw.js`,
+  `manifest.webmanifest`, `README.md`, `icons/`, `data/` and `.nojekyll`, always as ONE commit that is
+  replaced on every publish, so data builds don't grow the repository history.
+- `python publish_site.py` builds that commit straight from this folder (git database in
+  `%LOCALAPPDATA%\WildNav-publish`, outside OneDrive) and force-pushes it; only changed files upload.
+- After every change: commit + push `main` (code) **and** run `publish_site.py` (site), otherwise the
+  live site doesn't change. Pages setting: Settings → Pages → Deploy from a branch → `gh-pages` / root.
+- The old data versions are still in `main`'s history from before the switch (~660 MB); removing them
+  would mean rewriting history (only with the owner's explicit OK).
+
 ## Run locally
 Double-click `start.bat`, or run `python -m http.server 8765` in this folder and open
 http://localhost:8765/ (opening index.html directly as a file will not load `data/`).
@@ -168,4 +180,5 @@ http://localhost:8765/ (opening index.html directly as a file will not load `dat
   installable-app files (`sw.js`, `manifest.webmanifest`, `icons/`), which browsers require as
   separate files.
 - After every change: test in the preview, check the browser console, then tell the owner
-  what to look at. Commit with a clear message only after they say it looks good, then push.
+  what to look at. Commit with a clear message only after they say it looks good, then push `main`
+  and publish the site (`python publish_site.py`).

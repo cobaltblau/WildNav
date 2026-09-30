@@ -23,6 +23,9 @@ Double-click `start.bat`, or run `python -m http.server 8765` and open http://lo
     python build_tiles.py raw/<region>.osm.pbf raw/<region>.poly
     python build_tiles.py --slope raw/fabdem      # slopes, from FABDEM tiles in raw/fabdem/
 
+The generated data is not kept in the `main` branch: `python publish_site.py` publishes the app and
+`data/` to the `gh-pages` branch (one commit, replaced each time), which GitHub Pages serves.
+
 Several regions can be built into the same `data/` folder. Outside those regions the app can
 optionally download data from the Overpass API (off by default).
 
