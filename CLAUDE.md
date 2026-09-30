@@ -3,56 +3,45 @@
 A static web map for planning wild camping and bikepacking trips. The owner is not a
 developer: explain changes briefly and ask before anything destructive.
 
-## Two modes: Night and Day
-The switch in the top bar (`#mode-seg`, `setMode`, `settings.mode`, `isDay()`) picks the planning mode (owner's idea):
-- **Night** (where to sleep): everything below about the score, hidden, quiet night, terrain …
-- **Day** (riding): layers `supply` ("Resupply": groceries incl. petrol stations, cafés & food, water, bike shops & repair,
-  toilets = `DAY_SUPPLY`) and `sights` ("Sights & views": castles, ruins, museums, attractions, named peaks + viewpoints =
-  `DAY_SIGHTS`), both distance maps like "Useful places" (`NEAREST`, cut-off "Worth a detour" `settings.cutS`); plus `topo`,
-  `quiet`, `access` ("Path access", distance to a rideable path) and `view` ("View", height above the land outside forest).
-  A layer has the **same name and short description in both modes** (owner's wish; e.g. `quiet` is "Traffic noise"
-  everywhere); `DAY_NAMES` only overrides the legend explanation. Layers per mode: `MODE_LAYERS`. Switching mode with the
-  button shows that mode's main layer (`MODE_HOME`: Best spots / Break spots) and sets the kind of spot (Camp / Break); a page
-  reload keeps the last layer (`settings.nightLayer` / `settings.dayLayer`); a card row linking to a night layer switches back
-  to Night. Layer menu: the same structure in both modes (owner's wish): the combined layer (Best spots with a tent /
-  Break spots), then "Why a spot scores" with every factor layer (`DAY_WHY` in Day). Descriptions: a few simple words.
-  Markers: dense categories only when zoomed in (`CATS[k].minZ`: benches 16, toilets 15, food 14).
-  From zoom 13 badges that would overlap are merged (`rebuildMarkers`, chain clustering within `CLUSTER_PX` = 28 px on
-  screen): one pill with the icons of the three most common kinds + a count, a soft outline around the group's area
-  (convex hull `hull()`, thick round stroke), hover = list, click = zoom in at least one step until it splits.
-- Per mode: markers (`NIGHT_CATS` / `DAY_CATS`), "Here" (`updateHoverDay`: nearest place of each kind with name, type and
-  open/closed now), "Near you" (`findNearbyDay`: nearest of each resupply kind within 5 km) and the route section
-  (`renderRouteDay`: "Plan the day").
-- Day layers also: `break` (home layer of Day, "Break spots": `breakScorer` = close to a path (`breakAccess`: full at the path,
-  ~half at 35 m, ~0 from 60 m, so breaks follow the paths instead of filling forests with dense tracks) × ground × traffic ×
-  extras (`breakMix`, owner's rule): 0.15 + 0.65 × (shade at the plan time, water, view; weights `settings.bShade/bWater/bView`)
+## Four activities (top bar tabs)
+One choice answers "what am I doing?": **Sleep · Break · Resupply · Route** (`ACTS`, `setActivity`, `settings.activity`; owner's
+concept, IDEAS.md section 7; the old Night/Day switch, the layer menu and the spot-type pop-out are gone). The tab sets
+- the map layer (`home`: Best spots · Break spots · Resupply · route without colour overlay),
+- the markers (`ACTS[a].cats`), "Here" (`updateHover` for Sleep, `updateHoverDay` for Break / Resupply, nothing in Route),
+- the kind of spot a map click opens and what "Find spots here" / "Locate me" look for (`settings.spotType` = camp / break /
+  supply, set by the tab; the Route tab keeps the last kind): best camp spots (`scorer`), best break spots (`breakScorer`),
+  the nearest resupply places (`findNearbyDay`).
+`isDay()` = "not Sleep" (day places need the day distance fields in `buildGrid`). Switching a spot's type in its card, or opening
+a saved spot of another kind, switches the tab (not while in Route). Saved pins of other kinds are faded.
+- **"Why this score ▸" chips** in the legend (`renderChips`, `ACTS[a].why`) hold the factor layers of the current activity
+  (Sleep: Hidden, Traffic noise, Topography, Terrain & rules, Houses, Useful places; Break: Shade, View, Path access, Traffic
+  noise, Topography, Sights & views, Swimming spots; Resupply: Groceries, Cafés & food, Water, Toilets, Bike repair = "Only show").
+  They explain, they don't switch activity; "← Best spots" goes back to the home layer. `setLayer(l)` picks the activity that
+  owns the layer (`actOwns`). Layers are in `LAYERS`; the legend text of Topography / Traffic noise differs by day (`DAY_NAMES`).
+- **Clock chip** next to the tabs (`#btn-when`, `settings.ohAt`, `ohWhen()`, `ohChanged()`): the time for opening hours and shade
+  (now, or a weekday + time); "now" views refresh every 5 min. The route plan has its own start day / time.
+- **Resupply** (`DAY_SUPPLY`: groceries incl. petrol stations, cafés & food, water, bike shops & repair, toilets, train
+  stations): `NEAREST` distance maps (cut-off "Worth a detour" `settings.cutS`); card (`updateDayCard`, type supply): tiles
+  with the nearest **open** place of each kind at the clock time (no hours in the map = maybe open, closer closed ones are
+  counted) + a list of everything within 1 km with hours. Opening hours: `ohState()` ('open' / 'closed' / null when not
+  understood: months, sunrise, "+" …; later rules replace earlier ones, PH ignored).
+- **Break**: `breakScorer` = close to a path (`breakAccess`: full at the path, ~half at 35 m, ~0 from 60 m) × ground × traffic ×
+  extras (`breakMix`, owner's rule): 0.15 + 0.65 × (shade at the clock time, water, view; weights `settings.bShade/bWater/bView`)
   = **at most 80 % without somewhere to sit**, + 0.1 for a bench/table/shelter, + another 0.1 with a bench **and** a view or
-  sight nearby (= 100 %); sitting/view switched off (weight 0) count as fulfilled; `bQuiet` for traffic), `shade` (`shadeGrid`: forest (`SHADE_H`, 20 m) and hills (elevation `g.elv`) towards the sun from SunCalc; not
-  buildings), `swim`. View = height above the land within ~350 m (`promGrid` / `promAt`) outside forest, or a viewpoint.
-  "Plan for" at the top of Settings (`settings.ohAt`, `ohWhen()`) = time for opening hours and shade, and the day a route
-  plan starts.
-- Spot types (`SPOT_TYPES`: only three on purpose — camp, break, supply "Resupply" (shops, water, toilets); anything else is a
-  renamed break; old name 'shop' is read as supply via `typeKey`). Independent of the map layer: chosen with the spot button
-  in the tool strip (`#tool-spot` shows the type's icon; tapping it while active opens the pop-out `#type-pop`,
-  `setSpotType`, `settings.spotType`). The type decides what a map click opens and what "Find spots here" / "Locate me" look
-  for (`findNearby`: best camp spots with `scorer`, best break spots with `breakScorer`, nearest resupply places with
-  `findNearbyDay`). The switch in the card changes a spot's type; saved spots store `type` (pin icon, list filter,
-  GPX `<sym>`/`<type>`, share link `&t=`). Camp card = everything below; break/supply cards: `updateDayCard`.
-- Tool strip: spot button, "Find spots here", locate. (The "clicks off" tool was removed, owner's OK.)
-- Settings order: Plan for · Camp: houses · Camp: hidden & quiet · Camp: useful places · Break · Resupply & places ·
-  Display · Map data · Offline.
-- Day categories have `group: 'day'` in `CATS` and are not part of the night score; their distance fields are only computed
-  in Day mode or when the kind of spot is not camp (`buildGrid`). Types (`p.t`) are shown in words via `DAY_TYPES`; opening hours (`p.o`) are read by `ohState()`
-  ('open' / 'closed' / null when not understood: months, sunrise, "+" …; later rules replace earlier ones, PH ignored),
-  at `ohWhen()`: now, or the weekday + time chosen under Settings → "Plan for" (`settings.ohAt`, `ohChanged()`
-  redraws everything that shows open/closed; "now" views refresh every 5 min).
-- The camp card shows camping information only (owner's decision: no day information in it); day information
-  lives in the break and resupply cards.
-- Search (`#search`) first looks for a saved spot whose name contains the text, then asks Nominatim.
+  sight nearby (= 100 %); `bQuiet` for traffic. `shadeGrid`: forest (`SHADE_H`, 20 m) and hills (elevation `g.elv`) towards
+  the sun from SunCalc; not buildings. View = height above the land within ~350 m (`promGrid` / `promAt`) outside forest, or
+  a viewpoint. Markers: dense categories only when zoomed in (`CATS[k].minZ`); from zoom 13 overlapping badges are merged
+  (`rebuildMarkers`, `CLUSTER_PX` = 28: a pill with the icons of the three most common kinds + count, convex hull outline).
+- **Spot types** (`SPOT_TYPES`: only three on purpose — camp, break, supply; anything else is a renamed break; old name
+  'shop' = supply via `typeKey`). The spot button in the tool strip shows the kind's icon (`syncSpotTool`). Saved spots store
+  `type` and `inRoute` (pin icon, GPX `<sym>`/`<type>`, share link `&t=`). Camp card = the camping information below (owner:
+  no day information in it); break / resupply cards: `updateDayCard`.
+- Day categories have `group: 'day'` in `CATS` and are not part of the night score. Types (`p.t`) are shown in words via `DAY_TYPES`.
+- Tool strip: spot button, "Find spots here" (hidden in Route), locate. Search first looks for a saved spot, then Nominatim.
+- Settings order: Sleep: houses · Sleep: hidden & quiet · Sleep: useful places · Break · Resupply & places · Display · Map data · Offline.
 
-## What it shows (Night)
-One overlay at a time, chosen with the layer picker in the top bar (`#layer-btn` / `#layer-menu`, `LAYERS`, `settings.layer`),
-grouped as "Night: where to sleep" (Best spots) and "Why a spot scores" (the factors behind the score):
+## What it shows (Sleep)
+One overlay at a time (`LAYERS`, `settings.layer`): Best spots, and the factors behind it as chips in the legend:
 - **Hidden** (`hidden`), **Quiet night** (`quiet`, road/rail dB), **Topography** (`topo`, slope + cold hollows in blue) and
   **Terrain & rules** (`terrain`, ground for a tent by `LAND_FACTOR` class + protected areas hatched red/orange):
   `FACTOR_LAYERS`, drawn in `composite()` from the grid (`R.hid/hdb/slp/hol/land/prot`, only from zoom `LAND_MIN_Z`),
@@ -74,8 +63,8 @@ The original three:
   viewpoints, fire pits, weighted 0–100 % per category.
 
 ## Layout
-- Top bar: logo (pine + tent, inline SVG `<symbol id="logo">`, also the favicon), search,
-  layer dropdown (`#layer-select`), status, Settings button.
+- Top bar: logo (pine + tent, inline SVG `<symbol id="logo">`, also the favicon), search, the four activity tabs (a second
+  row on phones), clock chip, status, "★ My spots (n)", Settings.
 - Map: tool strip (`.tools`, `setTool`: `inspect` = the spot button, click opens the spot card of the chosen kind, saving
   happens from the card; `near` = "Find spots here"; add future tools here) and a legend box. Legend: the colour bar is drawn as it
   looks on the grey map (`drawLegend` blends over map grey at the layer's opacity); a white marker (`setLegendMark`) shows
@@ -92,8 +81,8 @@ The original three:
   shown as a draggable ✥ marker with a dashed 5 km circle; GPS updates don't move a manual centre,
   the locate button brings it back to you. First step towards GPX route planning (IDEAS.md 4).
   Messages for phones go through `showHint()` (the status text is hidden there).
-- Side panel (`#panel`, headings short: "Here", "Near you", "Route", "Your spots"): spot card (when open), "Here"
-  (under the cursor, hidden on touch devices), your spots. On desktop the panel floats over the map (the map is full
+- Side panel (`#panel`, headings short: "Here", "Near you"): spot card (when open), "Here"
+  (under the cursor, hidden on touch devices). "My spots" is a window opened from the top bar (`#spots-win`, see below). On desktop the panel floats over the map (the map is full
   width) and each section is its own rounded card, like the tool strip and legend (owner's wish).
   "Under the cursor" (`updateHover`) always shows the same rows ("—", "zoom in" or "…" when a value is missing),
   a reserved line under each place name, and one two-line hint at the bottom (also names a protected area),
@@ -154,22 +143,39 @@ Category icons are in `CATS[k].icon`, terrain icons in `LAND[c][1]` (`landIc(c)`
 `protIc(level)` for protected areas. Colour icons by meaning (category colour), not decoration. Text should
 wrap instead of being cut off with "…".
 
-## Route (GPX)
-Panel section "Route": load a GPX track (also via Import when the file has a track but no waypoints),
-stored in `localStorage['wn:route']` (thinned to ~25 m). "Find spots" (`analyseRoute`) scores the route
-off-screen in 6 km pieces: `tilesReady` waits for the offline tiles, `buildGrid` + `computeDensity(g)` +
-`scorer(g)` at `NEAR_Z`, a distance field from the track limits cells to "up to X off route"; the best
-cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best spot between 85 % and
-105 % of each day's distance) plus other good spots ≥ 3 km apart; purple numbered pins = nights.
-`buildGrid(z, S, x0, y0, gw, gh)` is the view-independent grid builder (`computeBase` uses it for the view).
-Day mode: "Plan the day" (`analyseSupplies`) loads only the place files along the track (`jsonReady`), finds every
-day place within "up to X off route" (`settings.routeOffS`, spatial index of the track segments) with its km;
-`showSupplies` groups places ≤ 1.5 km apart along the route into stops (amber pins, hidden from zoom 13 where the badges
-show), lists the longest stretch without groceries / water / food (orange > 25 km, red > 40 km), sights on the way, and
-the nights found in Night mode between the stops. It also scans for break spots (`scanRoute`, shared with the night search:
-≤ 200 m off, best per km, shade at the time you pass) and picks one every `breakEvery` hours; `timeAtKm` = start time
-(`settings.rideStart`, day = "Plan for" day) + km / `settings.speed`, restarting each day ("per day" km); stops show
-"open then" at that time.
+## My spots (`#spots-win`, `renderSpotList`)
+Opened by "★ My spots (n)" in the top bar (a full-screen sheet on phones). All saved spots, filters All / Sleep / Break /
+Resupply, stars, where each is relative to the loaded route (`routeProj`: "in the route · km 41 · night 1" / "5 km from the
+route"), click = fly there + open the card, **drag** the handle to reorder (pointer events, works on touch; the order is the
+order of `spots`), tick box = `inRoute` (a fixed stop of the route). Buttons: "Route through N ticked spots, in this order"
+(`routeThrough`), Export GPX, Backup, Import. Spots are stored only in `localStorage['wn:spots']`.
+
+## Route window (Route tab, `#rwin`)
+A collapsible window along the bottom (a sheet on phones; `--rw` = its height, the panel, legend and map controls move up).
+The loaded route stays on the map in every tab (faded, `drawRoute`); the pins of the plan show in the tab of their kind.
+- **Route** (`route`, `localStorage['wn:route']` = {name, pts, exact}; plan in `wn:plan`): either a **corridor** (straight
+  lines From → (via spots) → To or Direction + total km, points every ~1 km, all distances × `DETOUR` = 1.3, `exact:false`,
+  `ensureCorridor`; start / destination by place name (`geocode`, Nominatim) or by pin on the map) or the **exact track** of a
+  GPX (`parseRoute`, thinned to ~25 m; it replaces the corridor and re-plans if there already was a plan). Old saved routes
+  count as exact.
+- **Plan** (`planTrip`): `planSupply` (place files along the track → stops per village ≤ 1.5 km apart, `open` = some shop or café
+  looks open when you pass), `planNights`, `planBreaks`, `finishPlan` (days, longest stretch without open food > 30 km),
+  `loadProfile` (elevations from the slope tiles, blue channel × 4 m), `fillWeather` (Open-Meteo per night, same cache as the
+  spot card). Ticked saved spots are **fixed**: saved nights (> 2 km from start / end) split the trip and each part gets
+  `round(length / km per day) − 1` generated nights (best camp cell in a window around the target km, plus a **backup** ≥ 1.5 km
+  away); breaks every `settings.breakEvery` hours of riding, counted again each day (best break cell, shade at the time you
+  pass), skipped when a ticked break is within 0.3 × the interval. Scoring is `scanPiece` / `candidates`: off-screen
+  6 km pieces (`ROUTE_STEP`), `buildGrid` at `NEAR_Z`, night (`scorer`, ≤ 2 km off a GPX, 5 km off a corridor) and break
+  (`breakScorer`, ≤ 200 m / 1 km) cells share one grid, best per km, cached per piece (`scan`) so swapping a stop doesn't rescan.
+- **Timeline** (`drawTimeline`): km left to right, one box per day (km, ↑ climb, arrival vs sunset from SunCalc, late = red
+  when within 30 min of sunset), elevation profile, tents with score + weather, break / shop icons with closed ones grey;
+  stops in lanes so they never overlap (up to 3, horizontal scroll on phones); saved = ★, generated = dashed ring.
+  Hover highlights on the map (`hi`); click a stop (`selectStop`): generated → Keep (save) / Other spot (`alts`), saved →
+  Take out of the route; drag a generated night (`dragNight`, `plan.moved`). Times: `tripStart()` (`settings.rideDay` /
+  `rideStart`), `passTime(km)` = day start + riding time + 30 min per break.
+- Buttons: Plan · bikerouter.de (`#map=9/LAT/LON/standard&lonlats=lon,lat;…` with start, nights, saved break / resupply stops,
+  destination; max 40 points) · Load GPX · Export GPX (track + stops as waypoints) · Clear.
+- `buildGrid(z, S, x0, y0, gw, gh)` is the view-independent grid builder (`computeBase` uses it for the view).
 
 ## Files
 - `index.html` – the whole app in one file (Leaflet 1.9.4 from CDN + plain JavaScript, no build step).
@@ -251,7 +257,7 @@ the nights found in Night mode between the stops. It also scans for break spots 
   (`collect` samples per region from a .osm.pbf, `fit` prints the shift per road type). Run after a build.
 - `mockups/` – clickable concept mockups with invented data (not published, not part of the app).
   `route_concept.html`: the four activities (Sleep · Break · Resupply · Route), "My spots" list and the route window
-  with a timeline mixing saved and generated stops (IDEAS.md section 7).
+  with a timeline mixing saved and generated stops (IDEAS.md section 7); it is now built into the app.
 - `raw/` – Geofabrik downloads. Large – never commit (in `.gitignore`).
 - `start.bat` – starts a local server on port 8765 and opens the app.
 - `IDEAS.md` – planned features (e.g. the "hidden spot" score) with research notes and algorithm sketches.

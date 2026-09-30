@@ -234,7 +234,12 @@ that's already loaded, plus one small library.
 7. **Next:** simplify into four activities + the route window (section 7); first as a clickable mockup
    (`mockups/route_concept.html`), then built into the app.
 
-## 7. Simplify: four activities on the same level + a route window (concept, 2026-09-30)
+## 7. ✅ Simplify: four activities on the same level + a route window (built 2026-09-30, branch `claude/four-activities`)
+
+> **Built:** the four tabs, the "Why this score" chips, the clock chip, "★ My spots" (filters, route relation, drag to
+> reorder, tick = in the route), the route window (corridor × 1.3 or exact GPX, saved + generated stops, timeline with
+> elevation, sunset, weather, hover / keep / other / take out / drag a night, bikerouter.de, GPX in and out) and the
+> Resupply card with the nearest *open* places. What is left is under "Open questions" and "Not done yet" below.
 
 **Problem:** three switches answer the same question "what am I looking for?" — the Night/Day switch, the layer
 menu and the spot-type button (camp / break / resupply) — and the route lives in the side panel. Too many ways in.
@@ -290,6 +295,10 @@ route · km 41 · night 1" or "5 km from the route"), click = fly there. Drag to
   Drag a generated night along the timeline to move it.
 - Tested in `mockups/route_concept.html` (v2). Also checked: bikerouter.de accepts our link
   (`#map=…&lonlats=lon,lat;lon,lat;…`) and routes it (it adds its own `&profile=…`).
+- **Not done yet (ideas for later):** drag a *saved* stop along the timeline; a "Break" that follows the shade of the
+  whole day (stops longer than 30 min, lunch); the corridor could bend around big obstacles (rivers, motorways) — today it
+  is straight, so the real route from bikerouter.de is always better; weather beyond 7 days; opening hours per stop
+  when several places of a village disagree (only "some shop or café open" is used).
 - **Open questions:** is the corridor estimate useful enough before real routing? Timeline on phones (horizontal
   scroll or a vertical list of days)? Should overlapping stops in the timeline stack (they can collide now)?
 
