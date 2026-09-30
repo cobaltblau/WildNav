@@ -250,7 +250,6 @@ details.more summary::-webkit-details-marker{display:none}
 .spot-filter button{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1px 9px;font-size:11.5px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:4px}
 .spot-filter button .ic{width:14px;height:14px}
 .spot-filter button.on{color:var(--ink);border-color:var(--muted)}
-.spot-item .ti{display:flex}.spot-item .ti .ic{width:16px;height:16px}
 .spot-pin.temp{background:transparent;border:3px solid #fff;box-shadow:0 0 0 2px #000a,inset 0 0 0 2px #000a}
 .spot-card[hidden]{display:none}
 .sc-summary{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
@@ -313,6 +312,24 @@ details.more summary::-webkit-details-marker{display:none}
 .near b{font-weight:600;white-space:nowrap}
 .sc-date{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 6px;color-scheme:dark}
 .spot-list{margin-top:4px}
+/* My spots window */
+.mywin{position:absolute;left:56px;top:10px;width:320px;max-height:calc(100% - 40px - var(--rw,0px));overflow-y:auto;z-index:1002;background:var(--slate);
+  border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 12px #0008;padding:11px 12px 12px}
+.mywin[hidden]{display:none}
+.sp-list{margin-top:2px}
+.sp{display:grid;grid-template-columns:22px 22px minmax(0,1fr) 28px;gap:6px;align-items:center;padding:6px 4px;margin:0 -4px;border-radius:7px;cursor:pointer;min-height:44px}
+.sp:hover{background:var(--surface)}
+.sp.drag{opacity:.45;background:var(--surface)}
+.sp .h{color:var(--muted);cursor:grab;touch-action:none;display:flex;align-items:center;justify-content:center;height:100%}
+.sp .h .ic{width:16px;height:16px}
+.sp .t .ic{width:20px;height:20px}
+.sp b{font-weight:600;display:block;line-height:1.2;overflow-wrap:anywhere}
+.sp small{color:var(--muted);font-size:11.5px;line-height:1.3;display:block}
+.sp small.on{color:var(--route,#e8743a)}
+.sp .st{color:var(--blaze);font-size:11px;margin-left:4px;font-weight:400}
+.tick{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--line);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:transparent;padding:0}
+.tick.on{background:#e8743a;border-color:#e8743a;color:#fff}
+.tick .ic{width:16px;height:16px;filter:none}
 .spot-item{display:flex;align-items:center;gap:8px;padding:5px 6px;margin:0 -6px;border-radius:6px;cursor:pointer;font-size:12.5px}
 .spot-item:hover{background:var(--surface)}
 .spot-item .st{color:var(--blaze);font-size:11px;white-space:nowrap}
@@ -334,6 +351,8 @@ details.more summary::-webkit-details-marker{display:none}
   .brand span,#status,.hbtn .lbl{display:none}
   #search{flex:1}
   header{flex-wrap:wrap}
+  .mywin{left:0;right:0;top:0;bottom:0;width:auto;max-height:none;border-radius:0;border:0;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+  .sp{min-height:52px}
   .when-pop{left:auto;right:0}
   .tabs{order:9;flex:1 0 100%}
   .tab{flex:1;justify-content:center;padding:6px 4px}
@@ -448,6 +467,15 @@ details.more summary::-webkit-details-marker{display:none}
 <symbol id="i-eye" viewBox="0 0 256 256" fill="currentColor"><path d="M128,56C48,56,16,128,16,128s32,72,112,72,112-72,112-72S208,56,128,56Zm0,112a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></symbol>
 <symbol id="i-clock" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></symbol>
 <symbol id="i-umbrella-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M224,136H32a8,8,0,0,1-8-8.71,104.37,104.37,0,0,1,207.94,0A8,8,0,0,1,224,136Z" opacity="0.2"/><path d="M240,126.63A112.44,112.44,0,0,0,51.75,53.75a111.56,111.56,0,0,0-35.7,72.88A16,16,0,0,0,32,144h88v56a32,32,0,0,0,64,0,8,8,0,0,0-16,0,16,16,0,0,1-32,0V144h88a16,16,0,0,0,16-17.37ZM32,128l0,0A96.43,96.43,0,0,1,193.4,65.52,95.32,95.32,0,0,1,224,128Z"/></symbol>
+<symbol id="i-dots-six-vertical" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32V224a16,16,0,0,1-16,16H64a16,16,0,0,1-16-16V32A16,16,0,0,1,64,16H192A16,16,0,0,1,208,32Z" opacity="0.2"/><path d="M104,60A12,12,0,1,1,92,48,12,12,0,0,1,104,60Zm60,12a12,12,0,1,0-12-12A12,12,0,0,0,164,72ZM92,116a12,12,0,1,0,12,12A12,12,0,0,0,92,116Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,116ZM92,184a12,12,0,1,0,12,12A12,12,0,0,0,92,184Zm72,0a12,12,0,1,0,12,12A12,12,0,0,0,164,184Z"/></symbol>
+<symbol id="i-check" viewBox="0 0 256 256" fill="currentColor"><path d="M232,56V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56Z" opacity="0.2"/><path d="M205.66,85.66l-96,96a8,8,0,0,1-11.32,0l-40-40a8,8,0,0,1,11.32-11.32L104,164.69l90.34-90.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+<symbol id="i-flag-checkered" viewBox="0 0 256 256" fill="currentColor"><path d="M224,56v60c-19.89,17.23-38.23,18.39-56,13.48v-60C185.76,74.39,204.11,73.23,224,56ZM104,102.52v-60C86.24,37.61,67.89,38.77,48,56v60c19.89-17.22,38.23-18.39,56-13.48v60c21.62,6,42.38,21,64,27v-60c-21.62-6-42.38-21-64-27Z" opacity="0.2"/><path d="M227.32,48.75A8,8,0,0,0,218.76,50c-28,24.22-51.72,12.48-79.21-1.13C111.07,34.76,78.78,18.79,42.76,50A8,8,0,0,0,40,56V224a8,8,0,0,0,16,0V179.77c26.79-21.16,49.87-9.75,76.45,3.41,28.49,14.09,60.77,30.06,96.79-1.13a8,8,0,0,0,2.76-6V56A8,8,0,0,0,227.32,48.75ZM216,71.6v40.65c-14,11.06-27,13.22-40,10.88V79.34A60.05,60.05,0,0,0,216,71.6Zm-56,3.76v43c-6.66-2.67-13.43-6-20.45-9.48-8.82-4.37-18-8.91-27.55-12.18v-43c6.66,2.66,13.43,6,20.45,9.48C141.27,67.55,150.46,72.09,160,75.36ZM96,48.91V92.69a60.06,60.06,0,0,0-40,7.75V59.78C70,48.72,83,46.57,96,48.91ZM86.58,152A60.06,60.06,0,0,0,56,160.43V119.78c14-11.06,27-13.22,40-10.88v43.8A65.61,65.61,0,0,0,86.58,152ZM112,156.67v-43c6.66,2.66,13.43,6,20.45,9.48,8.82,4.37,18,8.9,27.55,12.17v43c-6.66-2.67-13.43-6-20.45-9.48C130.73,164.47,121.54,159.94,112,156.67Zm64,26.45v-43.8a65.61,65.61,0,0,0,9.42.72A60.11,60.11,0,0,0,216,131.57v40.68C202,183.31,189,185.46,176,183.12Z"/></symbol>
+<symbol id="i-arrow-square-out" viewBox="0 0 256 256" fill="currentColor"><path d="M184,80V208a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H176A8,8,0,0,1,184,80Z" opacity="0.2"/><path d="M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z"/></symbol>
+<symbol id="i-arrows-clockwise" viewBox="0 0 256 256" fill="currentColor"><path d="M216,128a88,88,0,1,1-88-88A88,88,0,0,1,216,128Z" opacity="0.2"/><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></symbol>
+<symbol id="i-caret-down" viewBox="0 0 256 256" fill="currentColor"><path d="M208,96l-80,80L48,96Z" opacity="0.2"/><path d="M215.39,92.94A8,8,0,0,0,208,88H48a8,8,0,0,0-5.66,13.66l80,80a8,8,0,0,0,11.32,0l80-80A8,8,0,0,0,215.39,92.94ZM128,164.69,67.31,104H188.69Z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 256 256" fill="currentColor"><path d="M216,56V200a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40H200A16,16,0,0,1,216,56Z" opacity="0.2"/><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+<symbol id="i-minus" viewBox="0 0 256 256" fill="currentColor"><path d="M216,56V200a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40H200A16,16,0,0,1,216,56Z" opacity="0.2"/><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></symbol>
+<symbol id="i-caret-up" viewBox="0 0 256 256" fill="currentColor"><path d="M208,160H48l80-80Z" opacity="0.2"/><path d="M213.66,154.34l-80-80a8,8,0,0,0-11.32,0l-80,80A8,8,0,0,0,48,168H208a8,8,0,0,0,5.66-13.66ZM67.31,152,128,91.31,188.69,152Z"/></symbol>
 <symbol id="i-hollow" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><clipPath id="i-hollow-c"><rect x="0" y="136" width="256" height="120"/></clipPath><path d="M16,72C72,72,80,208,128,208S184,72,240,72Z" fill="currentColor" opacity="0.2" stroke="none" clip-path="url(#i-hollow-c)"/><path d="M16,72C72,72,80,208,128,208S184,72,240,72"/><line x1="98.0" y1="104.0" x2="158.0" y2="104.0" stroke-width="12"/><line x1="113.0" y1="78.0" x2="143.0" y2="130.0" stroke-width="12"/><line x1="143.0" y1="78.0" x2="113.0" y2="130.0" stroke-width="12"/></symbol>
 <symbol id="i-stand" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><rect x="72" y="56" width="112" height="64" rx="4" fill="currentColor" opacity="0.2" stroke="none"/><path d="M60,60L128,24L196,60"/><rect x="72" y="60" width="112" height="60" rx="4"/><path d="M96,88H160" stroke-width="12"/><path d="M84,120L60,232M172,120L196,232M72,176H184"/></symbol>
 <symbol id="i-shelter" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M24,112L128,40L232,112Z" fill="currentColor" opacity="0.2" stroke="none"/><path d="M24,112L128,40L232,112"/><path d="M64,88V216M192,88V216M96,168H160M104,168V208M152,168V208" /></symbol>
@@ -464,6 +492,8 @@ details.more summary::-webkit-details-marker{display:none}
       <div class="oh-pick"><select id="oh-day" aria-label="Day"><option value="">now</option></select><input type="time" id="oh-time" aria-label="Time" step="900"></div>
     </div></div>
   <div id="status">Ready</div>
+  <button class="chip" id="btn-spots" aria-expanded="false" aria-controls="spots-win" title="All your saved spots">
+    <svg class="ic" aria-hidden="true" style="color:var(--blaze)"><use href="#i-star"/></svg><span class="lbl">My spots</span><b id="spots-n">0</b></button>
   <button class="hbtn" id="btn-settings" aria-expanded="false" aria-controls="settings" title="Settings">
     <svg aria-hidden="true"><use href="#i-gear"/></svg>
     <span class="lbl">Settings</span></button>
@@ -491,6 +521,21 @@ details.more summary::-webkit-details-marker{display:none}
     <div class="note leg-note" id="layer-note" style="margin-top:2px"></div>
   </div>
 
+  <section class="mywin" id="spots-win" hidden role="dialog" aria-label="My spots">
+    <div class="sc-head"><h2 style="flex:1;margin:0;display:flex;align-items:center;gap:7px"><svg class="ic" style="color:var(--blaze)"><use href="#i-star"/></svg>My spots</h2>
+      <button class="sc-x" id="spots-x" title="Close" aria-label="Close My spots"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="spot-filter" id="spot-filter"></div>
+    <div class="sp-list" id="spot-list"></div>
+    <div class="note" id="spots-note">Tick a spot to put it in the route; drag <svg class="ic" style="width:12px;height:12px"><use href="#i-dots-six-vertical"/></svg> to change the order. Spots are stored in this browser only: export a backup now and then.</div>
+    <div id="spots-route"></div>
+    <div class="btns">
+      <button class="btn" id="btn-gpx" title="For Garmin, Komoot, OsmAnd …">Export GPX</button>
+      <button class="btn" id="btn-backup" title="All spots with notes, as a JSON file">Backup</button>
+      <button class="btn" id="btn-import" title="Import a GPX or backup file">Import</button>
+    </div>
+    <input type="file" id="spot-file" accept=".gpx,.json,application/json,application/gpx+xml" hidden>
+  </section>
+
   <aside class="panel" id="panel">
     <div class="sheet-handle" id="sheet-handle" role="button" tabindex="0" aria-label="Show more or less"></div>
     <section class="sec spot-card" id="spot-card" hidden aria-label="Spot details"></section>
@@ -510,18 +555,6 @@ details.more summary::-webkit-details-marker{display:none}
       <h2><svg class="ic" style="color:#e8743a"><use href="#i-path"/></svg>Route</h2>
       <div id="route-box"></div>
       <input type="file" id="route-file" accept=".gpx,application/gpx+xml" hidden>
-    </section>
-
-    <section class="sec">
-      <h2><svg class="ic" style="color:var(--blaze)"><use href="#i-star"/></svg>Your spots</h2>
-      <div class="spot-list" id="spot-list"></div>
-      <div class="note">Click the map to look at a spot, then press “Save spot”. Spots are stored in this browser only: export a backup now and then.</div>
-      <div class="btns">
-        <button class="btn" id="btn-gpx" title="For Garmin, Komoot, OsmAnd …">Export GPX</button>
-        <button class="btn" id="btn-backup" title="All spots with notes, as a JSON file">Backup</button>
-        <button class="btn" id="btn-import" title="Import a GPX or backup file">Import</button>
-      </div>
-      <input type="file" id="spot-file" accept=".gpx,.json,application/json,application/gpx+xml" hidden>
     </section>
 
     <div class="spacer"></div>
@@ -1890,21 +1923,73 @@ function drawSpotPins() {
   if (cur && !cur.id) L.marker([cur.lat, cur.lon], { icon: pinIcon('temp'), interactive: false }).addTo(spotLayer);
 }
 
+// Route relation of a spot: distance along / from the loaded route (metres), or null without a route
+function routeProj(lat, lon) {
+  if (!route) return null;
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110574, pts = route.pts;
+  let best = null;
+  for (let i = 1; i < pts.length; i++) {
+    const ax = (pts[i - 1][1] - lon) * kx, ay = (pts[i - 1][0] - lat) * ky, bx = (pts[i][1] - lon) * kx, by = (pts[i][0] - lat) * ky;
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+    const off = Math.hypot(ax + t * dx, ay + t * dy);
+    if (!best || off < best.off) best = { off, km: route.cum[i - 1] + t * (route.cum[i] - route.cum[i - 1]) };
+  }
+  return best;
+}
+let routePlan = null;                             // the planned trip (nights, breaks, stops), see the route window
+const spotNight = s => routePlan && routePlan.nights ? routePlan.nights.findIndex(n => n.spotId === s.id) : -1;
 let spotFilter = '';
 function renderSpotList() {
-  const box = $('#spot-list');
-  if (!spots.length) { box.innerHTML = '<div class="muted" style="font-size:12px">No saved spots yet.</div>'; return; }
-  const types = Object.keys(SPOT_TYPES).filter(t => spots.some(x => spotType(x) === t));
-  if (!types.includes(spotFilter)) spotFilter = '';
-  const chips = types.length > 1 ? `<div class="spot-filter">${['', ...types].map(t => `<button data-t="${t}" class="${t === spotFilter ? 'on' : ''}">${t ? ic(SPOT_TYPES[t].icon, SPOT_TYPES[t].col) + SPOT_TYPES[t].label : 'All'}</button>`).join('')}</div>` : '';
-  box.innerHTML = chips + spots.map((s, j) => spotFilter && spotType(s) !== spotFilter ? '' : `<div class="spot-item" data-j="${j}" tabindex="0">
-      <span class="ti">${ic(SPOT_TYPES[spotType(s)].icon, SPOT_TYPES[spotType(s)].col)}</span><span class="nm">${esc(s.name || 'Unnamed spot')}</span><span class="st">${'★'.repeat(s.rating || 0)}<span class="dim">${'★'.repeat(5 - (s.rating || 0))}</span></span></div>`).join('');
-  box.querySelectorAll('.spot-filter button').forEach(b => b.onclick = () => { spotFilter = b.dataset.t; renderSpotList(); });
-  box.querySelectorAll('.spot-item').forEach(el => {
-    const go = () => { const s = spots[+el.dataset.j]; map.setView([s.lat, s.lon], Math.max(map.getZoom(), 14)); openSpot(s); };
+  $('#spots-n').textContent = spots.length;
+  if ($('#spots-win').hidden) return;              // drawn when the window opens
+  const box = $('#spot-list'), fbox = $('#spot-filter');
+  const types = Object.keys(SPOT_TYPES);
+  fbox.innerHTML = spots.length ? ['', ...types].map(t => `<button data-t="${t}" class="${t === spotFilter ? 'on' : ''}">${t ? ic(SPOT_TYPES[t].icon, SPOT_TYPES[t].col) + ACTS[ACT_OF_TYPE[t]].name : 'All'}</button>`).join('') : '';
+  fbox.querySelectorAll('button').forEach(b => b.onclick = () => { spotFilter = b.dataset.t; renderSpotList(); });
+  if (!spots.length) { box.innerHTML = '<div class="muted" style="font-size:12px;margin:8px 0">No saved spots yet. Click the map to look at a spot, then press “Save spot” in its card.</div>'; return; }
+  const shown = spots.filter(s => !spotFilter || spotType(s) === spotFilter);
+  if (!shown.length) { box.innerHTML = '<div class="muted" style="font-size:12px;margin:8px 0">No spots of this kind yet.</div>'; return; }
+  box.innerHTML = shown.map(s => {
+    const T = SPOT_TYPES[spotType(s)], pr = routeProj(s.lat, s.lon), night = spotNight(s);
+    const rel = s.inRoute ? `<small class="on">in the route${pr ? ` · km ${Math.round(pr.km / 1000)}` : ''}${night >= 0 ? ` · night ${night + 1}` : ''}</small>`
+      : pr ? `<small>${pr.off < 500 ? 'on the route' : fmtDist(pr.off) + ' from the route'}</small>` : `<small>${esc(T.label)} spot${s.note ? ' · ' + esc(s.note.split('\n')[0].slice(0, 40)) : ''}</small>`;
+    return `<div class="sp" data-id="${s.id}" tabindex="0"><span class="h" title="Drag to change the order">${ic('dots-six-vertical')}</span><span class="t">${ic(T.icon, T.col)}</span>
+      <span><b>${esc(s.name || 'Unnamed spot')}${s.rating ? `<span class="st">${'★'.repeat(s.rating)}</span>` : ''}</b>${rel}</span>
+      <button class="tick${s.inRoute ? ' on' : ''}" title="${s.inRoute ? 'In the route: tap to take it out' : 'Put in the route'}" aria-pressed="${!!s.inRoute}" aria-label="In the route">${ic('check')}</button></div>`;
+  }).join('');
+  box.querySelectorAll('.sp').forEach(el => {
+    const s = spots.find(q => q.id === el.dataset.id);
+    el.querySelector('.tick').onclick = e => { e.stopPropagation(); s.inRoute = !s.inRoute; storeSpots(); if (typeof spotsRouteChanged === 'function') spotsRouteChanged(); };
+    const go = () => { map.setView([s.lat, s.lon], Math.max(map.getZoom(), 14)); openSpot(s); if (isPhone()) showSpotsWin(false); };
     el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); };
+    el.querySelector('.h').onpointerdown = e => dragSpot(e, el, box);
+    el.querySelector('.h').onclick = e => e.stopPropagation();
   });
 }
+// drag to reorder (mouse and touch): the row follows the pointer through the list; the new order is stored on release
+function dragSpot(e, row, list) {
+  e.preventDefault();
+  row.classList.add('drag');
+  const move = ev => {
+    const over = document.elementFromPoint(ev.clientX, ev.clientY), el = over && over.closest && over.closest('.sp');
+    if (el && el !== row && el.parentNode === list) { const r = el.getBoundingClientRect(); list.insertBefore(row, ev.clientY < r.top + r.height / 2 ? el : el.nextSibling); }
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
+    row.classList.remove('drag');
+    const ids = [...list.querySelectorAll('.sp')].map(x => x.dataset.id), slots = spots.map((s, i) => ids.includes(s.id) ? i : -1).filter(i => i >= 0);
+    const byId = new Map(spots.map(s => [s.id, s])), order = ids.map(id => byId.get(id));
+    slots.forEach((slot, k) => { spots[slot] = order[k]; });   // the shown spots keep their places, in the new order
+    storeSpots(); if (typeof spotsRouteChanged === 'function') spotsRouteChanged();
+  };
+  document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+}
+function showSpotsWin(on) {
+  $('#spots-win').hidden = !on; $('#btn-spots').setAttribute('aria-expanded', on); $('#btn-spots').classList.toggle('on', on);
+  if (on) { if (!$('#settings').hidden) showSettings(false); renderSpotList(); }
+}
+$('#btn-spots').onclick = () => showSpotsWin($('#spots-win').hidden);
+$('#spots-x').onclick = () => showSpotsWin(false);
 
 // ── geometry around the spot (local flat approximation is fine within a few km)
 function localFrame(lat0, lon0) {
@@ -2433,6 +2518,7 @@ map.on('click', e => {
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('#settings').hidden) showSettings(false);
+  else if (!$('#spots-win').hidden) showSpotsWin(false);
   else if (cur && !card.hidden) closeSpot();
 });
 
@@ -2477,7 +2563,7 @@ $('#spot-file').onchange = async e => {
     if (!isFinite(s.lat) || !isFinite(s.lon) || spots.some(x => same(x, s))) continue;
     spots.push({ id: s.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 6), created: s.created || Date.now(),
       lat: +s.lat, lon: +s.lon, name: String(s.name || ''), note: String(s.note || ''), rating: Math.max(0, Math.min(5, s.rating | 0)),
-      type: typeKey(s.type) });
+      type: typeKey(s.type), inRoute: !!s.inRoute });
     added++;
   }
   storeSpots(); setStatus(`${added} spot${added === 1 ? '' : 's'} imported${found.length > added ? `, ${found.length - added} skipped (already there)` : ''}`, 'ok');
@@ -2819,6 +2905,7 @@ function setActivity(a, layer) {
 
 // Settings sheet (opens over the side panel; full screen on phones)
 function showSettings(open) {
+  if (open && !$('#spots-win').hidden) showSpotsWin(false);
   $('#settings').hidden = !open;
   document.body.classList.toggle('set-open', open);   // desktop: hide the panel cards behind the settings cards
   $('#btn-settings').setAttribute('aria-expanded', open);
