@@ -9,8 +9,11 @@ The switch in the top bar (`#mode-seg`, `setMode`, `settings.mode`, `isDay()`) p
 - **Day** (riding): layers `supply` ("Resupply": groceries incl. petrol stations, cafés & food, water, bike shops & repair,
   toilets = `DAY_SUPPLY`) and `sights` ("Sights & views": castles, ruins, museums, attractions, named peaks + viewpoints =
   `DAY_SIGHTS`), both distance maps like "Useful places" (`NEAREST`, cut-off "Worth a detour" `settings.cutS`); plus `topo`
-  and `quiet` under riding names (`DAY_NAMES`: "Hills", "Busy roads"). Layers per mode: `MODE_LAYERS`; each mode remembers its
-  layer (`settings.nightLayer` / `settings.dayLayer`); a card row linking to a night layer switches back to Night.
+  and `quiet` under riding names (`DAY_NAMES`: "Hills", "Busy roads"). Layers per mode: `MODE_LAYERS`. Switching mode with the
+  button shows that mode's main layer (`MODE_HOME`: Best spots / Break spots) and sets the kind of spot (Camp / Break); a page
+  reload keeps the last layer (`settings.nightLayer` / `settings.dayLayer`); a card row linking to a night layer switches back
+  to Night. Layer menu: Night lists all its layers; Day lists Break spots + Resupply and folds the rest under
+  "More layers to explore" (owner's wish: keep Day simple).
 - Per mode: markers (`NIGHT_CATS` / `DAY_CATS`), "Here" (`updateHoverDay`: nearest place of each kind with name, type and
   open/closed now), "Near you" (`findNearbyDay`: nearest of each resupply kind within 5 km) and the route section
   (`renderRouteDay`: "Plan the day").
@@ -18,17 +21,25 @@ The switch in the top bar (`#mode-seg`, `setMode`, `settings.mode`, `isDay()`) p
   (0.15 + 0.85 × extras: shade at the plan time, view, bench/table/shelter, water; weights `settings.bShade/bView/bSeat/bWater/
   bQuiet`), `shade` (`shadeGrid`: forest (`SHADE_H`, 20 m) and hills (elevation `g.elv`) towards the sun from SunCalc; not
   buildings), `swim`. View = height above the land within ~350 m (`promGrid` / `promAt`) outside forest, or a viewpoint.
-  "Plan for" under Settings → Day (`settings.ohAt`, `ohWhen()`) = time for opening hours and shade.
-- Spot types (`SPOT_TYPES`: camp, break, shop): a map click opens the type of the current layer (`typeOfLayer`), the switch
-  in the card changes it; saved spots store `type` (pin icon, list filter, GPX `<sym>`/`<type>`, share link `&t=`).
-  Camp card = everything below; break/shop cards: `updateDayCard` (camp updaters hand over to it).
+  "Plan for" at the top of Settings (`settings.ohAt`, `ohWhen()`) = time for opening hours and shade, and the day a route
+  plan starts.
+- Spot types (`SPOT_TYPES`: only three on purpose — camp, break, supply "Resupply" (shops, water, toilets); anything else is a
+  renamed break; old name 'shop' is read as supply via `typeKey`). Independent of the map layer: chosen with the spot button
+  in the tool strip (`#tool-spot` shows the type's icon; tapping it while active opens the pop-out `#type-pop`,
+  `setSpotType`, `settings.spotType`). The type decides what a map click opens and what "Find spots here" / "Locate me" look
+  for (`findNearby`: best camp spots with `scorer`, best break spots with `breakScorer`, nearest resupply places with
+  `findNearbyDay`). The switch in the card changes a spot's type; saved spots store `type` (pin icon, list filter,
+  GPX `<sym>`/`<type>`, share link `&t=`). Camp card = everything below; break/supply cards: `updateDayCard`.
+- Tool strip: spot button, "Find spots here", locate. (The "clicks off" tool was removed, owner's OK.)
+- Settings order: Plan for · Camp: houses · Camp: hidden & quiet · Camp: useful places · Break · Resupply & places ·
+  Display · Map data · Offline.
 - Day categories have `group: 'day'` in `CATS` and are not part of the night score; their distance fields are only computed
-  in Day mode (`buildGrid`). Types (`p.t`) are shown in words via `DAY_TYPES`; opening hours (`p.o`) are read by `ohState()`
+  in Day mode or when the kind of spot is not camp (`buildGrid`). Types (`p.t`) are shown in words via `DAY_TYPES`; opening hours (`p.o`) are read by `ohState()`
   ('open' / 'closed' / null when not understood: months, sunrise, "+" …; later rules replace earlier ones, PH ignored),
-  at `ohWhen()`: now, or the weekday + time chosen under Settings → Day "Opening hours for" (`settings.ohAt`, `ohChanged()`
+  at `ohWhen()`: now, or the weekday + time chosen under Settings → "Plan for" (`settings.ohAt`, `ohChanged()`
   redraws everything that shows open/closed; "now" views refresh every 5 min).
-- The spot card stays the same in both modes and shows camping information only (owner's decision: no day
-  information in it).
+- The camp card shows camping information only (owner's decision: no day information in it); day information
+  lives in the break and resupply cards.
 - Search (`#search`) first looks for a saved spot whose name contains the text, then asks Nominatim.
 
 ## What it shows (Night)
@@ -57,8 +68,8 @@ The original three:
 ## Layout
 - Top bar: logo (pine + tent, inline SVG `<symbol id="logo">`, also the favicon), search,
   layer dropdown (`#layer-select`), status, Settings button.
-- Map: tool strip (`.tools`, `setTool`: `inspect` = click opens the spot card, saving happens
-  from the card; `off` = clicks ignored; add future tools here) and a legend box. Legend: the colour bar is drawn as it
+- Map: tool strip (`.tools`, `setTool`: `inspect` = the spot button, click opens the spot card of the chosen kind, saving
+  happens from the card; `near` = "Find spots here"; add future tools here) and a legend box. Legend: the colour bar is drawn as it
   looks on the grey map (`drawLegend` blends over map grey at the layer's opacity); a white marker (`setLegendMark`) shows
   the value under the cursor; the explanation folds away behind the title (`wn:legOpen`). Points of interest are dots
   up to zoom 12 and round icon badges from `BADGE_MIN_Z` (13).
