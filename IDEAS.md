@@ -180,7 +180,6 @@ that's already loaded, plus one small library.
 - ✅ **Day / Night modes:** Night = where to sleep (the score), Day = riding (resupply, sights & views,
   hills, busy roads). Ideas for the Day map next:
   - ✅ "Open at …": a day and time (e.g. Sunday 10:00) instead of "now" (Settings → Day).
-  - ✅ Nearest shop in the spot card.
   - Opening time per night: with a start date, check each stop at the time you'd pass it.
   - More places: swimming spots (`leisure=bathing_place`, `leisure=swimming_area`), bakeries' vending machines,
     train stations (for bailing out), campsites with showers.

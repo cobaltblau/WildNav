@@ -1700,7 +1700,7 @@ function analyseSpot(s) {
       const [d, b] = at(p.lat, p.lon);
       if (d > RADAR_MAX) continue;
       if (p.c === 'hunting') { if (d < 1000) a.hunting.push({ d, b, n: p.n }); }
-      else keep(p.c, d, b, { n: p.n, p });
+      else keep(p.c, d, b, { n: p.n });
     }
   }
   a.hunting.sort((u, v) => u.d - v.d);
@@ -1972,10 +1972,7 @@ function updateCardAround() {
   for (const k of ATT) { const n = a.near[k];
     rows.push(cardRow(ic(CATS[k].icon, CATS[k].color), CATS[k].label, wait || (n ? distDir(n.d, n.b) : '—'),
       wait ? 'loading…' : !n ? `none within ${fmtDist(RADAR_MAX)}` : (n.n ? esc(n.n) : k === 'rivers' ? 'river, stream or lake shore' : '<span class="dim">unnamed</span>'))); }
-  { const g = a.near.groceries;                   // not part of the score: where to buy food before camping
-    rows.push(lk('supply', cardRow(ic(CATS.groceries.icon, CATS.groceries.color), 'Nearest shop', wait || (g ? distDir(g.d, g.b) : '—'),
-      wait ? 'loading…' : g ? [g.n ? esc(g.n) : '', dayWhat(g.p)].filter(Boolean).join(' · ') : `none within ${fmtDist(RADAR_MAX)}`))); }
-  $('#sc-near').innerHTML = rows.map(r => r.includes('data-layer') ? r : lk('nearby', r)).join(''); markLayerRows();
+  $('#sc-near').innerHTML = rows.map(r => lk('nearby', r)).join(''); markLayerRows();
   setSum('around', wait ? 'loading…' : ATT.map(k => a.near[k] ? { k, d: a.near[k].d } : null).filter(Boolean).sort((u, v) => u.d - v.d).slice(0, 3)
     .map(n => `${ic(CATS[n.k].icon, CATS[n.k].color)} ${distDir(n.d, a.near[n.k].b)}`).join(' · ') || 'nothing useful within 2 km');
   // Night: in the order of the night, each with one short second line

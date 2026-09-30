@@ -19,8 +19,8 @@ The switch in the top bar (`#mode-seg`, `setMode`, `settings.mode`, `isDay()`) p
   ('open' / 'closed' / null when not understood: months, sunrise, "+" …; later rules replace earlier ones, PH ignored),
   at `ohWhen()`: now, or the weekday + time chosen under Settings → Day "Opening hours for" (`settings.ohAt`, `ohChanged()`
   redraws everything that shows open/closed; "now" views refresh every 5 min).
-- The spot card stays the same in both modes (it is about a place to sleep); its "Nearby" section ends with
-  "Nearest shop" (groceries, not part of the score: where to buy food before camping).
+- The spot card stays the same in both modes and shows camping information only (owner's decision: no day
+  information in it).
 - Search (`#search`) first looks for a saved spot whose name contains the text, then asks Nominatim.
 
 ## What it shows (Night)
