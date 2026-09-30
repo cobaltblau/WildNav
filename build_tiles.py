@@ -157,7 +157,7 @@ DAY_TAGS = {
     **{('shop', v): 'groceries' for v in ('supermarket', 'convenience', 'bakery', 'pastry', 'butcher', 'greengrocer',
                                           'farm', 'deli', 'general', 'kiosk')},
     ('amenity', 'fuel'): 'groceries',            # petrol stations: snacks and drinks, often open on Sundays
-    **{('amenity', v): 'food' for v in ('restaurant', 'cafe', 'fast_food', 'pub', 'biergarten', 'ice_cream')},
+    **{('amenity', v): 'food' for v in ('restaurant', 'cafe', 'fast_food', 'food_court', 'pub', 'biergarten', 'ice_cream')},
     ('shop', 'bicycle'): 'bike', ('amenity', 'bicycle_repair_station'): 'bike', ('amenity', 'compressed_air'): 'bike',
     ('amenity', 'toilets'): 'toilets',
     **{('tourism', v): 'sights' for v in ('attraction', 'museum')},
