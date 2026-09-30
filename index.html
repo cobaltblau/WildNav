@@ -306,6 +306,9 @@ details.more summary::-webkit-details-marker{display:none}
 .rt-gap{font-size:12px;line-height:1.4;margin-top:4px;display:flex;gap:6px;align-items:flex-start}
 .rt-gap .ic{width:16px;height:16px;margin-top:1px}
 .rt-night{font-size:11.5px;color:#b39ddb;margin:6px 0 2px;display:flex;align-items:center;gap:5px}
+.oh-pick{display:flex;gap:6px;margin-top:5px}
+.oh-pick select,.oh-pick input{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:3px 6px;color:var(--ink);color-scheme:dark}
+.oh-pick select{flex:1}
 .oh-open{color:var(--good-text)}.oh-closed{color:var(--bad-text)}
 #map.zin .sup-pin{display:none}   /* zoomed in, the places themselves show as badges */
 .sup-pin{width:18px;height:18px;border-radius:50%;background:#e0a030;border:2px solid #fff;box-shadow:0 1px 4px #000a;color:#1d1a10;
@@ -440,7 +443,7 @@ details.more summary::-webkit-details-marker{display:none}
 
 <header>
   <div class="brand"><svg class="logo" role="img" aria-label="WildNav logo"><use href="#logo"/></svg><span>WildNav</span></div>
-  <form id="search"><input id="q" placeholder="Go to a place…" aria-label="Search place"><button type="submit" aria-label="Search"><svg class="ic"><use href="#i-magnifying-glass"/></svg></button></form>
+  <form id="search"><input id="q" placeholder="Go to a place or your spot…" aria-label="Search place or saved spot"><button type="submit" aria-label="Search"><svg class="ic"><use href="#i-magnifying-glass"/></svg></button></form>
   <div class="mode-seg" id="mode-seg" role="group" aria-label="Planning mode">
     <button data-mode="night" title="Night: where to sleep (hidden, quiet, flat, allowed)"><svg class="ic" aria-hidden="true"><use href="#i-moon"/></svg><span class="lbl">Night</span></button>
     <button data-mode="day" title="Day: riding (resupply, sights, hills, busy roads)"><svg class="ic" aria-hidden="true"><use href="#i-sun"/></svg><span class="lbl">Day</span></button></div>
@@ -540,6 +543,8 @@ details.more summary::-webkit-details-marker{display:none}
 
     <section class="sec">
       <h2><svg class="ic" style="color:var(--blaze)"><use href="#i-sun"/></svg>Day: along the way</h2>
+      <div class="sl-head" style="margin-top:0"><label>Opening hours for<small>open or closed at this time, everywhere in Day mode</small></label></div>
+      <div class="oh-pick"><select id="oh-day" aria-label="Day"><option value="">now</option></select><input type="time" id="oh-time" aria-label="Time" step="900"></div>
       <div id="day-cut"></div>
       <div id="rows-day"></div>
       <div class="note">For the Day map (switch at the top). Water sources and viewpoints count here too; their weight is set under “Useful places”.</div>
@@ -626,7 +631,7 @@ const ATT = CAT_KEYS.filter(k => CATS[k].group === 'attract');
 // ════════════════════════════════════════════════════════════════════
 const DEFAULTS = { basemap: 'grey', layer: 'score', markers: true, grey: false,
   cbSafe: false, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {},
-  hideW: 1, quietW: 0.7, slopeW: 1, mode: 'night', dayLayer: 'supply', cutS: 2000, routeOffS: 1000 };
+  hideW: 1, quietW: 0.7, slopeW: 1, mode: 'night', dayLayer: 'supply', cutS: 2000, routeOffS: 1000, ohAt: null };
 CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
 const settings = (() => {
   try {
@@ -637,6 +642,7 @@ const settings = (() => {
 if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.layer)) settings.layer = 'score';
 if (!['supply', 'sights', 'topo', 'quiet'].includes(settings.dayLayer)) settings.dayLayer = 'supply';
 if (settings.mode !== 'day') settings.mode = 'night';
+if (settings.ohAt && !(settings.ohAt.d >= 0 && settings.ohAt.d <= 6 && /^\d\d:\d\d$/.test(settings.ohAt.t))) settings.ohAt = null;
 if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.nightLayer)) delete settings.nightLayer;
 const isDay = () => settings.mode === 'day';
 settings.weights.buildings = 1;                            // no slider: houses always count fully
@@ -681,8 +687,18 @@ function ohRules(oh) {
   }
   return rules.length ? rules : null;
 }
+// when opening hours are checked: now, or a chosen weekday and time (settings.ohAt = { d: 0..6 (Sunday = 0), t: 'HH:MM' })
+const DAY_WORDS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function ohWhen() {
+  const a = settings.ohAt, d = new Date();
+  if (!a) return d;
+  const [h, m] = a.t.split(':').map(Number);
+  d.setDate(d.getDate() + (a.d - d.getDay() + 7) % 7); d.setHours(h, m, 0, 0);
+  return d;
+}
+const ohWhenText = () => settings.ohAt ? `${DAY_WORDS[settings.ohAt.d]} ${settings.ohAt.t}` : 'now';
 const ohCache = new Map();
-function ohState(oh, d = new Date()) {
+function ohState(oh, d = ohWhen()) {
   if (!oh) return null;
   if (!ohCache.has(oh)) ohCache.set(oh, ohRules(oh.trim()));
   const rules = ohCache.get(oh); if (!rules) return null;
@@ -692,7 +708,7 @@ function ohState(oh, d = new Date()) {
   if (on((today + 6) % 7).some(([, b]) => b > 1440 && t < b - 1440)) return 'open';   // last night's hours past midnight
   return 'closed';
 }
-const ohTag = p => { const st = ohState(p.o); return st === 'open' ? '<span class="oh-open">open now</span>' : st === 'closed' ? '<span class="oh-closed">closed now</span>' : ''; };
+const ohTag = p => { const st = ohState(p.o); return st ? `<span class="oh-${st}">${st} ${ohWhenText()}</span>` : ''; };
 // "bakery · open now", or with the hours when asked
 // (places without a type, e.g. water taps and viewpoints: "unnamed" when the name line would be empty)
 const dayWhat = (p, hours, named = true) => [DAY_TYPES[p.t] || (named ? '' : 'unnamed'), ohTag(p), hours && p.o ? esc(p.o) : ''].filter(Boolean).join(' · ') || '&nbsp;';
@@ -1667,7 +1683,7 @@ function analyseSpot(s) {
   const keep = (k, d, b, extra) => { if (!a.near[k] || d < a.near[k].d) a.near[k] = { d, b, ...extra }; };
   for (const { x, y } of tilesAround(s)) {
     const t = tiles.get(tkey(x, y));
-    if (!t) { a.missing++; continue; }
+    if (!t) { if (offline.has(tkey(x, y))) a.missing++; continue; }   // outside the data: nothing to wait for
     for (let i = 0; i < t.b.length; i += 2) {
       const [d, b] = at(yToLat((y + t.b[i + 1]) / N12), (x + t.b[i]) / N12 * 360 - 180);
       if (d > RADAR_MAX) continue;
@@ -1684,7 +1700,7 @@ function analyseSpot(s) {
       const [d, b] = at(p.lat, p.lon);
       if (d > RADAR_MAX) continue;
       if (p.c === 'hunting') { if (d < 1000) a.hunting.push({ d, b, n: p.n }); }
-      else keep(p.c, d, b, { n: p.n });
+      else keep(p.c, d, b, { n: p.n, p });
     }
   }
   a.hunting.sort((u, v) => u.d - v.d);
@@ -1956,7 +1972,10 @@ function updateCardAround() {
   for (const k of ATT) { const n = a.near[k];
     rows.push(cardRow(ic(CATS[k].icon, CATS[k].color), CATS[k].label, wait || (n ? distDir(n.d, n.b) : '—'),
       wait ? 'loading…' : !n ? `none within ${fmtDist(RADAR_MAX)}` : (n.n ? esc(n.n) : k === 'rivers' ? 'river, stream or lake shore' : '<span class="dim">unnamed</span>'))); }
-  $('#sc-near').innerHTML = rows.map(r => lk('nearby', r)).join(''); markLayerRows();
+  { const g = a.near.groceries;                   // not part of the score: where to buy food before camping
+    rows.push(lk('supply', cardRow(ic(CATS.groceries.icon, CATS.groceries.color), 'Nearest shop', wait || (g ? distDir(g.d, g.b) : '—'),
+      wait ? 'loading…' : g ? [g.n ? esc(g.n) : '', dayWhat(g.p)].filter(Boolean).join(' · ') : `none within ${fmtDist(RADAR_MAX)}`))); }
+  $('#sc-near').innerHTML = rows.map(r => r.includes('data-layer') ? r : lk('nearby', r)).join(''); markLayerRows();
   setSum('around', wait ? 'loading…' : ATT.map(k => a.near[k] ? { k, d: a.near[k].d } : null).filter(Boolean).sort((u, v) => u.d - v.d).slice(0, 3)
     .map(n => `${ic(CATS[n.k].icon, CATS[n.k].color)} ${distDir(n.d, a.near[n.k].b)}`).join(' · ') || 'nothing useful within 2 km');
   // Night: in the order of the night, each with one short second line
@@ -2214,6 +2233,21 @@ function buildCatRows() {
 buildCatRows();
 
 // Day: along the way
+{ const sel = $('#oh-day'), tm = $('#oh-time');
+  ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].forEach((w, d) => sel.add(new Option(w, d)));
+  const sync = () => { sel.value = settings.ohAt ? settings.ohAt.d : ''; tm.value = settings.ohAt ? settings.ohAt.t : ''; tm.disabled = !settings.ohAt; };
+  const changed = () => {
+    settings.ohAt = sel.value === '' ? null : { d: +sel.value, t: tm.value || (settings.ohAt && settings.ohAt.t) || '10:00' };
+    sync(); saveSettings(); ohChanged();
+  };
+  sel.onchange = changed; tm.onchange = changed; sync(); }
+// everything that shows open / closed
+setInterval(() => { if (!settings.ohAt && isDay()) ohChanged(); }, 5 * 60e3);
+function ohChanged() {
+  rebuildMarkers(); updateHover(); nearKey = ''; requestRender();
+  if (routeSup) showSupplies();
+  if (cur && !card.hidden) updateCardAround();
+}
 makeSlider($('#day-cut'), { label: 'Worth a detour', hint: 'how far off your way a place still counts', min: 250, max: 10000, step: 250, value: settings.cutS, fmt: fmtDist,
   onInput: v => { settings.cutS = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
 for (const k of ['groceries', 'food', 'bike', 'toilets', 'sights']) {
@@ -2541,7 +2575,7 @@ function findNearbyDay() {
     if (d <= NEAR_R && (!best[p.c] || d < best[p.c].d)) best[p.c] = { d, b, p };
   }
   const found = DAY_SUPPLY.filter(k => best[k]);
-  const key = 'day|' + found.map(k => `${k}:${best[k].p.lat},${best[k].p.lon}:${ohState(best[k].p.o)}`).join(';');
+  const key = 'day|' + ohWhenText() + '|' + found.map(k => `${k}:${best[k].p.lat},${best[k].p.lon}:${ohState(best[k].p.o)}`).join(';');
   if (key === nearKey) return;
   nearKey = key; nearLayer.clearLayers();
   const list = $('#near-list');
@@ -2828,7 +2862,7 @@ function showSupplies() {
     const kinds = DAY_SUPPLY.filter(k => st.items.some(x => x.p.c === k));
     const names = st.items.filter(x => x.p.c === 'groceries' || x.p.c === 'food').map(x => esc(x.p.n || DAY_TYPES[x.p.t] || '')).filter(Boolean);
     const open = st.items.filter(x => ohState(x.p.o) === 'open').length;
-    const line = [names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3}` : ''), open ? `<span class="oh-open">${open} open now</span>` : ''].filter(Boolean).join(' · ');
+    const line = [names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3}` : ''), open ? `<span class="oh-open">${open} open ${ohWhenText()}</span>` : ''].filter(Boolean).join(' · ');
     return `<div class="spot-item sup-stop" data-j="${j}" tabindex="0"><span class="ics">${kinds.map(k => ic(CATS[k].icon, CATS[k].color)).join('')}</span>
       <span class="nm">${km(st.km)}${st.kmEnd - st.km > 500 ? '–' + Math.round(st.kmEnd / 1000) : ''}<small>${line || kinds.map(k => CATS[k].label).join(', ')}</small></span>
       <span class="dd">${fmtDist(st.off)} off</span></div>`;
@@ -2847,7 +2881,7 @@ function showSupplies() {
     (sights.length ? `<h3 class="rt-h">Sights on the way</h3>${sights.slice(0, 15).map((x, j) => `<div class="spot-item sup-stop" data-s="${j}" tabindex="0"><span class="ics">${ic(CATS[x.p.c].icon, CATS[x.p.c].color)}</span>
       <span class="nm">${esc(x.p.n || DAY_TYPES[x.p.t] || CATS[x.p.c].label)}<small>${km(x.km)}${x.p.t ? ' · ' + (DAY_TYPES[x.p.t] || '') : ''}</small></span><span class="dd">${fmtDist(x.off)} off</span></div>`).join('')}` : '') +
     (routeSup.noData ? `<div class="note">${routeSup.noData} of ${routeSup.tiles} map areas along the route are outside the offline data.</div>` : '') +
-    `<div class="note">Opening hours are from OpenStreetMap and may be out of date${nights.length ? '' : '. Find night spots in Night mode to see them in this list'}.</div>`;
+    `<div class="note">Open / closed ${settings.ohAt ? 'on ' : ''}${ohWhenText()} (change under Settings → Day). Opening hours are from OpenStreetMap and may be out of date${nights.length ? '' : '. Find night spots in Night mode to see them in this list'}.</div>`;
   res.querySelectorAll('[data-j]').forEach(el => { const st = stops[+el.dataset.j]; el.onclick = () => zoomStop(st); el.onkeydown = e => { if (e.key === 'Enter') zoomStop(st); }; });
   res.querySelectorAll('[data-s]').forEach(el => { const x = sights[+el.dataset.s], go = () => map.setView([x.p.lat, x.p.lon], Math.max(map.getZoom(), 15));
     el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); }; });
@@ -2859,6 +2893,8 @@ drawRoute(); renderRoute();
 $('#search').onsubmit = async e => {
   e.preventDefault();
   const q = $('#q').value.trim(); if (!q) return;
+  const mine = spots.find(s => s.name && s.name.toLowerCase().includes(q.toLowerCase()));
+  if (mine) { map.setView([mine.lat, mine.lon], Math.max(map.getZoom(), 14)); openSpot(mine); setStatus(`Your spot: ${mine.name}`, 'ok'); return; }
   setStatus('Searching…', 'busy');
   try {
     const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));

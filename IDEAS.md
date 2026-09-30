@@ -179,9 +179,9 @@ that's already loaded, plus one small library.
   groceries / water, nights from Night mode in between.
 - ✅ **Day / Night modes:** Night = where to sleep (the score), Day = riding (resupply, sights & views,
   hills, busy roads). Ideas for the Day map next:
-  - "Open at …": pick a day and time (e.g. Sunday 10:00) instead of "now", so a route can be checked in advance;
-    also show "closed Sundays" in the stop list.
-  - Nearest shop / water in the spot card ("last shop before tonight's spot").
+  - ✅ "Open at …": a day and time (e.g. Sunday 10:00) instead of "now" (Settings → Day).
+  - ✅ Nearest shop in the spot card.
+  - Opening time per night: with a start date, check each stop at the time you'd pass it.
   - More places: swimming spots (`leisure=bathing_place`, `leisure=swimming_area`), bakeries' vending machines,
     train stations (for bailing out), campsites with showers.
   - Riding quality: surface of tracks (`surface`, `tracktype`) and cycle routes (`route=bicycle` relations) as a
@@ -214,7 +214,7 @@ that's already loaded, plus one small library.
   map works without mobile signal in the forest. It stays a static site, so it works on GitHub Pages.
 - **Mobile layout:** the panel as a drawer that slides up from the bottom, with bigger buttons.
 - ✅ **Locate me:** GPS button, "best spots within 5 km of here".
-- **Search:** also search saved spots.
+- ✅ **Search:** also search saved spots.
 - ✅ Mobile layout (bottom sheet) and PWA offline use.
 
 ### Suggested order

@@ -16,8 +16,12 @@ The switch in the top bar (`#mode-seg`, `setMode`, `settings.mode`, `isDay()`) p
   (`renderRouteDay`: "Find supplies").
 - Day categories have `group: 'day'` in `CATS` and are not part of the night score; their distance fields are only computed
   in Day mode (`buildGrid`). Types (`p.t`) are shown in words via `DAY_TYPES`; opening hours (`p.o`) are read by `ohState()`
-  ('open' / 'closed' / null when not understood: months, sunrise, "+" …; later rules replace earlier ones, PH ignored).
-- The spot card stays the same in both modes (it is about a place to sleep).
+  ('open' / 'closed' / null when not understood: months, sunrise, "+" …; later rules replace earlier ones, PH ignored),
+  at `ohWhen()`: now, or the weekday + time chosen under Settings → Day "Opening hours for" (`settings.ohAt`, `ohChanged()`
+  redraws everything that shows open/closed; "now" views refresh every 5 min).
+- The spot card stays the same in both modes (it is about a place to sleep); its "Nearby" section ends with
+  "Nearest shop" (groceries, not part of the score: where to buy food before camping).
+- Search (`#search`) first looks for a saved spot whose name contains the text, then asks Nominatim.
 
 ## What it shows (Night)
 One overlay at a time, chosen with the layer picker in the top bar (`#layer-btn` / `#layer-menu`, `LAYERS`, `settings.layer`),
