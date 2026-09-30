@@ -159,8 +159,12 @@ DAY_TAGS = {
     **{('tourism', v): 'sights' for v in ('attraction', 'museum')},
     **{('historic', v): 'sights' for v in ('castle', 'ruins', 'monument', 'archaeological_site', 'fort')},
     ('natural', 'peak'): 'sights',               # named peaks only (see day_class)
+    # break spots: somewhere to sit, to swim; train stations (to bail out, bikes go on regional trains)
+    ('amenity', 'bench'): 'benches', ('leisure', 'picnic_table'): 'benches',
+    ('leisure', 'bathing_place'): 'swim', ('leisure', 'swimming_area'): 'swim',
+    ('railway', 'station'): 'stations', ('railway', 'halt'): 'stations',
 }
-DAY_KEYS = ('shop', 'amenity', 'tourism', 'historic', 'natural')
+DAY_KEYS = ('shop', 'amenity', 'tourism', 'historic', 'natural', 'leisure', 'railway')
 
 
 def day_class(t):
@@ -168,8 +172,11 @@ def day_class(t):
     for k in DAY_KEYS:
         v = t.get(k)
         cat = v and DAY_TAGS.get((k, v))
-        if cat and (k != 'natural' or t.get('name')):
-            return cat, v
+        if not cat or (k == 'natural' and not t.get('name')):
+            continue
+        if cat == 'stations' and t.get('station') in ('subway', 'light_rail', 'monorail', 'funicular'):
+            continue                               # city transport, not for bikes
+        return cat, v
     return None
 
 

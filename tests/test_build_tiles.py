@@ -263,6 +263,10 @@ class TestDayPoints(unittest.TestCase):
         self.assertEqual(bt.day_class({'amenity': 'cafe'}), ('food', 'cafe'))
         self.assertEqual(bt.day_class({'shop': 'bicycle'}), ('bike', 'bicycle'))
         self.assertIsNone(bt.day_class({'shop': 'clothes'}))
+        self.assertEqual(bt.day_class({'leisure': 'picnic_table'}), ('benches', 'picnic_table'))
+        self.assertEqual(bt.day_class({'railway': 'halt', 'name': 'Dorf'}), ('stations', 'halt'))
+        self.assertIsNone(bt.day_class({'railway': 'station', 'station': 'subway'}))
+        self.assertEqual(bt.poi_cats({'leisure': 'firepit'}), [('firepits', None)])
         self.assertEqual(bt.poi_cats({'building': 'yes', 'amenity': 'toilets'}), [('buildings', None), ('toilets', 'toilets')])
 
 

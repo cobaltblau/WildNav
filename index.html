@@ -223,6 +223,19 @@ details.more summary::-webkit-details-marker{display:none}
   color:#fff;box-shadow:0 1px 4px #0008;filter:saturate(.75) brightness(.95)}
 .poi-badge .ic{width:14px;height:14px;filter:none}
 .spot-pin.on{transform:scale(1.2)}
+.spot-pin.pt-break{background:#3fa89a;color:#fff}.spot-pin.pt-shop{background:#e0a030}
+.sc-types{margin-top:8px}
+.sc-types button{display:flex;align-items:center;justify-content:center;gap:5px}
+.sc-types button .ic{width:16px;height:16px}
+.sun-strip{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;margin-top:-2px}
+.sun-strip i{height:14px;border-radius:2px;background:var(--surface)}
+.sun-strip i.sun{background:#e8c25a}.sun-strip i.shade{background:#4f6f9f}.sun-strip i.now{outline:2px solid var(--ink);outline-offset:1px}
+.sun-hours{display:grid;grid-template-columns:repeat(16,1fr);margin-top:1px;font-size:10.5px;color:var(--muted)}
+.spot-filter{display:flex;gap:4px;margin:2px 0 4px;flex-wrap:wrap}
+.spot-filter button{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1px 9px;font-size:11.5px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:4px}
+.spot-filter button .ic{width:14px;height:14px}
+.spot-filter button.on{color:var(--ink);border-color:var(--muted)}
+.spot-item .ti{display:flex}.spot-item .ti .ic{width:16px;height:16px}
 .spot-pin.temp{background:transparent;border:3px solid #fff;box-shadow:0 0 0 2px #000a,inset 0 0 0 2px #000a}
 .spot-card[hidden]{display:none}
 .sc-summary{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
@@ -306,6 +319,7 @@ details.more summary::-webkit-details-marker{display:none}
 .rt-gap{font-size:12px;line-height:1.4;margin-top:4px;display:flex;gap:6px;align-items:flex-start}
 .rt-gap .ic{width:16px;height:16px;margin-top:1px}
 .rt-night{font-size:11.5px;color:#b39ddb;margin:6px 0 2px;display:flex;align-items:center;gap:5px}
+.set-h{font-size:12.5px;font-weight:600;margin:14px 0 0}
 .oh-pick{display:flex;gap:6px;margin-top:5px}
 .oh-pick select,.oh-pick input{background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:3px 6px;color:var(--ink);color-scheme:dark}
 .oh-pick select{flex:1}
@@ -436,6 +450,12 @@ details.more summary::-webkit-details-marker{display:none}
 <symbol id="i-toilet" viewBox="0 0 256 256" fill="currentColor"><path d="M167.92,222.87A8,8,0,0,1,160,232H96a8,8,0,0,1-7.92-9.13l4.34-30.36h0a88.21,88.21,0,0,0,71.14,0h0ZM184,32H72a8,8,0,0,0-8,8v72H192V40A8,8,0,0,0,184,32Z" opacity="0.2"/><path d="M120,64a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h16A8,8,0,0,1,120,64Zm52.32,133.14,3.52,24.6A16,16,0,0,1,160,240H96a16,16,0,0,1-15.84-18.26l3.52-24.6A96.09,96.09,0,0,1,32,112a8,8,0,0,1,8-8H56V40A16,16,0,0,1,72,24H184a16,16,0,0,1,16,16v64h16a8,8,0,0,1,8,8A96.09,96.09,0,0,1,172.32,197.14ZM72,104H184V40H72Zm85.07,99.5a96.15,96.15,0,0,1-58.14,0L96,224h64ZM207.6,120H48.4a80,80,0,0,0,159.2,0Z"/></symbol>
 <symbol id="i-castle-turret" viewBox="0 0 256 256" fill="currentColor"><path d="M208,48V92.69a8,8,0,0,1-2.34,5.65L192,112V224H152V168a24,24,0,0,0-48,0v56H64V112L50.34,98.34A8,8,0,0,1,48,92.69V48a8,8,0,0,1,8-8H80V72h32V40h32V72h32V40h24A8,8,0,0,1,208,48Z" opacity="0.2"/><path d="M216,216H200V115.31L211.31,104A15.86,15.86,0,0,0,216,92.69V48a16,16,0,0,0-16-16H176a8,8,0,0,0-8,8V64H152V40a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8V64H88V40a8,8,0,0,0-8-8H56A16,16,0,0,0,40,48V92.69A15.86,15.86,0,0,0,44.69,104L56,115.31V216H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16ZM69.66,106.34,56,92.69V48H72V72a8,8,0,0,0,8,8h32a8,8,0,0,0,8-8V48h16V72a8,8,0,0,0,8,8h32a8,8,0,0,0,8-8V48h16V92.69l-13.66,13.65A8,8,0,0,0,184,112V216H160V168a32,32,0,0,0-64,0v48H72V112A8,8,0,0,0,69.66,106.34ZM144,216H112V168a16,16,0,0,1,32,0Z"/></symbol>
 <symbol id="i-wrench" viewBox="0 0 256 256" fill="currentColor"><path d="M224,96a64,64,0,0,1-94.94,56L73,217A24,24,0,0,1,39,183L104,126.94a64,64,0,0,1,80-90.29L144,80l5.66,26.34L176,112l43.35-40A63.8,63.8,0,0,1,224,96Z" opacity="0.2"/><path d="M226.76,69a8,8,0,0,0-12.84-2.88l-40.3,37.19-17.23-3.7-3.7-17.23,37.19-40.3A8,8,0,0,0,187,29.24,72,72,0,0,0,88,96,72.34,72.34,0,0,0,94,124.94L33.79,177c-.15.12-.29.26-.43.39a32,32,0,0,0,45.26,45.26c.13-.13.27-.28.39-.42L131.06,162A72,72,0,0,0,232,96,71.56,71.56,0,0,0,226.76,69ZM160,152a56.14,56.14,0,0,1-27.07-7,8,8,0,0,0-9.92,1.77L67.11,211.51a16,16,0,0,1-22.62-22.62L109.18,133a8,8,0,0,0,1.77-9.93,56,56,0,0,1,58.36-82.31l-31.2,33.81a8,8,0,0,0-1.94,7.1L141.83,108a8,8,0,0,0,6.14,6.14l26.35,5.66a8,8,0,0,0,7.1-1.94l33.81-31.2A56.06,56.06,0,0,1,160,152Z"/></symbol>
+<symbol id="i-park" viewBox="0 0 256 256" fill="currentColor"><path d="M224,160H160L192,32Z" opacity="0.2"/><path d="M232,192H200V168h24a8,8,0,0,0,7.76-9.94l-32-128a8,8,0,0,0-15.52,0l-32,128A8,8,0,0,0,160,168h24v24H120V176h8a8,8,0,0,0,0-16h-8V144h8a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16h8v16H40a8,8,0,0,0,0,16h8v16H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16ZM192,65l21.75,87h-43.5ZM64,144h40v16H64Zm0,32h40v16H64Zm52-80A28,28,0,1,0,88,68,28,28,0,0,0,116,96Zm0-40a12,12,0,1,1-12,12A12,12,0,0,1,116,56Z"/></symbol>
+<symbol id="i-person-simple-swim" viewBox="0 0 256 256" fill="currentColor"><path d="M132.14,108.12l57.45,57.46C147.85,178.63,119.12,134.49,80,136l38.94-38.95A96,96,0,0,1,132.14,108.12ZM176,48a24,24,0,1,0,24,24A24,24,0,0,0,176,48Z" opacity="0.2"/><path d="M176,104a32,32,0,1,0-32-32A32,32,0,0,0,176,104Zm0-48a16,16,0,1,1-16,16A16,16,0,0,1,176,56Zm46.16,129.24a8,8,0,0,1-1,11.26c-17.36,14.39-32.86,19.5-47,19.5-18.58,0-34.82-8.82-49.93-17-25.35-13.76-47.24-25.65-79.07.74a8,8,0,1,1-10.22-12.31c40.17-33.29,70.32-16.93,96.93-2.49,25.35,13.77,47.24,25.65,79.07-.74A8,8,0,0,1,222.16,185.24ZM34.89,147.42a8,8,0,1,0,10.22,12.31c31.83-26.38,53.72-14.5,79.07-.74,15.11,8.2,31.35,17,49.93,17,14.14,0,29.64-5.11,47-19.5a8,8,0,1,0-10.22-12.31,75.79,75.79,0,0,1-19.28,12.06l-53.84-53.82A103.34,103.34,0,0,0,64.24,72H40a8,8,0,0,0,0,16H64.24a87.66,87.66,0,0,1,41.88,10.56L76.49,128.17C63.82,129.35,50.07,134.84,34.89,147.42Zm91.57-33.67,46.13,46.12c-14-.43-26.88-7.39-40.77-14.93-10.75-5.84-22.09-12-34.42-15.05l22.26-22.26A87.14,87.14,0,0,1,126.46,113.75Z"/></symbol>
+<symbol id="i-train-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M208,56v72H48V56A24,24,0,0,1,72,32H184A24,24,0,0,1,208,56Z" opacity="0.2"/><path d="M184,24H72A32,32,0,0,0,40,56V184a32,32,0,0,0,32,32h8L65.6,235.2a8,8,0,1,0,12.8,9.6L100,216h56l21.6,28.8a8,8,0,1,0,12.8-9.6L176,216h8a32,32,0,0,0,32-32V56A32,32,0,0,0,184,24ZM72,40H184a16,16,0,0,1,16,16v64H56V56A16,16,0,0,1,72,40ZM184,200H72a16,16,0,0,1-16-16V136H200v48A16,16,0,0,1,184,200ZM96,172a12,12,0,1,1-12-12A12,12,0,0,1,96,172Zm88,0a12,12,0,1,1-12-12A12,12,0,0,1,184,172Z"/></symbol>
+<symbol id="i-eye" viewBox="0 0 256 256" fill="currentColor"><path d="M128,56C48,56,16,128,16,128s32,72,112,72,112-72,112-72S208,56,128,56Zm0,112a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></symbol>
+<symbol id="i-umbrella-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M224,136H32a8,8,0,0,1-8-8.71,104.37,104.37,0,0,1,207.94,0A8,8,0,0,1,224,136Z" opacity="0.2"/><path d="M240,126.63A112.44,112.44,0,0,0,51.75,53.75a111.56,111.56,0,0,0-35.7,72.88A16,16,0,0,0,32,144h88v56a32,32,0,0,0,64,0,8,8,0,0,0-16,0,16,16,0,0,1-32,0V144h88a16,16,0,0,0,16-17.37ZM32,128l0,0A96.43,96.43,0,0,1,193.4,65.52,95.32,95.32,0,0,1,224,128Z"/></symbol>
 <symbol id="i-hollow" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><clipPath id="i-hollow-c"><rect x="0" y="136" width="256" height="120"/></clipPath><path d="M16,72C72,72,80,208,128,208S184,72,240,72Z" fill="currentColor" opacity="0.2" stroke="none" clip-path="url(#i-hollow-c)"/><path d="M16,72C72,72,80,208,128,208S184,72,240,72"/><line x1="98.0" y1="104.0" x2="158.0" y2="104.0" stroke-width="12"/><line x1="113.0" y1="78.0" x2="143.0" y2="130.0" stroke-width="12"/><line x1="143.0" y1="78.0" x2="113.0" y2="130.0" stroke-width="12"/></symbol>
 <symbol id="i-stand" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><rect x="72" y="56" width="112" height="64" rx="4" fill="currentColor" opacity="0.2" stroke="none"/><path d="M60,60L128,24L196,60"/><rect x="72" y="60" width="112" height="60" rx="4"/><path d="M96,88H160" stroke-width="12"/><path d="M84,120L60,232M172,120L196,232M72,176H184"/></symbol>
 <symbol id="i-shelter" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M24,112L128,40L232,112Z" fill="currentColor" opacity="0.2" stroke="none"/><path d="M24,112L128,40L232,112"/><path d="M64,88V216M192,88V216M96,168H160M104,168V208M152,168V208" /></symbol>
@@ -543,10 +563,12 @@ details.more summary::-webkit-details-marker{display:none}
 
     <section class="sec">
       <h2><svg class="ic" style="color:var(--blaze)"><use href="#i-sun"/></svg>Day: along the way</h2>
-      <div class="sl-head" style="margin-top:0"><label>Opening hours for<small>open or closed at this time, everywhere in Day mode</small></label></div>
+      <div class="sl-head" style="margin-top:0"><label>Plan for<small>opening hours and shade at this time (Day mode)</small></label></div>
       <div class="oh-pick"><select id="oh-day" aria-label="Day"><option value="">now</option></select><input type="time" id="oh-time" aria-label="Time" step="900"></div>
       <div id="day-cut"></div>
       <div id="rows-day"></div>
+      <h3 class="set-h">Break spots</h3>
+      <div id="break-sliders"></div>
       <div class="note">For the Day map (switch at the top). Water sources and viewpoints count here too; their weight is set under “Useful places”.</div>
     </section>
 
@@ -610,10 +632,14 @@ const CATS = {
   bike:       { label: 'Bike shops & repair', icon: 'wrench', color: '#5aa0c8', group: 'day', weight: 0.5 },
   toilets:    { label: 'Toilets',         icon: 'toilet', color: '#8a9ba8', group: 'day', weight: 0.3 },
   sights:     { label: 'Sights',          icon: 'castle-turret', color: '#b07fd0', group: 'day', weight: 1 },
+  stations:   { label: 'Train stations',  icon: 'train-simple', color: '#7d8fa3', group: 'day', weight: 0.3 },
+  benches:    { label: 'Benches & tables', icon: 'park', color: '#9c8a5e', group: 'day', weight: 1, minZ: 14 },   // many: markers only close up
+  swim:       { label: 'Swimming spots',  icon: 'person-simple-swim', color: '#3aa6c9', group: 'day', weight: 1 },
 };
 // what the Day map uses: resupply (with water taps) and sights (with viewpoints)
-const DAY_SUPPLY = ['groceries', 'food', 'water', 'bike', 'toilets'], DAY_SIGHTS = ['sights', 'viewpoints'];
-const DAY_CATS = [...DAY_SUPPLY, ...DAY_SIGHTS];
+const DAY_SUPPLY = ['groceries', 'food', 'water', 'bike', 'toilets', 'stations'], DAY_SIGHTS = ['sights', 'viewpoints'];
+const DAY_BREAK = ['benches', 'shelters', 'swim'];                 // places that make a good break (with shade, view, water)
+const DAY_CATS = [...DAY_SUPPLY, ...DAY_BREAK, ...DAY_SIGHTS];
 const NIGHT_CATS = Object.keys(CATS).filter(k => CATS[k].group !== 'day');
 // words for the OSM types of day places ('t' in the tile data)
 const DAY_TYPES = { supermarket: 'supermarket', convenience: 'corner shop', bakery: 'bakery', pastry: 'cake shop', butcher: 'butcher',
@@ -621,7 +647,8 @@ const DAY_TYPES = { supermarket: 'supermarket', convenience: 'corner shop', bake
   restaurant: 'restaurant', cafe: 'café', fast_food: 'fast food', pub: 'pub', biergarten: 'beer garden', ice_cream: 'ice cream',
   bicycle: 'bike shop', bicycle_repair_station: 'repair stand', compressed_air: 'air pump', toilets: 'toilets',
   attraction: 'attraction', museum: 'museum', castle: 'castle', ruins: 'ruins', monument: 'monument', archaeological_site: 'archaeological site',
-  fort: 'fort', peak: 'peak' };
+  fort: 'fort', peak: 'peak', bench: 'bench', picnic_table: 'picnic table', bathing_place: 'bathing spot', swimming_area: 'swimming area',
+  station: 'station', halt: 'halt' };
 const CAT_KEYS = Object.keys(CATS);
 const HAZ = CAT_KEYS.filter(k => CATS[k].group === 'hazard');
 const ATT = CAT_KEYS.filter(k => CATS[k].group === 'attract');
@@ -631,7 +658,8 @@ const ATT = CAT_KEYS.filter(k => CATS[k].group === 'attract');
 // ════════════════════════════════════════════════════════════════════
 const DEFAULTS = { basemap: 'grey', layer: 'score', markers: true, grey: false,
   cbSafe: false, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {},
-  hideW: 1, quietW: 0.7, slopeW: 1, mode: 'night', dayLayer: 'supply', cutS: 2000, routeOffS: 1000, ohAt: null };
+  hideW: 1, quietW: 0.7, slopeW: 1, mode: 'night', dayLayer: 'break', cutS: 2000, routeOffS: 1000, ohAt: null,
+  bShade: 1, bView: 0.8, bSeat: 0.7, bWater: 0.5, bQuiet: 0.6 };
 CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
 const settings = (() => {
   try {
@@ -640,7 +668,7 @@ const settings = (() => {
   } catch { return JSON.parse(JSON.stringify(DEFAULTS)); }
 })();
 if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.layer)) settings.layer = 'score';
-if (!['supply', 'sights', 'topo', 'quiet'].includes(settings.dayLayer)) settings.dayLayer = 'supply';
+if (!['break', 'supply', 'shade', 'sights', 'swim', 'topo', 'quiet'].includes(settings.dayLayer)) settings.dayLayer = 'break';
 if (settings.mode !== 'day') settings.mode = 'night';
 if (settings.ohAt && !(settings.ohAt.d >= 0 && settings.ohAt.d <= 6 && /^\d\d:\d\d$/.test(settings.ohAt.t))) settings.ohAt = null;
 if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.nightLayer)) delete settings.nightLayer;
@@ -1149,7 +1177,7 @@ function buildGrid(z, S, x0, y0, gw, gh) {
     ? [...tiles.values()].filter(inRange)
     : (() => { const a = []; for (let x = tx0; x <= tx1; x++) for (let y = ty0; y <= ty1; y++) { const t = tiles.get(tkey(x, y)); if (t) a.push(t); } return a; })();
 
-  let pts = 0, land = null, prot = null, hid = null, hdb = null, hbike = null, hmask = null, slp = null, hol = null;
+  let pts = 0, land = null, prot = null, hid = null, hdb = null, hbike = null, hmask = null, slp = null, hol = null, elv = null;
   for (const t of list) {
     const ox = (t.x * span - gx0) / S, oy = (t.y * span - gy0) / S;
     // coverage mask: only loaded areas get coloured
@@ -1187,13 +1215,13 @@ function buildGrid(z, S, x0, y0, gw, gh) {
       }
     }
     if (t.slope) {                             // slope of each cell centre, ¼ degrees + 1 (0 = no data)
-      slp = slp || new Uint16Array(N); hol = hol || new Uint8Array(N);
-      const sc = SLOPE_PX / k, S2 = t.slope.s, AS = t.slope.asp;
+      slp = slp || new Uint16Array(N); hol = hol || new Uint8Array(N); elv = elv || new Float32Array(N);
+      const sc = SLOPE_PX / k, S2 = t.slope.s, AS = t.slope.asp, EV = t.slope.el;
       for (let yy = cy0; yy < cy1; yy++) {
         const py = Math.min(SLOPE_PX - 1, Math.max(0, (yy + 0.5 - oy) * sc | 0)) * SLOPE_PX, row = yy * W;
         for (let xx = cx0; xx < cx1; xx++) {
           const j = py + Math.min(SLOPE_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0));
-          slp[row + xx] = S2[j] + 1;
+          slp[row + xx] = S2[j] + 1; elv[row + xx] = EV[j] * 4 + 0.01;   // 0 = no data
           hol[row + xx] = (AS[j] & 15) * 2 >= 6 && S2[j] < 24 ? 1 : 0;   // cold hollow, same rule as isHollow()
         }
       }
@@ -1228,7 +1256,7 @@ function buildGrid(z, S, x0, y0, gw, gh) {
   for (const c of CAT_KEYS) fields[c] = seeds[c] && (CATS[c].group !== 'day' || isDay()) ? edtField(seeds[c], W, H, cellM) : null;
   const nw = map.unproject([x0, y0], z), se = map.unproject([x0 + gw * S, y0 + gh * S], z);
   return { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, fields, density: null, pts, land, prot,
-        hid, hdb, hbike, hmask, slp, hol,
+        hid, hdb, hbike, hmask, slp, hol, elv,
         bounds: L.latLngBounds(nw, se) };
 }
 
@@ -1364,16 +1392,137 @@ const NEAREST = {
   nearby: { cats: () => ATT, cut: () => settings.cutA, lut: LUT_A },
   supply: { cats: () => DAY_SUPPLY, cut: () => settings.cutS, lut: LUT_U },
   sights: { cats: () => DAY_SIGHTS, cut: () => settings.cutS, lut: LUT_V },
+  swim:   { cats: () => ['swim'], cut: () => settings.cutS, lut: LUT_A },
 };
 function nearestT(i) {                           // 0 (right here) .. 1 (at the cut-off) for the current NEAREST layer, or null
   const nl = NEAREST[settings.layer], ka = nl.cats().filter(c => R.fields[c] && settings.weights[c] > 0);
   let d = Infinity; for (const c of ka) d = Math.min(d, R.fields[c][i] / settings.weights[c]);
   return ka.length ? Math.min(1, d / nl.cut()) : null;
 }
+// ── Day: break spots. Shade at the plan time (sun from SunCalc, trees / buildings / hills in its direction),
+// a view (higher than the land around, not inside a forest, or near a viewpoint), somewhere to sit, water, quiet,
+// close to a path. Everything is computed here from maps that are already loaded (no extra data files).
+const SHADE_H = new Float32Array(17); Object.entries({ 3: 5, 5: 2.5, 6: 20, 7: 20, 8: 20 }).forEach(([c, h]) => SHADE_H[c] = h);  // height (m) by terrain class (not villages: too coarse)
+const CANOPY = new Uint8Array(17); [3, 6, 7, 8].forEach(c => CANOPY[c] = 1);                                              // under trees
+const BREAK_LAND = { 16: 0, 15: 0, 11: 0.3, 14: 0.4, 13: 0.5 };                                                            // water, military, quarry …
+function sunAt(lat, lon, d) {
+  if (typeof SunCalc === 'undefined') return null;
+  const p = SunCalc.getPosition(d, lat, lon);
+  return { alt: p.altitude, bear: (p.azimuth * 180 / Math.PI + 180) % 360 };
+}
+// shade of the drawn cells of grid g at time d (1 = shade, 0 = sun); null when the sun is down or there is no terrain map
+function shadeGrid(g, d) {
+  const key = Math.round(d.getTime() / 3e5);          // recomputed every 5 minutes of sun movement
+  if (g.shadeKey === key) return g.shade;
+  g.shadeKey = key; g.shade = null;
+  const c = g.bounds.getCenter(), sun = g.sun = sunAt(c.lat, c.lng, d);
+  if (!g.land || !sun || sun.alt < 0.03) return null;
+  const { W, H, pad, gw, gh, land: LD, elv: EL, cellM } = g, tanA = Math.tan(sun.alt), b = sun.bear * Math.PI / 180, ux = Math.sin(b), uy = -Math.cos(b);
+  const maxV = Math.min(160, 20 / tanA), maxT = EL ? Math.min(900, 150 / tanA) : 0, out = new Uint8Array(W * H);
+  for (let y = pad; y < pad + gh; y++) {
+    const m = cellM[y], stV = Math.max(m, 6), stT = Math.max(m, 25);
+    for (let x = pad; x < pad + gw; x++) {
+      const i = y * W + x;
+      if (CANOPY[LD[i]]) { out[i] = 1; continue; }
+      let sh = 0;
+      for (let dd = stV; dd <= maxV; dd += stV) {
+        const xx = Math.round(x + ux * dd / m), yy = Math.round(y + uy * dd / m);
+        if (xx < 0 || yy < 0 || xx >= W || yy >= H) break;
+        if (SHADE_H[LD[yy * W + xx]] > dd * tanA) { sh = 1; break; }
+      }
+      if (!sh && EL && EL[i]) {
+        const e0 = EL[i];
+        for (let dd = stT; dd <= maxT; dd += stT) {
+          const xx = Math.round(x + ux * dd / m), yy = Math.round(y + uy * dd / m);
+          if (xx < 0 || yy < 0 || xx >= W || yy >= H) break;
+          const e = EL[yy * W + xx];
+          if (e && e - e0 > dd * tanA + 3) { sh = 1; break; }   // 3 m: errors of the elevation model
+        }
+      }
+      out[i] = sh;
+    }
+  }
+  return g.shade = out;
+}
+// shade at one point and time (the spot card): same rule, with the exact terrain map (~12 m) and the elevation model
+function shadeAt(lat, lon, d) {
+  const sun = sunAt(lat, lon, d);
+  if (!sun) return null;
+  if (sun.alt < 0.03) return { down: true, sun };
+  const l0 = landAt(lat, lon); if (l0 < 0) return null;
+  if (CANOPY[l0]) return { shade: true, by: 'trees', sun };
+  const tanA = Math.tan(sun.alt), b = sun.bear * Math.PI / 180, dN = Math.cos(b), dE = Math.sin(b), kLat = 1 / 110574, kLon = 1 / (111320 * Math.cos(lat * Math.PI / 180));
+  for (let dd = 6; dd <= Math.min(160, 20 / tanA); dd += 6) {
+    const c = landAt(lat + dN * dd * kLat, lon + dE * dd * kLon);
+    if (SHADE_H[c] > dd * tanA) return { shade: true, by: 'trees', sun };
+  }
+  const s0 = slopeAt(lat, lon);
+  if (s0) for (let dd = 25; dd <= Math.min(900, 150 / tanA); dd += 25) {
+    const s1 = slopeAt(lat + dN * dd * kLat, lon + dE * dd * kLon);
+    if (s1 && s1.elev - s0.elev > dd * tanA + 3) return { shade: true, by: 'the hill', sun };
+  }
+  return { shade: false, sun };
+}
+// how much higher each cell is than the land within ~350 m (m); 0 where there is no elevation
+function promGrid(g) {
+  if (g.prom !== undefined) return g.prom;
+  if (!g.elv) return g.prom = null;
+  const { W, H, elv } = g, N = W * H, r = Math.max(1, Math.round(350 / g.cellMc / 2));
+  const a = new Float32Array(elv), m = new Float32Array(N), t = new Float32Array(N);
+  for (let i = 0; i < N; i++) m[i] = elv[i] ? 1 : 0;
+  for (let p = 0; p < 2; p++) { boxH(a, t, W, H, r); boxV(t, a, W, H, r); boxH(m, t, W, H, r); boxV(t, m, W, H, r); }
+  const out = new Float32Array(N);
+  for (let i = 0; i < N; i++) out[i] = elv[i] && m[i] > 0.3 ? elv[i] - a[i] / m[i] : 0;
+  return g.prom = out;
+}
+// break score from its parts (the map layer and the card use the same rule)
+function breakMix(acc, qLand, qNoise, shade, view, seat, water) {
+  const miss = (1 - settings.bShade * (shade > 0 ? 1 : 0)) * (1 - settings.bView * view) * (1 - settings.bSeat * seat) * (1 - settings.bWater * water);
+  return [1 - miss, acc * qLand * qNoise * (0.15 + 0.85 * (1 - miss))];
+}
+const dayNoisePen = db => Math.max(0, Math.min(1, (db - 45) / 20));   // daytime: bothersome from 45 dB, full from 65
+const breakWord = s => s < 0.15 ? 'poor' : s < 0.35 ? 'ok' : s < 0.6 ? 'good' : 'great';
+const viewWord = v => v >= 0.7 ? 'wide view' : v >= 0.35 ? 'some view' : 'no real view';
+function breakScorer(g = R, d = ohWhen()) {
+  const f = g.fields, LD = g.land, HM = g.hmask, SH = shadeGrid(g, d), PR = promGrid(g);
+  const near = (F, i, r) => F ? Math.max(0, 1 - F[i] / r) : 0;
+  return (i, out) => {
+    const bike = HM && HM[i] ? g.hbike[i] * 10 : -1, acc = bike < 0 ? 1 : bike <= 30 ? 1 : Math.max(0, 1 - (bike - 30) / 170);   // right by a path
+    const lc = LD ? LD[i] : 0, qLand = BREAK_LAND[lc] ?? 1;
+    const db = HM && HM[i] ? g.hdb[i] : -1, qNoise = db < 0 ? 1 : 1 - settings.bQuiet * dayNoisePen(db);
+    const shade = SH ? SH[i] : -1;
+    const prom = PR ? PR[i] : 0, forest = CANOPY[lc] && lc !== 3;
+    const view = Math.max(Math.max(0, Math.min(1, (prom - 4) / 16)) * (forest ? 0.15 : 1), near(f.viewpoints, i, 250), near(f.sights, i, 150) * 0.6);
+    const seat = Math.max(near(f.benches, i, 150), near(f.shelters, i, 150));
+    const water = Math.max(near(f.water, i, 400), near(f.rivers, i, 200), near(f.swim, i, 300));
+    const [bonus, s] = breakMix(acc, qLand, qNoise, shade, view, seat, water);
+    if (out) Object.assign(out, { bike, acc, lc, qLand, db, qNoise, shade, sunUp: !!SH, prom, view, seat, water, bonus, score: s });
+    return s;
+  };
+}
+const LUT_B = lut([[0, 0, 0, 0, 0], [0.2, 70, 170, 160, 30], [0.5, 40, 160, 150, 150], [1, 10, 120, 110, 235]]);   // break spots (teal)
 function composite() {
   if (!R.valid) { hazLayer.clear(); attLayer.clear(); return; }
   const { W, gw, gh, pad, fields, cov } = R;
 
+  if (settings.layer === 'break' || settings.layer === 'shade') {
+    const img = getImg('h', gw, gh), px = img.data, brk = settings.layer === 'break' ? breakScorer() : null;
+    const SH = brk ? null : shadeGrid(R, ohWhen());
+    for (let y = 0; y < gh; y++) {
+      let i = (y + pad) * W + pad, o = y * gw * 4;
+      for (let x = 0; x < gw; x++, i++, o += 4) {
+        if (!cov[i] || (brk && !R.hmask)) { px[o + 3] = 0; continue; }
+        if (brk) { const li = Math.min(255, brk(i) * 255 | 0) << 2; px[o] = LUT_B[li]; px[o + 1] = LUT_B[li + 1]; px[o + 2] = LUT_B[li + 2]; px[o + 3] = LUT_B[li + 3]; }
+        else if (!SH) px[o + 3] = 0;
+        else if (SH[i]) { px[o] = 40; px[o + 1] = 70; px[o + 2] = 120; px[o + 3] = 150; }   // shade: blue-grey
+        else { px[o] = 250; px[o + 1] = 205; px[o + 2] = 90; px[o + 3] = 70; }             // sun: light yellow
+      }
+    }
+    hazLayer.update(R.bounds, img);
+    hazLayer.setOpacity(Math.min(1, settings.opacity + 0.15));
+    attLayer.clear();
+    return;
+  }
   if (settings.layer === 'score') {
     const img = getImg('h', gw, gh), px = img.data, score = scorer();
     for (let y = 0; y < gh; y++) {
@@ -1477,7 +1626,7 @@ function rebuildMarkers() {
   const b = map.getBounds().pad(0.2), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast(), badges = map.getZoom() >= BADGE_MIN_Z;
   const show = new Set(isDay() ? DAY_CATS : NIGHT_CATS);
   for (const t of tiles.values()) for (const p of t.pois) {
-    if (p.lat < s || p.lat > n || p.lon < w || p.lon > e || settings.weights[p.c] === 0 || !show.has(p.c)) continue;
+    if (p.lat < s || p.lat > n || p.lon < w || p.lon > e || settings.weights[p.c] === 0 || !show.has(p.c) || CATS[p.c].minZ > map.getZoom()) continue;
     const c = CATS[p.c], tip = `${ic(c.icon, c.color)}${esc(p.n || c.label)}` + (p.t ? `<br><small>${dayWhat(p, true)}</small>` : '');
     // zoomed in: round badges with the category icon; further out plain dots (fast, many points)
     if (badges) L.marker([p.lat, p.lon], { icon: L.divIcon({ className: '', html: `<div class="poi-badge" style="--c:${c.color}">${ic(c.icon)}</div>`,
@@ -1586,7 +1735,10 @@ function updateHoverDay() {
   const row = (icon, label, val, layer) => `<div class="irow"${layer ? ` data-layer="${layer}"` : ''}><span class="muted">${icon}${label}</span><b>${val}</b></div>`;
   const sub = t => `<div class="isub">${t || '&nbsp;'}</div>`;
   const dv = (desc, val) => `<span class="dsc">${desc}</span>${val}`;
+  const bo = { }, bs = has && R.hmask ? breakScorer()(i, bo) : -1;
   if (!has) setLegendMark(null);
+  else if (settings.layer === 'break') setLegendMark(bs >= 0 ? bs : null);
+  else if (settings.layer === 'shade') setLegendMark(bo.sunUp ? (bo.shade ? 0.75 : 0.25) : null);
   else if (NEAREST[settings.layer]) setLegendMark(nearestT(i));
   else if (settings.layer === 'quiet') setLegendMark(R.hmask && R.hmask[i] ? (R.hdb[i] - 30) / 30 : null);
   else setLegendMark(R.slp && R.slp[i] ? (R.slp[i] - 1) / 80 : null);
@@ -1597,10 +1749,17 @@ function updateHoverDay() {
     if (!best[p.c] || d < best[p.c].d) best[p.c] = { d, b: bb, p };
   }
   const rows = [];
+  rows.push(`<div class="irow" data-layer="break"><span>${ic('park', '#3fa89a')}Break spot</span><b>${bs >= 0 ? dv(breakWord(bs), `${Math.round(bs * 100)} %`) : landVal}</b></div>`);
+  rows.push(row(ic(bo.shade > 0 ? 'umbrella-simple' : 'sun', bo.shade > 0 ? '#6f8fc0' : 'var(--blaze)'), `Shade (${ohWhenText()})`,
+    bs < 0 ? landVal : !bo.sunUp ? 'sun is down' : bo.shade ? 'in the shade' : 'in the sun', 'shade'),
+    row(ic('eye'), 'View', bs < 0 ? landVal : cap(viewWord(bo.view)), 'sights'));
+  rows.push('<div class="isep"></div>');
   const place = (k, layer) => { const c = CATS[k], b = best[k];
     rows.push(`<div class="irow" data-layer="${layer}"><span>${ic(c.icon, c.color)}${c.label}</span><b>${b ? distDir(b.d, b.b) : none}</b></div>` +
       sub(b ? [b.p.n ? esc(b.p.n) : '', b.p.t ? dayWhat(b.p) : ''].filter(Boolean).join(' · ') || '<span class="dim">unnamed</span>' : has ? 'none loaded nearby' : '')); };
   DAY_SUPPLY.forEach(k => place(k, 'supply'));
+  rows.push('<div class="isep"></div>');
+  DAY_BREAK.forEach(k => place(k, k === 'swim' ? 'swim' : 'break'));
   rows.push('<div class="isep"></div>');
   DAY_SIGHTS.forEach(k => place(k, 'sights'));
   rows.push('<div class="isep"></div>');
@@ -1637,20 +1796,34 @@ function storeSpots() {
 let noteT;
 const storeSoon = () => { clearTimeout(noteT); noteT = setTimeout(storeSpots, 400); };
 
-const pinIcon = cls => L.divIcon({ className: 'spot-pin ' + cls, html: cls === 'temp' ? '' : ic('star'), iconSize: [26, 26], iconAnchor: [13, 13] });
+// Spot types: the card shows what matters for that kind of stop. A map click opens the type of the current layer
+// (Night = camp, Resupply = shop, other Day layers = break); the switch in the card changes it; saved spots keep it.
+const SPOT_TYPES = {
+  camp:  { label: 'Camp',  icon: 'tent',   col: 'var(--blaze)', gpx: 'Campground' },
+  break: { label: 'Break', icon: 'park',   col: '#3fa89a',      gpx: 'Picnic Area' },
+  shop:  { label: 'Shop',  icon: 'basket', col: '#e0a030',      gpx: 'Shopping Center' },
+};
+const spotType = s => SPOT_TYPES[s.type] ? s.type : 'camp';
+const typeOfLayer = () => !isDay() ? 'camp' : settings.layer === 'supply' ? 'shop' : 'break';
+const pinIcon = (cls, type = 'camp') => L.divIcon({ className: `spot-pin ${cls} pt-${type}`, html: cls === 'temp' ? '' : ic(SPOT_TYPES[type].icon), iconSize: [26, 26], iconAnchor: [13, 13] });
 function drawSpotPins() {
   spotLayer.clearLayers();
   for (const s of spots)
-    L.marker([s.lat, s.lon], { icon: pinIcon(cur && cur.id === s.id ? 'on' : ''), title: s.name || 'Saved spot', keyboard: false })
+    L.marker([s.lat, s.lon], { icon: pinIcon(cur && cur.id === s.id ? 'on' : '', spotType(s)), title: s.name || 'Saved spot', keyboard: false })
       .on('click', () => openSpot(s)).addTo(spotLayer);
   if (cur && !cur.id) L.marker([cur.lat, cur.lon], { icon: pinIcon('temp'), interactive: false }).addTo(spotLayer);
 }
 
+let spotFilter = '';
 function renderSpotList() {
   const box = $('#spot-list');
   if (!spots.length) { box.innerHTML = '<div class="muted" style="font-size:12px">No saved spots yet.</div>'; return; }
-  box.innerHTML = spots.map((s, j) => `<div class="spot-item" data-j="${j}" tabindex="0">
-      <span class="nm">${esc(s.name || 'Unnamed spot')}</span><span class="st">${'★'.repeat(s.rating || 0)}<span class="dim">${'★'.repeat(5 - (s.rating || 0))}</span></span></div>`).join('');
+  const types = Object.keys(SPOT_TYPES).filter(t => spots.some(x => spotType(x) === t));
+  if (!types.includes(spotFilter)) spotFilter = '';
+  const chips = types.length > 1 ? `<div class="spot-filter">${['', ...types].map(t => `<button data-t="${t}" class="${t === spotFilter ? 'on' : ''}">${t ? ic(SPOT_TYPES[t].icon, SPOT_TYPES[t].col) + SPOT_TYPES[t].label : 'All'}</button>`).join('')}</div>` : '';
+  box.innerHTML = chips + spots.map((s, j) => spotFilter && spotType(s) !== spotFilter ? '' : `<div class="spot-item" data-j="${j}" tabindex="0">
+      <span class="ti">${ic(SPOT_TYPES[spotType(s)].icon, SPOT_TYPES[spotType(s)].col)}</span><span class="nm">${esc(s.name || 'Unnamed spot')}</span><span class="st">${'★'.repeat(s.rating || 0)}<span class="dim">${'★'.repeat(5 - (s.rating || 0))}</span></span></div>`).join('');
+  box.querySelectorAll('.spot-filter button').forEach(b => b.onclick = () => { spotFilter = b.dataset.t; renderSpotList(); });
   box.querySelectorAll('.spot-item').forEach(el => {
     const go = () => { const s = spots[+el.dataset.j]; map.setView([s.lat, s.lon], Math.max(map.getZoom(), 14)); openSpot(s); };
     el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); };
@@ -1700,7 +1873,7 @@ function analyseSpot(s) {
       const [d, b] = at(p.lat, p.lon);
       if (d > RADAR_MAX) continue;
       if (p.c === 'hunting') { if (d < 1000) a.hunting.push({ d, b, n: p.n }); }
-      else keep(p.c, d, b, { n: p.n });
+      else keep(p.c, d, b, { n: p.n, p });
     }
   }
   a.hunting.sort((u, v) => u.d - v.d);
@@ -1773,6 +1946,7 @@ function radarSVG(a, sun) {
 }
 
 function openSpot(s) {
+  if (!s.type) s.type = s.id ? 'camp' : typeOfLayer();
   cur = s; card.hidden = false; cardScore = null; cardBonus = -1;
   $('#hover-sec').hidden = true; panel.scrollTop = 0;
   offlineReady.then(() => {                      // wait for the list of prepared tiles
@@ -1791,7 +1965,7 @@ const cap = t => t[0].toUpperCase() + t.slice(1);
 const cardInOffline = () => offline.has(tkey(Math.floor(mercX(cur.lon) * N12), Math.floor(mercY(cur.lat) * N12)));
 const cardWait = () => cardInOffline() ? '…' : 'no data';
 function updateCardSummary() {
-  const el = $('#sc-summary'); if (!el) return;
+  const el = $('#sc-summary'); if (!el || spotType(cur) !== 'camp') return;
   const facts = [], f = (icon, val, lbl, cls = '') => facts.push(`<div class="fact ${cls}">${icon}<div><b>${val}</b><small>${lbl}</small></div></div>`);
   const off = ic('circle-dashed', 'var(--line)'), w = cardWait();
   // terrain (+ protected area: red/orange edge and the rule as the label)
@@ -1831,6 +2005,8 @@ function renderCard() {
   card.innerHTML = `
     <div class="sc-head"><input id="sc-name" value="${esc(s.name || '')}" placeholder="${saved ? 'Unnamed spot' : 'Name this spot'}" aria-label="Spot name">
       <button class="sc-x" id="sc-close" title="Close" aria-label="Close">${ic('x')}</button></div>
+    <div class="seg sc-types" role="group" aria-label="Kind of spot">${Object.entries(SPOT_TYPES).map(([k, t]) =>
+      `<button data-t="${k}" class="${spotType(s) === k ? 'on' : ''}" title="${t.label}: ${k === 'camp' ? 'a place to sleep' : k === 'break' ? 'a place for a break' : 'shops, cafés and water'}">${ic(t.icon, t.col)}${t.label}</button>`).join('')}</div>
     <div class="sc-top" id="sc-top"></div>
     <div class="sc-summary" id="sc-summary"></div>
     <div class="sc-btns">
@@ -1838,10 +2014,13 @@ function renderCard() {
       <button class="btn" id="sc-share" title="Copy a link to this spot">${ic('link')}Copy link</button>
       <button class="btn" id="sc-zoom">${ic('magnifying-glass-plus')}Zoom to</button>
     </div>
-    ${cardSec('score', 'chart-bar', 'Score', '<div id="sc-score"></div>')}
+    ${spotType(s) === 'break' ? cardSec('bsun', 'sun', 'Sun & shade', '<div class="near" id="sc-bsun"></div>') + cardSec('bscore', 'chart-bar', 'Score', '<div class="near" id="sc-bscore"></div>')
+      + cardSec('bnear', 'compass', 'Nearby', '<div class="near" id="sc-bnear"></div>') : ''}
+    ${spotType(s) === 'shop' ? cardSec('places', 'basket', 'Places', '<div class="near" id="sc-places"></div>') : ''}
+    ${spotType(s) !== 'camp' ? '' : `${cardSec('score', 'chart-bar', 'Score', '<div id="sc-score"></div>')}
     ${cardSec('around', 'compass', 'Nearby', '<div id="sc-radar"></div><div class="near" id="sc-near"></div>')}
     ${cardSec('wx', 'moon-stars', 'Night', `<div style="font-size:12.5px;margin:0 0 8px 30px"><span class="muted">Night of </span><input type="date" class="sc-date" id="sc-date" value="${cardDate.getFullYear()}-${String(cardDate.getMonth() + 1).padStart(2, '0')}-${String(cardDate.getDate()).padStart(2, '0')}" aria-label="Date"></div>
-      <div class="near" id="sc-sun"></div><div class="near" id="sc-wx" style="margin-top:9px;padding-top:9px;border-top:1px solid var(--line)"></div>`)}
+      <div class="near" id="sc-sun"></div><div class="near" id="sc-wx" style="margin-top:9px;padding-top:9px;border-top:1px solid var(--line)"></div>`)}`}
     ${cardSec('notes', 'notepad', 'Notes', `<div class="sc-stars" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" class="${n <= (s.rating || 0) ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
       <textarea id="sc-note" placeholder="Notes: access, ground, where to pitch, water, who you met…">${esc(s.note || '')}</textarea>
       <div class="sc-sub">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.created ? ' · saved ' + new Date(s.created).toLocaleDateString() : ''}</div>`)}`;
@@ -1865,14 +2044,19 @@ function renderCard() {
   };
   else $('#sc-save').onclick = () => {
     s.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6); s.created = Date.now();
-    if (!s.name) s.name = 'Spot ' + (spots.length + 1);
+    if (!s.name) s.name = (spotType(s) === 'camp' ? 'Spot' : SPOT_TYPES[spotType(s)].label) + ' ' + (spots.length + 1);
     spots.push(s); storeSpots(); renderCard(); setStatus('Spot saved', 'ok');
   };
   $('#sc-share').onclick = async () => {
-    const url = `${location.origin}${location.pathname}#spot=${s.lat.toFixed(5)},${s.lon.toFixed(5)},${encodeURIComponent(s.name || '')}`;
+    const url = `${location.origin}${location.pathname}#spot=${s.lat.toFixed(5)},${s.lon.toFixed(5)},${encodeURIComponent(s.name || '')}${spotType(s) !== 'camp' ? '&t=' + spotType(s) : ''}`;
     try { await navigator.clipboard.writeText(url); setStatus('Link copied', 'ok'); } catch { prompt('Link to this spot:', url); }
   };
   $('#sc-zoom').onclick = () => map.setView([s.lat, s.lon], 15);
+  card.querySelectorAll('.sc-types button').forEach(b => b.onclick = () => {
+    if (spotType(s) === b.dataset.t) return;
+    s.type = b.dataset.t; if (saved) storeSpots(); renderCard(); drawSpotPins();
+  });
+  if (spotType(s) !== 'camp') { updateDayCard(); return; }
   $('#sc-date').onchange = e => { if (e.target.value) { cardDate = new Date(e.target.value + 'T12:00'); updateCardAround(); loadWeather(s); } };
   updateCardAround(); updateCardScore(); loadWeather(s);
 }
@@ -1964,6 +2148,7 @@ function renderWeather(el, nights) {
 
 function updateCardAround() {
   if (!cur || card.hidden) return;
+  if (spotType(cur) !== 'camp') { updateDayCard(); return; }
   const a = cardAnalysis = analyseSpot(cur), sun = sunInfo(cur), wait = a.missing ? '…' : null;
   $('#sc-radar').innerHTML = radarSVG(a, sun);
   // Around the spot = the useful places only (terrain, houses etc. are in "Why this score")
@@ -1987,9 +2172,112 @@ function updateCardAround() {
   if (cardScore !== null) updateCardScore();      // houses, hunting stands and terrain mix come from this analysis
 }
 
+// ── Break and shop cards (Day spot types). Same rules as the camp card: every tile and row is always there,
+// showing "…" until its data is loaded, so nothing jumps.
+function promAt(lat, lon) {                      // how much higher than the land within ~350 m (m), or null
+  const s0 = slopeAt(lat, lon); if (!s0) return null;
+  const kLat = 1 / 110574, kLon = 1 / (111320 * Math.cos(lat * Math.PI / 180));
+  let sum = 0, n = 0;
+  for (const r of [120, 240, 360]) for (let a = 0; a < 360; a += 45) {
+    const s1 = slopeAt(lat + Math.cos(a * Math.PI / 180) * r * kLat, lon + Math.sin(a * Math.PI / 180) * r * kLon);
+    if (s1) { sum += s1.elev; n++; }
+  }
+  return n >= 12 ? s0.elev - sum / n : null;
+}
+function breakAt(s, a) {                         // break parts at a point (exact maps, not the coarser map grid)
+  const hd = hideAt(s.lat, s.lon), lc = landAt(s.lat, s.lon), when = ohWhen(), sh = shadeAt(s.lat, s.lon, when), prom = promAt(s.lat, s.lon);
+  if (!hd || lc < 0 || !a || a.missing) return null;
+  const nr = (k, r) => a.near[k] ? Math.max(0, 1 - a.near[k].d / r) : 0;
+  const acc = hd.bike <= 30 ? 1 : Math.max(0, 1 - (hd.bike - 30) / 170), qLand = BREAK_LAND[lc] ?? 1, qNoise = 1 - settings.bQuiet * dayNoisePen(hd.db);
+  const forest = CANOPY[lc] && lc !== 3;
+  const view = Math.max(prom === null ? 0 : Math.max(0, Math.min(1, (prom - 4) / 16)) * (forest ? 0.15 : 1), nr('viewpoints', 250), nr('sights', 150) * 0.6);
+  const seat = Math.max(nr('benches', 150), nr('shelters', 150)), water = Math.max(nr('water', 400), nr('rivers', 200), nr('swim', 300));
+  const shade = sh && sh.shade ? 1 : 0, [bonus, score] = breakMix(acc, qLand, qNoise, shade, view, seat, water);
+  return { hd, lc, sh, prom, acc, qLand, qNoise, shade, view, seat, water, bonus, score };
+}
+function updateDayCard() {
+  if (!cur || card.hidden) return;
+  const t = spotType(cur), a = cardAnalysis = analyseSpot(cur), off = cardOff(), w = cardWait(), whenT = ohWhenText();
+  const facts = [], f = (icon, val, lbl, cls = '') => facts.push(`<div class="fact ${cls}">${icon}<div><b>${val}</b><small>${lbl}</small></div></div>`);
+  const aOk = !a.missing, nd = n => n ? distDir(n.d, n.b) : `over ${fmtDist(RADAR_MAX)}`, pct = v => Math.round(v * 100) + ' %';
+  const nameLine = (k, n) => !aOk ? '…' : !n ? `none within ${fmtDist(RADAR_MAX)}` : [n.n ? esc(n.n) : k === 'rivers' ? 'river, stream or lake shore' : '', n.p && n.p.t ? dayWhat(n.p) : ''].filter(x => x && x !== '&nbsp;').join(' · ') || '<span class="dim">unnamed</span>';
+  if (t === 'shop') {
+    const at = localFrame(cur.lat, cur.lon), list = [], want = new Set(DAY_SUPPLY);
+    for (const { x, y } of tilesAround(cur)) { const tt = tiles.get(tkey(x, y)); if (tt) for (const p of tt.pois) {
+      if (!want.has(p.c)) continue; const [d, b] = at(p.lat, p.lon); if (d <= 1000) list.push({ d, b, p }); } }
+    list.sort((u, v) => u.d - v.d);
+    const in500 = list.filter(x => x.d <= 500), open = in500.filter(x => ohState(x.p.o) === 'open').length;
+    $('#sc-top').innerHTML = `<div class="sc-score"><span class="big" style="color:#e0a030">${aOk ? in500.length : '…'}</span>
+      <span><span class="word">${in500.length === 1 ? 'place' : 'places'} within 500 m</span><span class="why">${!aOk ? 'loading…' : open ? `<span class="oh-open">${open} open ${whenT}</span>` : in500.length ? `none known to be open ${whenT}` : 'look further in “Places”'}</span></span></div>`;
+    for (const k of ['groceries', 'food', 'water', 'toilets', 'bike', 'stations']) {
+      const n = a.near[k], c = CATS[k], st = n && n.p ? ohState(n.p.o) : null;
+      f(aOk ? ic(c.icon, c.color) : off, aOk ? nd(n) : '…', n && st ? `${c.label.split(' ')[0].toLowerCase()} · <span class="oh-${st}">${st}</span>` : c.label, n && n.d > 1000 ? 'warn' : '');
+    }
+    $('#sc-summary').innerHTML = facts.join('');
+    $('#sc-places').innerHTML = !aOk ? cardRow(off, 'Places within 1 km', '', w) : !list.length ? cardRow(off, 'No shops, cafés or water within 1 km', '', 'see the tiles above for the nearest')
+      : list.slice(0, 25).map(x => cardRow(ic(CATS[x.p.c].icon, CATS[x.p.c].color), esc(x.p.n || DAY_TYPES[x.p.t] || CATS[x.p.c].label), distDir(x.d, x.b),
+        [dayWhat(x.p) !== '&nbsp;' ? dayWhat(x.p) : '', x.p.o ? esc(x.p.o) : ''].filter(Boolean).join('<br>') || '&nbsp;')).join('');
+    setSum('places', aOk ? `${list.length} within 1 km` + (list.length ? ` · nearest ${fmtDist(list[0].d)}` : '') : 'loading…');
+    return;
+  }
+  // break
+  const b = breakAt(cur, a), sun = b && b.sh ? b.sh.sun : sunAt(cur.lat, cur.lon, ohWhen());
+  if (b) {
+    const col = b.score < 0.3 ? 'var(--blaze)' : 'var(--good-text)';
+    const lim = [['being far from a path', b.acc], ['the ground', b.qLand], ['traffic noise', b.qNoise]].sort((u, v) => u[1] - v[1]);
+    const goods = [['shade', b.shade], ['a view', b.view], ['a bench', b.seat], ['water', b.water]].filter(x => x[1] >= 0.5).map(x => x[0]);
+    const why = lim[0][1] < 0.7 ? `Held back by ${lim[0][0]}` : goods.length ? `Good: ${goods.join(', ')}` : 'Fine, nothing special';
+    $('#sc-top').innerHTML = `<div class="sc-score"><span class="big" style="color:${col}">${Math.round(b.score * 100)}<small>%</small></span>
+      <span><span class="word" style="color:${col}">${cap(breakWord(b.score))} break spot</span><span class="why">${why}</span></span></div>
+      <div class="sc-bar"><i style="width:${Math.max(2, b.score * 100)}%;background:#3fa89a"></i></div>`;
+  } else $('#sc-top').innerHTML = `<span class="muted" style="font-size:12px">${w === '…' ? 'Loading the maps around this spot…' : 'No map data here.'}</span>`;
+  const sh = b && b.sh;
+  f(sh ? ic(sh.down ? 'moon' : sh.shade ? 'umbrella-simple' : 'sun', sh.shade ? '#6f8fc0' : 'var(--blaze)') : off, sh ? (sh.down ? 'Sun is down' : sh.shade ? 'Shade' : 'Sun') : w,
+    sh && sh.shade ? `from ${sh.by} · ${whenT}` : whenT);
+  f(b ? ic('eye', b.view >= 0.35 ? 'var(--good)' : 'var(--muted)') : off, b ? cap(viewWord(b.view)) : w, b && b.prom !== null ? `${Math.round(b.prom)} m above the land around` : 'view');
+  const seatN = a.near.benches && (!a.near.shelters || a.near.benches.d <= a.near.shelters.d) ? ['benches', a.near.benches] : ['shelters', a.near.shelters];
+  f(aOk ? ic(CATS[seatN[0]].icon, CATS[seatN[0]].color) : off, aOk ? nd(seatN[1]) : '…', seatN[0] === 'shelters' ? 'shelter or hut' : 'bench or table');
+  const wat = ['water', 'rivers', 'swim'].map(k => [k, a.near[k]]).filter(x => x[1]).sort((u, v) => u[1].d - v[1].d)[0];
+  f(aOk ? ic(wat ? CATS[wat[0]].icon : 'drop', wat ? CATS[wat[0]].color : 'var(--muted)') : off, aOk ? nd(wat && wat[1]) : '…', wat ? CATS[wat[0]].label.toLowerCase() : 'water');
+  f(b ? ic('ear', '#b39ddb') : off, b ? `${b.hd.db} dB` : w, b ? noiseWord(b.hd.db) : 'traffic noise');
+  f(b ? ic('bicycle', '#e8743a') : off, b ? (b.hd.bike >= 2550 ? 'over 2.5 km' : fmtDist(b.hd.bike)) : w, 'to a path or track');
+  $('#sc-summary').innerHTML = facts.join('');
+  // sun and shade through the day (06–21 h) on the plan day
+  const base = ohWhen(), hrs = [...Array(16)].map((_, k) => 6 + k), nowH = base.getHours();
+  const strip = hrs.map(h => { const d = new Date(base); d.setHours(h, 0, 0, 0); const x = shadeAt(cur.lat, cur.lon, d);
+    return { h, st: !x ? '' : x.down ? '' : x.shade ? 'shade' : 'sun' }; });
+  const shadeHrs = strip.filter(x => x.st === 'shade').map(x => x.h), runs = [];
+  for (const h of shadeHrs) { const r = runs[runs.length - 1]; if (r && r[1] === h - 1) r[1] = h; else runs.push([h, h]); }
+  const tm = typeof SunCalc !== 'undefined' ? SunCalc.getTimes(base, cur.lat, cur.lon) : null;
+  const known = strip.some(x => x.st);
+  $('#sc-bsun').innerHTML = cardRow(sun ? ic(sun.alt > 0.03 ? 'sun' : 'moon', 'var(--blaze)') : off, `Sun ${whenT}`,
+      sun ? (sun.alt > 0.03 ? dirTag(sun.bear) + Math.round(sun.alt * 180 / Math.PI) + '° high' : 'down') : '—', 'time: Settings → Day')
+    + `<span></span><span><div class="sun-strip">${strip.map(x => `<i class="${x.st}${x.h === nowH ? ' now' : ''}" title="${x.h}:00 ${x.st || 'no sun'}"></i>`).join('')}</div>
+      <div class="sun-hours">${hrs.map(h => `<span>${h % 3 ? '' : h}</span>`).join('')}</div></span><span></span>`
+    + cardRow(ic('umbrella-simple', '#6f8fc0'), 'Shade here', '', !known ? w : runs.length ? runs.map(r => `${r[0]}–${r[1] + 1} h`).join(', ') : 'none: in the sun all day')
+    + cardRow(ic('sun-horizon', '#e8743a'), 'Sunset', tm ? fmtTime(tm.sunset) : '—', tm ? `golden hour from ${fmtTime(tm.goldenHour)}` : '&nbsp;');
+  setSum('bsun', !known ? '…' : runs.length ? `shade ${runs.map(r => `${r[0]}–${r[1] + 1} h`).join(', ')}` : 'sunny all day');
+  const row = (icon, title, val, sub) => cardRow(icon, title, val, sub);
+  $('#sc-bscore').innerHTML = !b ? ['Close to a path', 'Ground', 'Away from traffic', 'Shade', 'View', 'Somewhere to sit', 'Water'].map(x => cardRow(off, x, '', w)).join('') : [
+    row(ic('bicycle', '#e8743a'), 'Close to a path', pct(b.acc), `path or track ${fmtDist(b.hd.bike)} away`),
+    row(landIc(b.lc), `Ground: ${esc(LAND[b.lc][0])}`, pct(b.qLand), b.qLand < 1 ? 'not a place to stop' : 'fine'),
+    row(ic('ear', '#b39ddb'), 'Away from traffic', pct(b.qNoise), `${b.hd.db} dB · ${noiseWord(b.hd.db)}`),
+    row(ic('umbrella-simple', '#6f8fc0'), 'Shade', b.shade ? 'yes' : 'no', sh && sh.down ? 'the sun is down' : `${whenT}${settings.bShade ? '' : ' · not counted'}`),
+    row(ic('eye', 'var(--good)'), 'View', pct(b.view), b.prom !== null ? `${Math.round(b.prom)} m above the land within 350 m` : 'no elevation data'),
+    row(ic('park', CATS.benches.color), 'Somewhere to sit', pct(b.seat), 'bench, table or shelter within 150 m'),
+    row(ic('drop', CATS.water.color), 'Water', pct(b.water), 'tap, river, lake or bathing spot'),
+  ].join('');
+  setSum('bscore', b ? (b.acc < 0.7 ? `far from a path (${fmtDist(b.hd.bike)})` : `extras ${pct(b.bonus)}`) : '…');
+  $('#sc-bnear').innerHTML = ['benches', 'shelters', 'water', 'rivers', 'swim', 'viewpoints', 'sights'].map(k =>
+    cardRow(ic(CATS[k].icon, CATS[k].color), CATS[k].label, aOk ? (a.near[k] ? distDir(a.near[k].d, a.near[k].b) : '—') : '…', nameLine(k, a.near[k]))).join('');
+  setSum('bnear', !aOk ? 'loading…' : ['benches', 'water', 'swim', 'viewpoints'].filter(k => a.near[k]).sort((u, v) => a.near[u].d - a.near[v].d).slice(0, 3)
+    .map(k => `${ic(CATS[k].icon, CATS[k].color)} ${distDir(a.near[k].d, a.near[k].b)}`).join(' · ') || 'nothing within 2 km');
+}
+
 let cardBonus = 0;
 function updateCardScore() {
   if (!cur || card.hidden) return;
+  if (spotType(cur) !== 'camp') { updateDayCard(); return; }
   const el = $('#sc-score'), i = gridIndex(L.latLng(cur.lat, cur.lon)), off = cardOff();
   // fixed rows first (always one short second line), rows that can grow last
   const ph = t => cardRow(off, t, '', '…');
@@ -2079,7 +2367,7 @@ const xmlEsc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<'
 $('#btn-gpx').onclick = () => {
   if (!spots.length) { setStatus('No saved spots to export', 'error'); return; }
   const w = spots.map(s => `  <wpt lat="${s.lat.toFixed(6)}" lon="${s.lon.toFixed(6)}"><name>${xmlEsc(s.name)}</name>` +
-    `<desc>${xmlEsc((s.rating ? '★'.repeat(s.rating) + ' ' : '') + (s.note || ''))}</desc><sym>Campground</sym></wpt>`).join('\n');
+    `<desc>${xmlEsc((s.rating ? '★'.repeat(s.rating) + ' ' : '') + (s.note || ''))}</desc><sym>${SPOT_TYPES[spotType(s)].gpx}</sym><type>${spotType(s)}</type></wpt>`).join('\n');
   download('wildnav-spots.gpx', `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="WildNav" xmlns="http://www.topografix.com/GPX/1/1">\n${w}\n</gpx>\n`, 'application/gpx+xml');
 };
 $('#btn-backup').onclick = () => download(`wildnav-spots-${new Date().toISOString().slice(0, 10)}.json`,
@@ -2097,7 +2385,9 @@ $('#spot-file').onchange = async e => {
         const r = parseRoute(txt, f.name); if (r) { setRoute(r); setStatus(`Loaded as a route: ${fmtDist(r.len)}`, 'ok'); } return;
       }
       found = [...doc.getElementsByTagName('wpt')].map(w => ({ lat: +w.getAttribute('lat'), lon: +w.getAttribute('lon'),
-        name: w.getElementsByTagName('name')[0]?.textContent || '', note: w.getElementsByTagName('desc')[0]?.textContent || '' }));
+        name: w.getElementsByTagName('name')[0]?.textContent || '', note: w.getElementsByTagName('desc')[0]?.textContent || '',
+        type: (() => { const t = w.getElementsByTagName('type')[0]?.textContent, sym = w.getElementsByTagName('sym')[0]?.textContent;
+          return SPOT_TYPES[t] ? t : Object.keys(SPOT_TYPES).find(k => SPOT_TYPES[k].gpx === sym) || 'camp'; })() }));
     } else {
       const j = JSON.parse(txt); found = Array.isArray(j) ? j : j.spots || [];
     }
@@ -2107,7 +2397,8 @@ $('#spot-file').onchange = async e => {
   for (const s of found) {
     if (!isFinite(s.lat) || !isFinite(s.lon) || spots.some(x => same(x, s))) continue;
     spots.push({ id: s.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 6), created: s.created || Date.now(),
-      lat: +s.lat, lon: +s.lon, name: String(s.name || ''), note: String(s.note || ''), rating: Math.max(0, Math.min(5, s.rating | 0)) });
+      lat: +s.lat, lon: +s.lon, name: String(s.name || ''), note: String(s.note || ''), rating: Math.max(0, Math.min(5, s.rating | 0)),
+      type: SPOT_TYPES[s.type] ? s.type : 'camp' });
     added++;
   }
   storeSpots(); setStatus(`${added} spot${added === 1 ? '' : 's'} imported${found.length > added ? `, ${found.length - added} skipped (already there)` : ''}`, 'ok');
@@ -2115,9 +2406,9 @@ $('#spot-file').onchange = async e => {
 
 // Shared link: #spot=lat,lon,name (on page load, and when the hash changes on an open page)
 function openFromHash() {
-  const m = location.hash.match(/^#spot=(-?[\d.]+),(-?[\d.]+),?(.*)$/);
+  const m = location.hash.match(/^#spot=(-?[\d.]+),(-?[\d.]+),?([^&]*)(?:&t=(\w+))?$/);
   if (!m) return;
-  const s = { lat: +m[1], lon: +m[2], name: decodeURIComponent(m[3] || '') };
+  const s = { lat: +m[1], lon: +m[2], name: decodeURIComponent(m[3] || ''), type: SPOT_TYPES[m[4]] ? m[4] : 'camp' };
   if (!isFinite(s.lat) || !isFinite(s.lon)) return;
   const known = spots.find(x => Math.abs(x.lat - s.lat) < 1e-5 && Math.abs(x.lon - s.lon) < 1e-5);
   map.setView([s.lat, s.lon], 14);
@@ -2241,13 +2532,17 @@ buildCatRows();
 // everything that shows open / closed
 setInterval(() => { if (!settings.ohAt && isDay()) ohChanged(); }, 5 * 60e3);
 function ohChanged() {
-  rebuildMarkers(); updateHover(); nearKey = ''; requestRender();
+  rebuildMarkers(); updateHover(); nearKey = ''; requestRender(); updateLegends();
   if (routeSup) showSupplies();
   if (cur && !card.hidden) updateCardAround();
 }
 makeSlider($('#day-cut'), { label: 'Worth a detour', hint: 'how far off your way a place still counts', min: 250, max: 10000, step: 250, value: settings.cutS, fmt: fmtDist,
   onInput: v => { settings.cutS = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
-for (const k of ['groceries', 'food', 'bike', 'toilets', 'sights']) {
+for (const [k, label, hint] of [['bShade', 'Shade', 'forest or a hill blocks the sun'], ['bView', 'View', 'higher than the land around, or a viewpoint'],
+  ['bSeat', 'Bench or table', 'or a shelter, within 150 m'], ['bWater', 'Water', 'a tap, river, lake or bathing spot nearby'], ['bQuiet', 'Away from traffic', 'noise from 45 dB counts against']])
+  makeSlider($('#break-sliders'), { label, hint, min: 0, max: 1, step: 0.1, value: settings[k], fmt: pctOff,
+    onInput: v => { settings[k] = v; requestRender(); saveSettings(); if (cur && !card.hidden) updateCardScore(); } });
+for (const k of ['groceries', 'food', 'bike', 'toilets', 'stations', 'sights', 'benches', 'swim']) {
   const c = CATS[k], row = document.createElement('div');
   row.className = 'cat-row';
   row.innerHTML = `<span class="dot">${ic(c.icon, c.color)}</span><span class="name">${c.label}<small class="cnt" id="cnt-${k}"></small></span>`;
@@ -2286,24 +2581,31 @@ const LAYERS = {
   nearby:  { name: 'Useful places',   icon: 'drop',           col: '#22b8d6',      title: 'Useful places', desc: 'Water, huts, fire pits and more nearby',
              note: 'Distance to the nearest useful place, weighted under Settings.' },
   // Day mode (riding)
+  break:   { name: 'Break spots',     icon: 'park',           col: '#3fa89a',      title: 'Break spots',   desc: 'Shade, a view, a bench, water, close to a path',
+             note: 'Stronger = better break. Shade is for the time under Settings → Day (now by default). Adjust what counts there too.', mode: 'day', zoom: true },
+  shade:   { name: 'Shade',           icon: 'umbrella-simple', col: '#6f8fc0',     title: 'Shade',         desc: 'Where forests or hills block the sun',
+             note: 'Blue = shade from forests and hills, yellow = sun, at the time under Settings → Day. Single trees, hedges and buildings are not in the map.', mode: 'day', zoom: true },
   supply:  { name: 'Resupply',        icon: 'basket',         col: '#e0a030',      title: 'Resupply',      desc: 'Groceries, cafés, water, bike repair, toilets',
              note: 'Distance to the nearest shop, café, water tap, bike shop or toilet, weighted under Settings → Day. Hover a marker for opening hours.', mode: 'day' },
   sights:  { name: 'Sights & views',  icon: 'castle-turret',  col: '#b07fd0',      title: 'Sights & views', desc: 'Castles, ruins, museums, peaks and viewpoints',
              note: 'Distance to the nearest sight or viewpoint.', mode: 'day' },
+  swim:    { name: 'Swimming spots',  icon: 'person-simple-swim', col: '#3aa6c9',  title: 'Swimming spots', desc: 'Bathing places and swimming areas',
+             note: 'Mapped bathing places only; other lakes and rivers may be fine too, check the rules and the water.', mode: 'day' },
 };
 // Topography and road noise are also on the Day map, under names that fit riding
 const DAY_NAMES = {
   topo:  { name: 'Hills',       desc: 'Steep climbs and descents', title: 'Hills (slope)', note: 'Slope from a 30 m elevation model: red = steep. Roads may run on gentler lines than the ground around them.' },
   quiet: { name: 'Busy roads',  desc: 'Traffic noise: loud = busy road nearby', title: 'Traffic noise', note: 'Night-time traffic noise from road type and railways; loud areas mean busy roads.' },
 };
-const MODE_LAYERS = { night: ['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'], day: ['supply', 'sights', 'topo', 'quiet'] };
-const MODE_HOME = { night: 'score', day: 'supply' };
+const MODE_LAYERS = { night: ['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'], day: ['break', 'supply', 'shade', 'sights', 'swim', 'topo', 'quiet'] };
+const MODE_HOME = { night: 'score', day: 'break' };
 const layerInfo = k => isDay() && DAY_NAMES[k] ? { ...LAYERS[k], ...DAY_NAMES[k] } : LAYERS[k];
 const FACTOR_LAYERS = ['hidden', 'quiet', 'topo', 'terrain'];
 function buildLayerMenu() {
   const item = k => { const L_ = layerInfo(k); return `<button class="lm-item${settings.layer === k ? ' on' : ''}" data-l="${k}">${ic(L_.icon, L_.col)}<b>${L_.name}</b><small>${L_.desc}</small></button>`; };
   $('#layer-menu').innerHTML = isDay()
-    ? `<div class="lm-h">Day: on the bike</div>${['supply', 'sights'].map(item).join('')}<div class="lm-h">Riding</div>${['topo', 'quiet'].map(item).join('')}`
+    ? `<div class="lm-h">Day: on the bike</div>${['break', 'supply'].map(item).join('')}<div class="lm-h">Why a break scores</div>${['shade', 'sights', 'swim'].map(item).join('')}` +
+      `<div class="lm-h">Riding</div>${['topo', 'quiet'].map(item).join('')}`
     : `<div class="lm-h">Night: where to sleep</div>${item('score')}<div class="lm-h">Why a spot scores</div>` +
       ['hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].map(item).join('');
   $('#layer-menu').querySelectorAll('.lm-item').forEach(b => b.onclick = () => { setLayer(b.dataset.l); showLayerMenu(false); });
@@ -2339,6 +2641,15 @@ function updateLegends() {
     for (let i = 0; i < 256; i++) T.set(TERR[Math.min(3, i >> 6)], i * 4);
     drawLegend('#leg', T, settings.opacity + 0.15);
     setLabels('#leg-labels', [[0, 'good'], [0.375, 'fair'], [0.625, 'poor'], [1, 'no']]);
+  } else if (l === 'break') {
+    drawLegend('#leg', LUT_B, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'poor'], [0.5, 'ok'], [1, 'great']]);
+  } else if (l === 'shade') {
+    const T = new Uint8ClampedArray(1024);
+    for (let i = 0; i < 256; i++) T.set(i < 128 ? [250, 205, 90, 70] : [40, 70, 120, 150], i * 4);
+    drawLegend('#leg', T, settings.opacity + 0.15);
+    const sun = R.valid ? (() => { const c = map.getCenter(); return sunAt(c.lat, c.lng, ohWhen()); })() : null;
+    setLabels('#leg-labels', sun && sun.alt < 0.03 ? [[0, `sun is down (${ohWhenText()})`]] : [[0, `sun · ${ohWhenText()}`], [1, 'shade']]);
   } else if (l === 'score') {
     drawLegend('#leg', LUT_S, settings.opacity + 0.15);
     setLabels('#leg-labels', [[0, 'avoid'], [0.2, 'ok'], [0.45, 'good'], [1, 'great']]);   // same words as scoreWord()
@@ -2814,7 +3125,7 @@ async function analyseSupplies() {
     const y0 = Math.floor(Math.min(Y(pts[k - 1][0]), Y(pts[k][0])) / cell), y1 = Math.floor(Math.max(Y(pts[k - 1][0]), Y(pts[k][0])) / cell);
     for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) { const key = cx + ',' + cy; (grid.get(key) || grid.set(key, []).get(key)).push(k); }
   }
-  const items = [], cats = new Set(DAY_CATS);
+  const items = [], cats = new Set([...DAY_SUPPLY, ...DAY_SIGHTS]);
   for (const { x, y } of want) {
     const t = tiles.get(tkey(x, y)); if (!t) continue;
     for (const p of t.pois) {
