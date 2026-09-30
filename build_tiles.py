@@ -9,6 +9,9 @@ Usage:
 --workers: CPU cores to use (default: half of them; the build runs at low priority).
 --resume:  if a build stopped during the hidden maps, finish only those (the command is printed
            when it stops; hidden maps that are already done are kept).
+--palette: re-encode existing terrain maps as palette PNGs (lossless, ~25 % smaller), no OSM needed.
+--b16:     convert an existing data folder from .bin (Float32) to .b16 (Uint16) buildings, no OSM needed.
+--dem:     FABDEM folder for hills in the hidden maps (default raw/fabdem if it exists).
 --keep:    keep the temporary files after the build, so the hidden maps can be tuned later with
            --resume <folder> --redo (recomputes all of them in a few minutes, without re-reading OSM).
 
@@ -17,22 +20,27 @@ filled from both extracts (without duplicates) instead of being left out.
 
 Writes (default out_dir = "data"):
     data/index.json              list of covered tiles (merged with an existing index)
-    data/12/<x>/<y>.bin          building centres, Float32 pairs (tile-relative Mercator x, y)
+    data/12/<x>/<y>.b16          building centres, Uint16 pairs (tile-relative Mercator x, y x 65535,
+                                 ~10 cm; index.json "bfmt": "u16"). Older builds: .bin with Float32 pairs.
     data/12/<x>/<y>.json         points of interest [{c, lat, lon, n}]
     data/12/<x>/<y>.water.bin    rivers, streams and lake shores sampled every ~40 m,
                                  Uint16 pairs (tile-relative Mercator x, y scaled to 0..65535)
     data/12/<x>/<y>.land.png     terrain map, 512x512 RGB PNG (~12 m per pixel):
                                  R = LAND class code (0 = not mapped),
                                  G/B = protected-area id, high/low byte (0 = none)
-    data/12/<x>/<y>.hide.png     256x256 RGB PNG (~24 m per pixel), see hide_tile():
-                                 R = hidden (255 = nobody on a road, path or in a house sees or hears you),
-                                 G = road/railway noise in dB(A), B = distance to the nearest path/road
-                                 you can cycle on, in 10 m (255 = 2.5 km or more)
+    data/12/<x>/<y>.hide.png     256x256 greyscale PNG (~24 m per pixel), see hide_tile():
+                                 hidden (255 = nobody on a road, path or in a house sees or hears you),
+                                 in steps of HIDE_Q (smaller files, ~1 %-point error)
+    data/12/<x>/<y>.nb.png       128x128 RGB PNG (~47 m): R = road/railway noise in dB(A),
+                                 G = distance to the nearest path/road you can cycle on, in 10 m
+                                 (exact distance transform, 255 = 2.5 km or more); per 2x2 block the
+                                 loudest noise and the shortest distance, B = 0
     data/protected.json          protected areas [{n: name, l: level, t: type}], id = index + 1
 
 Same tile scheme and categories as index.html (zoom-12 tiles).
 Requires: pip install "osmium>=4" pillow numpy
 """
+import glob
 import io
 import json
 import math
@@ -88,6 +96,13 @@ E0 = 0.12                    # exposure scale: hidden = exp(-exposure / E0)
 AIR = 0.003                  # dB per metre: air + ground absorption of traffic noise
 NOISE_CAP = 12.0             # dB: most damping forest/buildings can add
 HIDE_ANGLES = 8              # grid rotations, each swept both ways -> 16 directions
+HIDE_Q = 8                   # hidden is stored in steps of 8/255 (~3 %): files ~40 % smaller
+# Terrain between you and the observers (from FABDEM, if --dem is available):
+EYE_H, TENT_H = 1.7, 1.2     # m above ground: an observer's eyes, the top of a tent
+DEM_TOL = 2.0                # m: a rise must stick out this much to block the view (DEM height errors)
+HEAR_OVER_HILL = 0.3         # voices carry partly over a ridge (diffraction)
+NOISE_HILL = 8.0             # dB less traffic noise behind a ridge
+HOLLOW_R = 9                 # slope-map pixels (~420 m): "surroundings" for cold hollows
 AREA_KEYS = ('landuse', 'natural', 'waterway', 'leisure', 'boundary')   # areas: terrain + protected areas
 
 # Protected areas: 2 = strict (nature reserve, national park: no camping),
@@ -192,12 +207,16 @@ def prot_title(t, level):
     return title.replace('_', ' ')[:60]
 
 
-def ring_merc(nodes):
-    """Node list -> flat array('d') of Mercator x, y in zoom-12 tile units."""
-    a = array('d')
+def ring_merc(nodes, typecode='d'):
+    """Node list -> flat array of Mercator x, y in zoom-12 tile units (same arithmetic as merc(),
+    inlined: this runs for ~50 million nodes per extract)."""
+    a = array(typecode)
+    ext, tan, log, cos, rad, pi = a.extend, math.tan, math.log, math.cos, math.radians, math.pi
     for n in nodes:
-        if n.location.valid():
-            a.extend(merc(n.location.lat, n.location.lon))
+        loc = n.location
+        if loc.valid():
+            r = rad(max(-85.0, min(85.0, loc.lat)))
+            ext(((loc.lon + 180.0) / 360.0 * N, (1 - log(tan(r) + 1 / cos(r)) / pi) / 2 * N))
     return a
 
 
@@ -269,8 +288,7 @@ def finish_tile(job):
     for pid, rings in prot_items:                  # already sorted: weaker/larger areas first
         paint([hi, lo], tx, ty, rings, [pid >> 8, pid & 255])
     buf = io.BytesIO()
-    Image.merge('RGB', (land, hi, lo)).save(buf, format='PNG', optimize=True)
-    return (tx, ty), buf.getvalue()
+    return (tx, ty), palette_png(np.asarray(Image.merge('RGB', (land, hi, lo))))
 
 
 # ── Hidden / noise / access (third build step, all cores) ─────────────────────────────────────
@@ -287,9 +305,70 @@ def finish_tile(job):
 # Directions are made by rotating the grid (nearest neighbour), so every sweep runs along rows.
 _rot = None
 
+# Optional speed-up: with numba installed (pip install numba) the sweep runs as compiled code,
+# ray by ray; without it the numpy version below is used (same results).
+try:
+    from numba import njit
+except ImportError:
+    njit = None
+
+
+def _sweep_rays(Ts, Th, An, ws, wn, bike, z, u0, u1, px, first, s_sum, h_sum, n_sum, b_min,
+                eye_h, tent_h, dem_tol, hear_over_hill, noise_cap, air, noise_hill):
+    """Both sweep directions for every ray (column) of one rotation; same model as the numpy loop."""
+    D, nv = ws.shape
+    for rev in range(2):
+        for v in range(nv):
+            S = 0.0; H = 0.0; lv = -100.0; dn = 1e6; dmp = 0.0; db = 1e9
+            zo = 0.0; dd = 1e6; mm = -1e9; zn = 0.0; mn = -1e9
+            j = D - 1 if rev else 0
+            stop = u0 - 1 if rev else u1 + 1
+            step = -1 if rev else 1
+            while j != stop:
+                w = ws[j, v]; zc = z[j, v]
+                dd += px
+                vis = (zc + tent_h - zo) / dd >= mm
+                Sd = S * Ts[j, v]
+                if w > (Sd if vis else 0.0):
+                    S = w; zo = zc + eye_h; dd = px / 2; mm = -1e9; vis = True
+                else:
+                    S = Sd
+                    t = (zc - dem_tol - zo) / dd
+                    if t > mm:
+                        mm = t
+                H = max(H * Th[j, v], w)
+                if vis:
+                    s_sum[j, v] += S
+                    h_sum[j, v] += H
+                else:
+                    h_sum[j, v] += H * hear_over_hill
+                dn += px
+                dmp = min(dmp + An[j, v], noise_cap)
+                visn = (zc + 1.5 - zn) / dn >= mn
+                val = lv - 10 * math.log10(dn / 10) - dmp - air * dn - (0.0 if visn else noise_hill)
+                wj = wn[j, v]
+                if wj > 0 and wj - first > val:
+                    lv = wj; dn = px / 2; dmp = 0.0; val = wj - first; zn = zc + 0.5; mn = -1e9
+                else:
+                    t = (zc - dem_tol - zn) / dn
+                    if t > mn:
+                        mn = t
+                n_sum[j, v] += 10 ** (val / 10)
+                db = 0.0 if bike[j, v] > 0 else db + px
+                if db < b_min[j, v]:
+                    b_min[j, v] = db
+                j += step
+
+
+if njit:
+    _sweep_rays = njit(cache=False)(_sweep_rays)   # compiling takes ~1 s per process; a disk cache is fragile
+
+
 
 def rot_maps():
-    """Index maps: the 3x3 grid rotated by each angle (rays along axis 0), and back for the centre tile."""
+    """Index maps: the 3x3 grid rotated by each angle (rays along axis 0), and back for the centre tile.
+    Only the rays (columns) that cross the centre tile are kept, and the rows range [u0, u1] where the
+    centre tile lies: a forward sweep can stop after u1, a backward sweep after u0."""
     n = 3 * HP
     D = int(math.ceil(n * math.sqrt(2))) + 2
     cs, cr = (n - 1) / 2, (D - 1) / 2
@@ -304,8 +383,30 @@ def rot_maps():
         fwd = np.where((x >= 0) & (x < n) & (y >= 0) & (y < n), y * n + x, n * n)   # n*n = outside
         uu = np.rint(ca * xx + sa * yy + cr).astype(np.int32)
         vv = np.rint(-sa * xx + ca * yy + cr).astype(np.int32)
-        out.append((D, fwd, uu * D + vv))
+        v0, v1, u0, u1 = int(vv.min()), int(vv.max()), int(uu.min()), int(uu.max())
+        nv = v1 - v0 + 1
+        out.append((D, np.ascontiguousarray(fwd[:, v0:v1 + 1]), uu * nv + (vv - v0), nv, u0, u1))
     return out
+
+
+def path_distance(mask, px, cap_px=110):
+    """Exact distance (m) from each pixel of the centre tile to the nearest True pixel of a 3x3-tile mask,
+    capped at cap_px pixels. Pass 1: vertical distance per column (sweeps down and up);
+    pass 2: for each pixel the best (dx² + dy²) over horizontal offsets up to cap_px."""
+    n = mask.shape[0]
+    big = np.float32(cap_px + 1)
+    g = np.full((n, n), big, np.float32)
+    cur = np.full(n, big, np.float32)
+    for y in range(n):
+        cur = np.where(mask[y], 0, np.minimum(cur + 1, big)); g[y] = cur
+    cur = np.full(n, big, np.float32)
+    for y in range(n - 1, -1, -1):
+        cur = np.where(mask[y], 0, np.minimum(cur + 1, big)); g[y] = np.minimum(g[y], cur)
+    c = g[HP:2 * HP] ** 2                           # rows of the centre tile, all columns
+    best = np.full((HP, HP), np.float32(big * big))
+    for dx in range(-cap_px, cap_px + 1):
+        best = np.minimum(best, c[:, HP + dx:2 * HP + dx] + np.float32(dx * dx))
+    return np.sqrt(best) * px
 
 
 def lut(table, default=0.0):
@@ -318,7 +419,7 @@ def lut(table, default=0.0):
 def hide_tile(job):
     """Compute the hide map of one tile and write data/12/<x>/<y>.hide.png."""
     global _rot
-    tx, ty, tmp, out, n_regions = job
+    tx, ty, tmp, out, n_regions, dem = job
     if _rot is None:
         _rot = rot_maps()
     n = 3 * HP
@@ -338,9 +439,8 @@ def hide_tile(job):
     ws = np.array(SIGHT_W + [0.0] * (256 - len(SIGHT_W)), np.float32)[roads[0]]   # class code -> observer weight
     for dx in (-1, 0, 1):
         for dy in (-1, 0, 1):
-            f = os.path.join(out, str(TILE_Z), str(tx + dx), f'{ty + dy}.bin')
-            if os.path.exists(f):                  # houses (building centres, tile-relative 0..1)
-                b = np.fromfile(f, np.float32)
+            b = load_buildings(os.path.join(out, str(TILE_Z), str(tx + dx)), ty + dy)
+            if b is not None:                      # houses (building centres, tile-relative 0..1)
                 bx = np.clip(((b[0::2] + dx + 1) * HP).astype(np.int32), 0, n - 1)
                 by = np.clip(((b[1::2] + dy + 1) * HP).astype(np.int32), 0, n - 1)
                 ws[by, bx] = np.maximum(ws[by, bx], HOUSE_SIGHT)
@@ -348,34 +448,58 @@ def hide_tile(job):
     px = 40075016.686 * math.cos(math.radians(tile_lat(ty + 0.5))) / N / HP     # metres per pixel
     ks, kh, kn = lut(K_SIGHT)[code], lut(K_HEAR)[code], lut(K_NOISE)[code]
     ext = lambda a, pad: np.append(a.ravel().astype(np.float32), np.float32(pad))
+    z = np.zeros((n, n), np.float32)            # ground elevation of the 3x3 tiles (flat if there is no DEM)
+    if dem:
+        i = np.arange(n, dtype=np.float64) + 0.5
+        lon = (tx - 1 + i[None, :] / HP) / N * 360 - 180 + 0 * i[:, None]
+        lat = np.degrees(np.arctan(np.sinh(np.pi * (1 - 2 * (ty - 1 + i[:, None] / HP) / N)))) + 0 * i[None, :]
+        z = dem_sample(dem, lat, lon)
+        z = np.where(np.isnan(z), np.nanmean(z) if not np.isnan(z).all() else 0, z)
     src = {'Ts': ext(np.exp(-(ks + 1 / L_SIGHT) * px), math.exp(-(K_SIGHT[0] + 1 / L_SIGHT) * px)),
            'Th': ext(np.exp(-(kh + 1 / L_HEAR) * px), math.exp(-px / L_HEAR)),
-           'An': ext(kn * px, 0), 'ws': ext(ws, 0), 'wn': ext(roads[1], 0), 'bike': ext(roads[2], 0)}
+           'An': ext(kn * px, 0), 'ws': ext(ws, 0), 'wn': ext(roads[1], 0), 'bike': ext(roads[2], 0),
+           'z': ext(z, float(z.mean()))}
     ES = np.zeros((HP, HP), np.float32)
     EH, EN = ES.copy(), ES.copy()
-    DB = np.full((HP, HP), 1e9, np.float32)
+    DB = path_distance(roads[2] > 0, px)          # exact distance to the nearest bikeable path
     first = 10 * math.log10(px / 20)               # a road in the same pixel is ~px/2 away (level at 10 m)
-    for D, fwd, back in _rot:
+    for D, fwd, back, nv, u0, u1 in _rot:
         R = {k: v[fwd] for k, v in src.items()}
-        s_sum = np.zeros((D, D), np.float32)
+        s_sum = np.zeros((D, nv), np.float32)
         h_sum, n_sum = s_sum.copy(), s_sum.copy()
-        b_min = np.full((D, D), 1e9, np.float32)
-        for rev in (False, True):
-            S = np.zeros(D, np.float32)
+        b_min = np.full((D, nv), 1e9, np.float32)
+        if njit:
+            _sweep_rays(R['Ts'], R['Th'], R['An'], R['ws'], R['wn'], R['bike'], R['z'], u0, u1, px, first,
+                        s_sum, h_sum, n_sum, b_min, EYE_H, TENT_H, DEM_TOL, HEAR_OVER_HILL, NOISE_CAP, AIR, NOISE_HILL)
+        for rev in (() if njit else (False, True)):
+            S = np.zeros(nv, np.float32)
             H = S.copy()
-            lv = np.full(D, -100, np.float32)      # loudest source so far: level at 10 m, distance, damping
-            dn = np.full(D, 1e6, np.float32)
-            dmp = np.zeros(D, np.float32)
-            db = np.full(D, 1e9, np.float32)
-            for j in (range(D - 1, -1, -1) if rev else range(D)):
-                w = R['ws'][j]
-                S = np.maximum(S * R['Ts'][j], w)
+            lv = np.full(nv, -100, np.float32)     # loudest source so far: level at 10 m, distance, damping
+            dn = np.full(nv, 1e6, np.float32)
+            dmp = np.zeros(nv, np.float32)
+            db = np.full(nv, 1e9, np.float32)
+            # terrain: the tracked observer's eye height, distance, and the steepest rise seen from it so far
+            zo, dd, mm = np.zeros(nv, np.float32), np.full(nv, 1e6, np.float32), np.full(nv, -1e9, np.float32)
+            zn, mn = np.zeros(nv, np.float32), np.full(nv, -1e9, np.float32)   # same for the noise source
+            # only as far as the centre tile: beyond it nothing is read any more
+            for j in (range(D - 1, u0 - 1, -1) if rev else range(u1 + 1)):
+                w, zc = R['ws'][j], R['z'][j]
+                dd += px
+                vis = (zc + TENT_H - zo) / dd >= mm      # can the tracked observer see a tent here?
+                Sd = S * R['Ts'][j]
+                take = w > np.where(vis, Sd, 0)          # an observer here beats a fainter or hidden one
+                S = np.where(take, w, Sd)
+                zo = np.where(take, zc + EYE_H, zo)
+                dd = np.where(take, px / 2, dd)
+                mm = np.maximum(np.where(take, -1e9, mm), np.where(take, -1e9, (zc - DEM_TOL - zo) / dd))
+                vis |= take
                 H = np.maximum(H * R['Th'][j], w)
-                s_sum[j] += S
-                h_sum[j] += H
+                s_sum[j] += np.where(vis, S, 0)
+                h_sum[j] += np.where(vis, H, H * HEAR_OVER_HILL)
                 dn += px
                 dmp = np.minimum(dmp + R['An'][j], NOISE_CAP)
-                val = lv - 10 * np.log10(dn / 10) - dmp - AIR * dn
+                visn = (zc + 1.5 - zn) / dn >= mn
+                val = lv - 10 * np.log10(dn / 10) - dmp - AIR * dn - np.where(visn, 0, NOISE_HILL)
                 wj = R['wn'][j]
                 take = (wj > 0) & (wj - first > val)
                 if take.any():
@@ -383,25 +507,54 @@ def hide_tile(job):
                     dn = np.where(take, px / 2, dn)
                     dmp = np.where(take, 0, dmp)
                     val = np.where(take, wj - first, val)
+                    zn = np.where(take, zc + 0.5, zn)
+                    mn = np.where(take, -1e9, mn)
+                mn = np.maximum(mn, np.where(take, -1e9, (zc - DEM_TOL - zn) / dn))
                 n_sum[j] += np.power(10, val / 10)
                 db = np.where(R['bike'][j] > 0, 0, db + px)
                 b_min[j] = np.minimum(b_min[j], db)
         ES += s_sum.ravel()[back]
         EH += h_sum.ravel()[back]
         EN += n_sum.ravel()[back]
-        DB = np.minimum(DB, b_min.ravel()[back])
+
     k = 2 * len(_rot)
     hidden = np.exp(-(ES / k + HEAR_W * EH / k) / E0)
     # energy mean over directions; + 10 log10(pi) so a straight road gives its level at 10 m - 10 log10(d / 10)
     noise = 10 * np.log10(EN / k + 1e-12) + 10 * math.log10(math.pi)
-    rgb = np.stack([np.rint(hidden * 255), np.clip(np.rint(noise), 0, 255), np.clip(np.rint(DB / 10), 0, 255)], -1)
+    h = np.clip(np.rint(hidden * 255 / HIDE_Q) * HIDE_Q, 0, 255).astype(np.uint8)
+    # noise and path distance change slowly: 128 px is enough; per 2x2 block the loudest noise and the
+    # shortest path distance, so the smaller map errs on the safe side
+    n2 = noise.reshape(HP // 2, 2, HP // 2, 2).max(axis=(1, 3))
+    d2 = DB.reshape(HP // 2, 2, HP // 2, 2).min(axis=(1, 3))
+    nb = np.stack([np.clip(np.rint(n2), 0, 255), np.clip(np.rint(d2 / 10), 0, 255), np.zeros_like(n2)], -1).astype(np.uint8)
+    d = os.path.join(out, str(TILE_Z), str(tx))
+    return write_png(os.path.join(d, f'{ty}.hide.png'), h) + write_png(os.path.join(d, f'{ty}.nb.png'), nb)
+
+
+def write_png(path, a):
+    """Write an array as PNG, via a temp file and rename: a crash never leaves half a file."""
     buf = io.BytesIO()
-    Image.fromarray(rgb.astype(np.uint8)).save(buf, format='PNG', optimize=True)
-    path = os.path.join(out, str(TILE_Z), str(tx), f'{ty}.hide.png')
-    with open(path + '.part', 'wb') as f:          # write, then rename: a crash never leaves half a file
+    Image.fromarray(a).save(buf, format='PNG', optimize=True)
+    with open(path + '.part', 'wb') as f:
         f.write(buf.getvalue())
     os.replace(path + '.part', path)
     return len(buf.getvalue())
+
+
+def palette_png(rgb):
+    """RGB array -> PNG bytes, as a palette image when it has <= 256 colours (lossless, ~25 % smaller)."""
+    flat = rgb.reshape(-1, 3).astype(np.uint32)
+    key = flat[:, 0] << 16 | flat[:, 1] << 8 | flat[:, 2]      # one number per colour: much faster than rows
+    vals, inv = np.unique(key, return_inverse=True)
+    buf = io.BytesIO()
+    if len(vals) <= 256:
+        cols = np.stack([vals >> 16, vals >> 8 & 255, vals & 255], -1)
+        im = Image.fromarray(inv.reshape(rgb.shape[:2]).astype(np.uint8), 'P')
+        im.putpalette(cols.astype(np.uint8).ravel().tolist())
+        im.save(buf, format='PNG', optimize=True)
+    else:
+        Image.fromarray(rgb).save(buf, format='PNG', optimize=True)
+    return buf.getvalue()
 
 
 # ── Slope (separate step: --slope <folder with FABDEM tiles>) ──────────────────────────────────
@@ -443,6 +596,7 @@ def dem_sample(folder, lat, lon):
 def slope_tile(job):
     """Write data/12/<x>/<y>.slope.png (SLOPE_PX x SLOPE_PX RGB): R = slope in 0.25 degrees,
     G = direction the slope faces (downhill), 16 compass points x 16 (0 = N, 64 = E, ...),
+    + low 4 bits: hollow depth in 2 m (how far below the mean ground within ~420 m, 0-30 m: cold air),
     B = elevation / 4 m (0-1020 m). Returns bytes, or 0 if there is no elevation data."""
     tx, ty, folder, out = job
     i = np.arange(-1, HP + 1, dtype=np.float64) + 0.5          # pixel centres, 1 pixel margin
@@ -460,7 +614,18 @@ def slope_tile(job):
     slope = half(np.degrees(np.arctan(np.hypot(dzdx, dzdn))))
     gx, gn = half(dzdx), half(dzdn)
     aspect = (np.degrees(np.arctan2(-gx, -gn)) + 360) % 360
-    rgb = np.stack([np.clip(np.rint(slope * 4), 0, 255), np.rint(aspect / 22.5) % 16 * 16,
+    # hollows: mean ground within HOLLOW_R pixels (box) minus the ground here, on the SLOPE_PX grid
+    ic = np.arange(-HOLLOW_R, SLOPE_PX + HOLLOW_R, dtype=np.float64) + 0.5
+    lonc = (tx + ic[None, :] / SLOPE_PX) / N * 360 - 180 + 0 * ic[:, None]
+    latc = np.degrees(np.arctan(np.sinh(np.pi * (1 - 2 * (ty + ic[:, None] / SLOPE_PX) / N)))) + 0 * ic[None, :]
+    zc = dem_sample(folder, latc, lonc)
+    zc = np.where(np.isnan(zc), np.nanmean(zc), zc)
+    k = 2 * HOLLOW_R + 1
+    cs = np.pad(zc, ((1, 0), (1, 0))).cumsum(0).cumsum(1)
+    mean = (cs[k:, k:] - cs[:-k, k:] - cs[k:, :-k] + cs[:-k, :-k]) / (k * k)
+    depth = mean - zc[HOLLOW_R:-HOLLOW_R, HOLLOW_R:-HOLLOW_R]
+    cold = np.clip(np.rint(depth / 2), 0, 15)
+    rgb = np.stack([np.clip(np.rint(slope * 4), 0, 255), np.rint(aspect / 22.5) % 16 * 16 + cold,
                     np.clip(np.rint(half(z[1:-1, 1:-1]) / 4), 0, 255)], -1).astype(np.uint8)
     buf = io.BytesIO()
     Image.fromarray(rgb).save(buf, format='PNG', optimize=True)
@@ -469,6 +634,31 @@ def slope_tile(job):
         f.write(buf.getvalue())
     os.replace(path + '.part', path)
     return len(buf.getvalue())
+
+
+def save_b16(path, xy):
+    """Building centres (tile-relative 0..1 pairs) as little-endian Uint16 x 65535."""
+    np.clip(np.rint(np.asarray(xy, np.float64) * 65535), 0, 65535).astype('<u2').tofile(path)
+
+
+def load_buildings(folder_x, y):
+    """Building centres of a tile as float pairs 0..1, from .b16 (current) or .bin (older builds)."""
+    f = os.path.join(folder_x, f'{y}.b16')
+    if os.path.exists(f):
+        return np.fromfile(f, '<u2').astype(np.float32) / 65535
+    f = os.path.join(folder_x, f'{y}.bin')
+    return np.fromfile(f, np.float32) if os.path.exists(f) else None
+
+
+def bump_version(out):
+    """Update 'built' in index.json: the app uses it as ?v= on tile URLs, so browsers and the offline
+    cache fetch the changed files instead of keeping old copies (needed after --slope / --resume)."""
+    p = os.path.join(out, 'index.json')
+    with open(p, encoding='utf-8') as f:
+        idx = json.load(f)
+    idx['built'] = time.strftime('%Y-%m-%dT%H:%M')
+    with open(p, 'w', encoding='utf-8') as f:
+        json.dump(idx, f)
 
 
 def slope_step(folder, out, workers, redo=False):
@@ -490,6 +680,8 @@ def slope_step(folder, out, workers, redo=False):
                 print(f'Slope maps: {done:,} / {len(todo):,} ({pct} %), about {left / 60:.0f} min left', flush=True)
                 next_pct = pct + 10
     print(f'Slope maps done in {time.time() - t0:.0f} s ({total / 1e6:.1f} MB)', flush=True)
+    if todo:
+        bump_version(out)
 
 
 def is_water_line(t):
@@ -644,11 +836,14 @@ def plan_tiles(regions):
     return owner
 
 
-def read_region(ri, pbf, owner, tmp):
+def read_region(ri, pbf, owner, tmp, part='all'):
     """Read one extract (runs in a worker process). Keeps only objects for tiles that
     region ri fills: tiles it owns, plus shared border tiles (returned with their OSM ids,
     so the parent can drop objects that appear in two extracts).
-    Roads/paths/hedges are drawn here and saved to tmp/r_<x>_<y>_<ri>.npy for hide_tile()."""
+    Roads/paths/hedges are drawn here and saved to tmp/r_<x>_<y>_<ri>.npy for hide_tile().
+    part: 'areas' (terrain, protected areas, lakes and rivers), 'items' (points of interest, buildings,
+    roads/paths/hedges) or 'all'; the two parts run in parallel processes and are merged by the caller."""
+    do_areas, do_items = part in ('all', 'areas'), part in ('all', 'items')
     lines = defaultdict(list)                      # (tx, ty) -> [(way_kind, Mercator coords)]
     n_ways = 0
     b = defaultdict(lambda: array('f'))            # owned tiles: building centres
@@ -658,7 +853,7 @@ def read_region(ri, pbf, owner, tmp):
     water = defaultdict(set)                       # (tx, ty) -> {(gx, gy)}; sets drop overlap duplicates
     t0, count, n_lines, n_areas = time.time(), 0, 0, 0
     name = os.path.basename(pbf)
-    print(f'Reading {name}', flush=True)
+    print(f'Reading {name}' + ('' if part == 'all' else f' ({part})'), flush=True)
 
     land = defaultdict(list)                       # (tx, ty) -> [(code, is_line, rings, id or None)]
     prot = {}                                      # protected areas touching covered tiles
@@ -666,11 +861,14 @@ def read_region(ri, pbf, owner, tmp):
     # with_locations() stores node positions so way centres can be computed;
     # with_areas() assembles polygons (also multipolygon relations) for terrain and lakes;
     # the key filters drop everything that is not relevant before it reaches Python.
-    fp = (osmium.FileProcessor(pbf)
-          .with_locations()
-          .with_areas(osmium.filter.KeyFilter(*AREA_KEYS))
-          .with_filter(osmium.filter.KeyFilter(*KEYS))
-          .with_filter(osmium.filter.KeyFilter(*AREA_KEYS).enable_for(osmium.osm.AREA)))
+    fp = osmium.FileProcessor(pbf).with_locations()
+    if do_areas:
+        fp = fp.with_areas(osmium.filter.KeyFilter(*AREA_KEYS))
+    fp = fp.with_filter(osmium.filter.KeyFilter(*(KEYS if do_items else ('waterway',) + AREA_KEYS)))
+    if do_areas:
+        fp = fp.with_filter(osmium.filter.KeyFilter(*AREA_KEYS).enable_for(osmium.osm.AREA))
+    if not do_items:                               # areas part: no nodes needed except for locations
+        fp = fp.with_filter(osmium.filter.EntityFilter(osmium.osm.WAY | osmium.osm.AREA))
 
     for o in fp:
         if o.is_area():
@@ -692,29 +890,37 @@ def read_region(ri, pbf, owner, tmp):
                     prot[('p', o.id)] = {'l': level, 'n': tags.get('name', ''), 't': prot_title(tags, level), 'polys': polys}
             continue
         if o.is_node():
-            if not o.location.valid():
+            if not do_items or not o.location.valid():
+                continue
+            cat = classify(o.tags)
+            if not cat:
                 continue
             lat, lon = o.location.lat, o.location.lon
         elif o.is_way():
-            if is_water_line(o.tags):
+            tags = o.tags
+            if not do_items:                           # areas part: only rivers/streams as lines
+                if not is_water_line(tags):
+                    continue
+            elif is_water_line(tags):
+                if part == 'items':
+                    continue                           # handled by the areas part
+            if is_water_line(tags):
                 sample_line(o.nodes, water)
                 n_lines += 1
                 if o.tags.get('waterway') in ('river', 'canal'):     # wide enough to show on the terrain map
                     add_land(land, owner, ri, ('w', o.id), LAND_WATER, [ring_merc(o.nodes)], is_line=True)
                 continue
-            kind = way_kind(o.tags)
+            kind = way_kind(tags)                      # (also for buildings: e.g. a roof over a road)
             if kind:                                   # road, path, railway or hedge -> hide maps
-                a = array('f')
-                for nd in o.nodes:
-                    if nd.location.valid():
-                        a.extend(merc(nd.location.lat, nd.location.lon))
+                a = ring_merc(o.nodes, 'f')
                 if len(a) >= 4:
                     n_ways += 1
                     for t in tiles_of(a):
                         own = owner.get(t)
                         if own == ri or own == -1:     # shared tiles: both extracts draw it, merged with max()
                             lines[t].append((kind, a))
-            if not classify(o.tags):                   # e.g. landuse ways: only needed as areas
+            cat = classify(tags)
+            if not cat:                                # e.g. landuse ways: only needed as areas
                 continue
             s_lat = s_lon = 0.0
             k = 0
@@ -729,9 +935,6 @@ def read_region(ri, pbf, owner, tmp):
         else:
             continue                                   # multipolygon relations skipped (rare for buildings)
 
-        cat = classify(o.tags)
-        if not cat:
-            continue
         mx, my = merc(lat, lon)
         tx, ty = int(mx), int(my)
         own = owner.get((tx, ty))
@@ -792,12 +995,12 @@ def hide_ok(path):
     try:
         with Image.open(path) as im:
             im.load()
-            return im.size == (HP, HP)
+            return im.size == (HP, HP) and im.mode == 'L'
     except Exception:
         return False
 
 
-def hide_step(tiles, tmp, out, n_regions, workers, redo=False):
+def hide_step(tiles, tmp, out, n_regions, workers, redo=False, dem=None):
     """Third step: hide maps for all tiles that don't have a readable one yet (all with redo), with progress."""
     todo = tiles if redo else [t for t in tiles if not hide_ok(os.path.join(out, str(TILE_Z), str(t[0]), f'{t[1]}.hide.png'))]
     print(f'Hidden/noise/access maps: {len(tiles) - len(todo)} already done, {len(todo)} to go '
@@ -806,7 +1009,7 @@ def hide_step(tiles, tmp, out, n_regions, workers, redo=False):
         return
     t0, done, total_bytes, next_pct = time.time(), 0, 0, 0
     with ProcessPoolExecutor(max_workers=workers, initializer=low_priority) as ex:
-        for size in ex.map(hide_tile, [(tx, ty, tmp, out, n_regions) for tx, ty in todo], chunksize=2):
+        for size in ex.map(hide_tile, [(tx, ty, tmp, out, n_regions, dem) for tx, ty in todo], chunksize=2):
             done += 1
             total_bytes += size
             pct = done * 100 // len(todo)
@@ -817,6 +1020,20 @@ def hide_step(tiles, tmp, out, n_regions, workers, redo=False):
     print(f'Hidden/noise/access maps done in {time.time() - t0:.0f} s ({total_bytes / 1e6:.1f} MB)', flush=True)
 
 
+def merge_parts(a, b):
+    """Combine the 'areas' and 'items' results of one extract (their contents don't overlap)."""
+    out = {}
+    for k in a:
+        va, vb = a[k], b[k]
+        if isinstance(va, int):
+            out[k] = va + vb
+        elif k == 'w':                             # water points per tile: sets
+            out[k] = {t: va.get(t, set()) | vb.get(t, set()) for t in set(va) | set(vb)}
+        else:
+            out[k] = {**va, **vb}
+    return out
+
+
 def main():
     args = sys.argv[1:]
     workers = max(1, (os.cpu_count() or 2) // 2)   # half the cores: full load for minutes can overheat a PC
@@ -825,8 +1042,51 @@ def main():
         workers = max(1, int(args[i + 1]))
         del args[i:i + 2]
     keep, redo = '--keep' in args, '--redo' in args
+    dem = 'raw/fabdem' if os.path.isdir('raw/fabdem') else None    # elevation for hills in the hide maps
+    if '--dem' in args:
+        i = args.index('--dem')
+        dem = args[i + 1]
+        del args[i:i + 2]
+    print(f'Elevation (hills hide you): {dem or "none, terrain treated as flat"}', flush=True)
     args = [a for a in args if a not in ('--keep', '--redo')]
     low_priority()
+
+    if '--palette' in args:                        # re-encode existing terrain maps as palette PNGs (lossless)
+        args.remove('--palette')
+        out = args[0] if args else 'data'
+        before = after = 0
+        for f in glob.glob(os.path.join(out, str(TILE_Z), '*', '*.land.png')):
+            a = np.asarray(Image.open(f).convert('RGB'))
+            data = palette_png(a)
+            assert (np.asarray(Image.open(io.BytesIO(data)).convert('RGB')) == a).all()   # really lossless
+            before += os.path.getsize(f); after += len(data)
+            with open(f + '.part', 'wb') as fh:
+                fh.write(data)
+            os.replace(f + '.part', f)
+        bump_version(out)
+        print(f'Terrain maps: {before / 1e6:.1f} MB -> {after / 1e6:.1f} MB')
+        return
+
+    if '--b16' in args:                            # convert an existing data folder's .bin files to .b16
+        args.remove('--b16')
+        out = args[0] if args else 'data'
+        n = 0
+        for d in glob.glob(os.path.join(out, str(TILE_Z), '*')):
+            for f in glob.glob(os.path.join(d, '*.bin')):
+                if f.endswith('.water.bin'):
+                    continue
+                save_b16(f[:-4] + '.b16', np.fromfile(f, np.float32))
+                os.remove(f)
+                n += 1
+        p = os.path.join(out, 'index.json')
+        with open(p, encoding='utf-8') as fh:
+            idx = json.load(fh)
+        idx['bfmt'] = 'u16'
+        with open(p, 'w', encoding='utf-8') as fh:
+            json.dump(idx, fh)
+        bump_version(out)
+        print(f'{n} building files converted to .b16')
+        return
 
     if '--slope' in args:                          # slope maps from FABDEM, for the tiles in index.json
         i = args.index('--slope')
@@ -843,7 +1103,8 @@ def main():
         names = [f[:-4].split('_') for f in os.listdir(tmp) if f.endswith('.npy')]
         tiles = sorted((int(p[1]), int(p[2])) for p in names if p[0] == 'l')
         n_regions = 1 + max((int(p[3]) for p in names if p[0] == 'r'), default=0)
-        hide_step(tiles, tmp, out, n_regions, workers, redo)
+        hide_step(tiles, tmp, out, n_regions, workers, redo, dem)
+        bump_version(out)
         finish_tmp(tmp, keep, out)
         return
 
@@ -860,7 +1121,7 @@ def main():
     tmp = tempfile.mkdtemp(prefix='wildnav_')
     print(f'Temporary files: {tmp}', flush=True)
     try:
-        build(pairs, owner, out, tmp, workers)
+        build(pairs, owner, out, tmp, workers, dem)
     except BaseException:
         print(f'\nBuild stopped. To finish the hidden maps without starting over:\n'
               f'    python build_tiles.py --resume {tmp} {out}', flush=True)
@@ -877,12 +1138,15 @@ def finish_tmp(tmp, keep, out):
         print('Done. Temporary files removed.', flush=True)
 
 
-def build(pairs, owner, out, tmp, workers):
+def build(pairs, owner, out, tmp, workers, dem=None):
     # Each extract is read in its own process (one CPU core each), results are merged below.
     t0 = time.time()
-    with ProcessPoolExecutor(max_workers=min(len(pairs), workers), initializer=low_priority) as ex:
-        results = list(ex.map(read_region, range(len(pairs)), [p for p, _ in pairs], [owner] * len(pairs),
-                              [tmp] * len(pairs)))
+    # two processes per extract (areas / items), merged per extract in region order
+    jobs = [(ri, pbf, part) for ri, (pbf, _) in enumerate(pairs) for part in ('areas', 'items')]
+    with ProcessPoolExecutor(max_workers=min(len(jobs), workers), initializer=low_priority) as ex:
+        parts = list(ex.map(read_region, [j[0] for j in jobs], [j[1] for j in jobs], [owner] * len(jobs),
+                            [tmp] * len(jobs), [j[2] for j in jobs]))
+    results = [merge_parts(parts[2 * ri], parts[2 * ri + 1]) for ri in range(len(pairs))]
 
     buildings = defaultdict(lambda: array('f'))
     pois = defaultdict(list)
@@ -952,8 +1216,10 @@ def build(pairs, owner, out, tmp, workers):
         os.makedirs(d, exist_ok=True)
         arr = buildings.get((tx, ty), array('f'))
         total_b += len(arr) // 2
-        with open(os.path.join(d, f'{ty}.bin'), 'wb') as f:
-            arr.tofile(f)
+        save_b16(os.path.join(d, f'{ty}.b16'), np.frombuffer(arr, np.float32))
+        old = os.path.join(d, f'{ty}.bin')
+        if os.path.exists(old):
+            os.remove(old)                         # replaced by .b16 (generated file, rebuilt from OSM)
         p = pois.get((tx, ty), [])
         total_p += len(p)
         with open(os.path.join(d, f'{ty}.json'), 'w', encoding='utf-8') as f:
@@ -971,7 +1237,7 @@ def build(pairs, owner, out, tmp, workers):
             f.write(png)
 
     # Third step: hidden / noise / access maps (needs the houses written above).
-    hide_step(covered, tmp, out, len(pairs), workers, redo=True)   # new data: always recompute
+    hide_step(covered, tmp, out, len(pairs), workers, redo=True, dem=dem)   # new data: always recompute
 
     # Merge with an existing index so several regions can share one data folder.
     idx_path = os.path.join(out, 'index.json')
@@ -982,7 +1248,7 @@ def build(pairs, owner, out, tmp, workers):
     tiles.update(f'{x}/{y}' for x, y in covered)
     with open(idx_path, 'w', encoding='utf-8') as f:
         # 'built' doubles as the cache-busting version for tile URLs in the app, so include the time
-        json.dump({'z': TILE_Z, 'built': time.strftime('%Y-%m-%dT%H:%M'), 'tiles': sorted(tiles)}, f)
+        json.dump({'z': TILE_Z, 'built': time.strftime('%Y-%m-%dT%H:%M'), 'bfmt': 'u16', 'tiles': sorted(tiles)}, f)
 
     print(f'Done in {time.time() - t0:.0f} s: {len(covered)} tiles, {total_b:,} buildings, '
           f'{total_p:,} points of interest, {total_w:,} water points '

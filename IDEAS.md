@@ -22,7 +22,7 @@ path or in a house **sees or hears** you. It is added to the "Best spots" map as
 | Sight blocking | Forest, scrub, hedges, tree rows, walls block the view; fields, meadows, water do not | OSM `landuse=forest`, `natural=wood/scrub`, `barrier=hedge`, `natural=tree_row` |
 | Sight distance | How far a person or tent can be noticed | Rough values below |
 | Sound | Your voice/cooking vs. distance to the listener; forest adds a little damping | ISO 9613-2 (below) |
-| Terrain (later) | Hills and dips hide you completely | Digital elevation model (DEM) |
+| ✅ Terrain | Hills and dips hide you completely | FABDEM 30 m (built) |
 | Season / time (later) | Deciduous forest is see-through in winter; at night only lights matter | OSM `leaf_type`, a day/night switch |
 
 ### 1.2 How far can you see and hear? (rough values, to be checked)
@@ -160,6 +160,20 @@ that's already loaded, plus one small library.
 - ✅ **Import a GPX route** → show the best spots within X km of the route, ranked
   ("every ~80 km, a spot in the evening").
 - ✅ **Daily stages:** enter km per day → suggest one good spot near each day's end point.
+- **Build a route (plan a trip from scratch):** instead of loading a GPX, choose a start, the
+  **daily distance** and either a **direction of travel** or an **end point**. WildNav then:
+  - picks a sleeping spot at about each day's distance (the best-scoring spot in a window around
+    it), **plus one backup spot** per night in case the first doesn't work out;
+  - adds **break stops during the day**: supermarkets, bakeries, restaurants/cafés, water taps,
+    bike shops, toilets (OSM amenities, with opening hours where tagged), roughly every 2–3 hours
+    of riding;
+  - creates a **link to [bikerouter.de](https://bikerouter.de/)** with the start, the nights and the
+    stops as via points (and the backups/amenities as POIs), so the actual bike routing is done
+    there and can be exported as GPX. To check: bikerouter.de is based on brouter-web, whose URL hash
+    takes `lonlats=lon,lat;lon,lat;…` for the route points and `pois=lon,lat,name;…` for markers —
+    verify the exact format and length limits before building.
+  - Needs: amenity data in the build (new categories in `classify()` + the tiles), and a simple
+    "straight line / corridor" search for the direction-of-travel mode before the real route exists.
 - **Supply points along the route:** supermarkets, bakeries, water taps, bike shops
   (OSM `shop=*`, `amenity=drinking_water`), with opening hours if tagged.
 

@@ -624,14 +624,16 @@ let denseCells = 0;
 // Offline data: tiles listed in data/index.json are read from static files instead of Overpass.
 // They hold every building as a point, so they need no built-up shortcut and no IndexedDB cache.
 const offline = new Set();
-const offQueue = []; let offActive = 0, offVersion = '';
+const offQueue = []; let offActive = 0, offVersion = '', offB16 = false;   // offB16: buildings as Uint16 (.b16)
 // 'no-cache' asks the server every time (cheap if unchanged), so newly built regions show up at once;
 // tile URLs carry the build stamp, so a rebuild never mixes old cached tiles with the new index.
 const offlineReady = fetch(OFFLINE_URL + 'index.json', { cache: 'no-cache' })
   .then(r => r.ok ? r.json() : { tiles: [] })
-  .then(j => { if (j.z === TILE_Z) { j.tiles.forEach(k => offline.add(k)); offVersion = '?v=' + encodeURIComponent(j.built || ''); } })
+  .then(j => { if (j.z === TILE_Z) { j.tiles.forEach(k => offline.add(k)); offVersion = '?v=' + encodeURIComponent(j.built || ''); offB16 = j.bfmt === 'u16'; } })
   .catch(() => {});                           // no offline data (or opened as a file): Overpass only
 
+// .b16: building centres as Uint16 pairs (tile-relative × 65535, ~10 cm), half the size of Float32
+function b16ToFloat(buf) { const u = new Uint16Array(buf), f = new Float32Array(u.length); for (let i = 0; i < u.length; i++) f[i] = u[i] / 65535; return f; }
 function enqueueOffline(x, y) {
   busy.add(tkey(x, y)); offQueue.push({ x, y }); jobsTotal++;
   pumpOffline();
@@ -641,11 +643,11 @@ function pumpOffline() {
     const { x, y } = offQueue.shift(), k = tkey(x, y), base = `${OFFLINE_URL}${TILE_Z}/${k}`;
     offActive++;
     Promise.all([
-      fetch(base + '.bin' + offVersion).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }),
+      fetch(base + (offB16 ? '.b16' : '.bin') + offVersion).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }),
       fetch(base + '.json' + offVersion).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
       // rivers & lake shores (Uint16 pairs, 0..65535 across the tile); missing in older data folders
       fetch(base + '.water.bin' + offVersion).then(r => r.ok ? r.arrayBuffer() : new ArrayBuffer(0)).catch(() => new ArrayBuffer(0)),
-    ]).then(([buf, pois, wbuf]) => { busy.delete(k); addTile(x, y, { b: new Float32Array(buf), pois, w: new Uint16Array(wbuf) }); })
+    ]).then(([buf, pois, wbuf]) => { busy.delete(k); addTile(x, y, { b: offB16 ? b16ToFloat(buf) : new Float32Array(buf), pois, w: new Uint16Array(wbuf) }); })
       .catch(err => { console.warn('offline tile failed, using Overpass', k, err); busy.delete(k); offline.delete(k); autoLoad(); })
       .finally(() => { offActive--; jobsDone++; pumpOffline(); });
   }
@@ -854,26 +856,36 @@ async function decodeLand(blob) {
   }
   return { land, prot };
 }
-// Hide maps (data/12/x/y.hide.png, 256×256 RGB, made by hide_tile() in build_tiles.py):
-// red = hidden (255 = nobody on a road, path or in a house sees or hears you), green = traffic noise
-// in dB(A), blue = distance to the nearest path or road you can cycle on, in 10 m. Loaded with the terrain.
+// Hide maps (made by hide_tile() in build_tiles.py), loaded with the terrain:
+//  data/12/x/y.hide.png  256×256 greyscale: hidden (255 = nobody on a road, path or in a house sees or hears you)
+//  data/12/x/y.nb.png    128×128 RGB: red = traffic noise in dB(A), green = distance to the nearest path or
+//                        road you can cycle on, in 10 m. Both are expanded to 256×256 arrays here.
 const HIDE_PX = 256;
-async function decodeHide(blob) {
+async function pixels(blob) {                  // PNG blob -> { w, h, d: RGBA bytes }, or null
   if (!blob || !blob.size) return null;
   const bmp = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
   const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bmp.width, bmp.height)
     : Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height });
   const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(bmp, 0, 0);
-  const d = ctx.getImageData(0, 0, bmp.width, bmp.height).data, n = bmp.width * bmp.height;
+  const out = { w: bmp.width, h: bmp.height, d: ctx.getImageData(0, 0, bmp.width, bmp.height).data };
   bmp.close();
-  if (n !== HIDE_PX * HIDE_PX) return null;
-  const h = new Uint8Array(n), db = new Uint8Array(n), bike = new Uint8Array(n);
-  for (let i = 0, j = 0; i < n; i++, j += 4) { h[i] = d[j]; db[i] = d[j + 1]; bike[i] = d[j + 2]; }
+  return out;
+}
+async function decodeHide([hBlob, nbBlob]) {
+  const [a, b] = await Promise.all([pixels(hBlob), pixels(nbBlob)]);
+  if (!a || a.w !== HIDE_PX || a.h !== HIDE_PX) return null;
+  const n = HIDE_PX * HIDE_PX, h = new Uint8Array(n), db = new Uint8Array(n), bike = new Uint8Array(n).fill(255);
+  for (let i = 0; i < n; i++) h[i] = a.d[i * 4];
+  if (b && b.w === HIDE_PX / 2) for (let y = 0; y < HIDE_PX; y++) for (let x = 0; x < HIDE_PX; x++) {
+    const j = ((y >> 1) * b.w + (x >> 1)) * 4, i = y * HIDE_PX + x;
+    db[i] = b.d[j]; bike[i] = b.d[j + 1];
+  }
   return { h, db, bike };
 }
 // Slope maps (data/12/x/y.slope.png, 128×128 RGB, from the FABDEM elevation model, ~47 m):
-// red = slope in ¼ degrees, green = direction the slope faces (16 compass points × 16), blue = elevation / 4 m.
+// red = slope in ¼ degrees, green = direction the slope faces (16 compass points × 16) + hollow depth in 2 m
+// (low 4 bits: how far below the mean ground within ~420 m, i.e. where cold air collects), blue = elevation / 4 m.
 const SLOPE_PX = 128;
 async function decodeSlope(blob) {
   if (!blob || !blob.size) return null;
@@ -894,19 +906,24 @@ function ensureLand(list) {
     const k = tkey(x, y), t = tiles.get(k);
     if (!t || t.land !== undefined || landBusy.has(k) || !offline.has(k)) continue;
     landBusy.add(k); loadProtList();
-    const get = (ext, dec) => fetch(`${OFFLINE_URL}${TILE_Z}/${k}${ext}${offVersion}`).then(r => r.ok ? r.blob() : null).then(dec).catch(() => null);
-    Promise.all([get('.land.png', decodeLand), get('.hide.png', decodeHide), get('.slope.png', decodeSlope)])
+    const blob = ext => fetch(`${OFFLINE_URL}${TILE_Z}/${k}${ext}${offVersion}`).then(r => r.ok ? r.blob() : null).catch(() => null);
+    const get = (ext, dec) => blob(ext).then(dec).catch(() => null);
+    Promise.all([get('.land.png', decodeLand), Promise.all([blob('.hide.png'), blob('.nb.png')]).then(decodeHide).catch(() => null),
+      get('.slope.png', decodeSlope)])
       .then(([r, h, sl]) => { t.land = r ? r.land : null; t.prot = r ? r.prot : null; t.hide = h; t.slope = sl; })
       .finally(() => { landBusy.delete(k); dataChanged(); });
   }
 }
-// slope at a point: { deg, faces (bearing of the downhill direction), elev (m) } or null if not loaded
+// slope at a point: { deg, faces (bearing of the downhill direction), elev (m), hollow (m below surroundings) } or null
 function slopeAt(lat, lon) {
   const gx = mercX(lon) * N12, gy = mercY(lat) * N12, t = tiles.get(tkey(Math.floor(gx), Math.floor(gy)));
   if (!t || !t.slope) return null;
   const i = Math.min(SLOPE_PX - 1, (gy - Math.floor(gy)) * SLOPE_PX | 0) * SLOPE_PX + Math.min(SLOPE_PX - 1, (gx - Math.floor(gx)) * SLOPE_PX | 0);
-  return { deg: t.slope.s[i] / 4, faces: (t.slope.asp[i] >> 4) * 22.5, elev: t.slope.el[i] * 4 };
+  return { deg: t.slope.s[i] / 4, faces: (t.slope.asp[i] >> 4) * 22.5, elev: t.slope.el[i] * 4, hollow: (t.slope.asp[i] & 15) * 2 };
 }
+// cold-air hollow: clearly below the surroundings and fairly flat (on a slope the cold air drains away)
+const isHollow = sl => sl && sl.hollow >= 6 && sl.deg < 6;
+const hollowText = sl => `hollow, about ${sl.hollow} m below the surroundings: cold air and dew collect here on clear, calm nights`;
 // hide map values at a point: { h: 0..1 hidden, db, bike (m) } or null if not loaded
 function hideAt(lat, lon) {
   const gx = mercX(lon) * N12, gy = mercY(lat) * N12, t = tiles.get(tkey(Math.floor(gx), Math.floor(gy)));
@@ -1358,6 +1375,7 @@ function updateHover() {
       `<div class="irow"><span class="muted">Nearest path or track</span><b>${bk >= 2550 ? 'over 2.5 km' : fmtDist(bk)}</b></div>`);
   }
   if (R.slp && R.slp[i]) { const d = (R.slp[i] - 1) / 4; rows.push(`<div class="irow"><span class="muted">Slope</span><b>${Math.round(d)}° · ${slopeWord(d)}</b></div>`); }
+  { const sl = slopeAt(hoverLL.lat, hoverLL.lng); if (isHollow(sl)) rows.push(`<div class="irow"><span class="muted">Cold hollow</span><b>🥶 ${sl.hollow} m below surroundings</b></div>`); }
   const pa = R.prot && R.prot[i] ? protAt(hoverLL.lat, hoverLL.lng) : null;
   if (pa) rows.push(`<div class="irow"><span class="muted">${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}</span><b>${pa.l === 2 ? 'no camping' : 'check rules'}</b></div>`
     + (pa.n ? `<div class="isub">${esc(pa.n)}</div>` : ''));
@@ -1556,6 +1574,7 @@ function updateCardSummary() {
   const pa = protAt(cur.lat, cur.lon); if (pa) parts.push(`${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}`);
   const hd = hideAt(cur.lat, cur.lon); if (hd) parts.push(`👁 ${hideWord(hd.h)}`);
   const sl = slopeAt(cur.lat, cur.lon); if (sl && sl.deg >= 6) parts.push(`⛰ ${Math.round(sl.deg)}°`);
+  if (isHollow(sl)) parts.push('🥶 cold hollow');
   const a = cardAnalysis; if (a && a.house) parts.push(`🏠 ${fmtDist(a.house.d)} ${dirName(a.house.b)}`);
   const wx = wxCache.get(`${cur.lat.toFixed(2)},${cur.lon.toFixed(2)}`), n0 = wx && wx.nights[0];
   if (n0) parts.push(`${n0.rain >= 1 ? '🌧' : '🌙'} ${Math.round(n0.tmin)}°${n0.rain >= 0.1 ? `, ${n0.rain.toFixed(1)} mm` : ''}`);
@@ -1678,6 +1697,8 @@ function renderWeather(el, nights) {
   const n0 = nights[0];
   setSum('wx', n0 ? `tonight ${Math.round(n0.tmin)}°, ${n0.rain >= 0.1 ? n0.rain.toFixed(1) + ' mm rain' : 'dry'}${n0.gust >= 50 ? ', gusty' : ''}` : '');
   updateCardSummary();
+  const sl = cur && slopeAt(cur.lat, cur.lon);
+  if (rows.length && isHollow(sl)) rows.push(`<span>🥶</span><span>Colder than forecast<span class="n">this spot is in a hollow (${sl.hollow} m below the surroundings): on clear, calm nights it can be 2–5° colder</span></span><b></b>`);
   el.innerHTML = (rows.join('') || '<span></span><span class="muted">No forecast available.</span><b></b>') +
     '<span></span><span class="n" style="grid-column:2/4">Weather data by <a href="https://open-meteo.com/" style="color:inherit">Open-Meteo.com</a> (CC BY 4.0)</span>';
 }
@@ -1712,6 +1733,7 @@ function updateCardAround() {
     row('🌇', 'Sunset', sun.set ? `${fmtTime(sun.set.t)} ${dirName(sun.set.b)}` : '—', `golden hour from ${fmtTime(sun.goldenEve)}, dark ${fmtTime(sun.dusk)}`),
     row(sun.moonPhase < 0.5 ? '🌔' : '🌖', 'Moon', Math.round(sun.moonFrac * 100) + ' % lit', `${moonName(sun.moonPhase)} · rises ${fmtTime(sun.moonRise)}, sets ${fmtTime(sun.moonSet)}`),
   ].join('');
+  { const wx = wxCache.get(`${cur.lat.toFixed(2)},${cur.lon.toFixed(2)}`); if (wx) renderWeather($('#sc-wx'), wx.nights); }   // e.g. hollow note once the slope map is in
   if (sun) setSum('sun', `🌇 ${fmtTime(sun.set && sun.set.t)} · ${sun.moonPhase < 0.5 ? '🌔' : '🌖'} ${Math.round(sun.moonFrac * 100)} %`);
   updateCardSummary();
 }
@@ -1734,7 +1756,8 @@ function updateCardScore() {
     p.quiet = p.qHouses * p.qHunt * p.qHide * p.qNoise;
   }
   const exSlope = slopeAt(cur.lat, cur.lon);
-  if (exSlope) Object.assign(p, { slope: exSlope.deg, faces: exSlope.faces, elev: exSlope.elev, qSlope: 1 - settings.slopeW * slopePenalty(exSlope.deg) });
+  if (exSlope) Object.assign(p, { slope: exSlope.deg, faces: exSlope.faces, elev: exSlope.elev, hollow: isHollow(exSlope) ? exSlope : null,
+    qSlope: 1 - settings.slopeW * slopePenalty(exSlope.deg) });
   s = p.qProt * p.qLand * p.qSlope * p.quiet * (0.4 + 0.6 * p.bonus);
   const bar = (v, col) => `<div class="sc-bar"><i style="width:${Math.max(2, v * 100)}%;background:${col}"></i></div>`;
   const lim = [];
@@ -1752,6 +1775,7 @@ function updateCardScore() {
       ${p.prot ? `<span>${p.prot === 2 ? '⛔' : '⚠'}</span><span>Protected area<span class="n">${p.prot === 2 ? 'nature reserve or national park: no camping' : 'landscape protection / Natura 2000: check the rules'}</span></span><b>${pct(p.qProt)}</b>` : ''}
       ${p.land >= 0 ? `<span>${LAND[p.land][1]}</span><span>Terrain: ${esc(LAND[p.land][0])}<span class="n">${p.qLand < 1 ? LAND_WHY[p.land] || '' : 'fine for a tent'}</span></span><b>${pct(p.qLand)}</b>` : ''}
       ${p.slope >= 0 ? `<span>⛰</span><span>Slope: about ${Math.round(p.slope)}°<span class="n">${slopeWord(p.slope)}${p.slope >= 3 && p.faces !== undefined ? ` · faces ${dirName(p.faces)}` : ''}${p.elev !== undefined ? ` · ${p.elev} m above sea level` : ''}</span></span><b>${pct(p.qSlope)}</b>` : ''}
+      ${p.hollow ? `<span>🥶</span><span>Cold hollow<span class="n">${hollowText(p.hollow)} (not part of the score)</span></span><b></b>` : ''}
       <span>🏠</span><span>Away from houses<span class="n">${lim.length ? esc(lim.join(' · ')) : 'no houses or hunting stands too close'}</span></span><b>${pct(p.qHouses * p.qHunt)}</b>
       ${p.hidden >= 0 ? `<span>👁</span><span>Hidden<span class="n">${pct(p.hidden)} · ${hideWord(p.hidden)} from roads, paths and houses</span></span><b>${pct(p.qHide)}</b>
       <span>🔇</span><span>Quiet night<span class="n">road noise about ${p.db} dB · ${noiseWord(p.db)}</span></span><b>${pct(p.qNoise)}</b>
@@ -2390,7 +2414,7 @@ $('#btn-save-area').onclick = async () => {
   if (list.length > 300 && !confirm(`Store ${list.length} areas (roughly ${Math.round(list.length * 0.08)} MB)?`)) return;
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});   // ask the browser not to clear it
   const urls = [`${OFFLINE_URL}protected.json${offVersion}`];
-  for (const { x, y } of list) for (const ext of ['.bin', '.json', '.water.bin', '.land.png', '.hide.png', '.slope.png']) urls.push(`${OFFLINE_URL}${TILE_Z}/${x}/${y}${ext}${offVersion}`);
+  for (const { x, y } of list) for (const ext of [offB16 ? '.b16' : '.bin', '.json', '.water.bin', '.land.png', '.hide.png', '.nb.png', '.slope.png']) urls.push(`${OFFLINE_URL}${TILE_Z}/${x}/${y}${ext}${offVersion}`);
   let done = 0, failed = 0;
   const next = async () => { while (urls.length) { const u = urls.shift(); try { const r = await fetch(u); if (!r.ok) failed++; } catch { failed++; } done++;
     if (done % 20 === 0) setStatus(`Storing offline data… ${Math.round(done / (done + urls.length) * 100)} %`, 'busy'); } };
