@@ -810,7 +810,7 @@ def plan_tiles(regions):
                       vertex within the tile) -> filled from that extract only
     owner[tile] = -1  tile is not inside a single region but inside their union
                       (checked on a 9x9 grid) -> filled from all extracts, de-duplicated
-    Tiles outside are not covered; the app can load those from Overpass instead.
+    Tiles outside are not covered (the app shows no data there).
     """
     lons = [p[0] for r in regions for ring in r for p in ring]
     lats = [p[1] for r in regions for ring in r for p in ring]

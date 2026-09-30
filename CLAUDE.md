@@ -4,7 +4,15 @@ A static web map for planning wild camping and bikepacking trips. The owner is n
 developer: explain changes briefly and ask before anything destructive.
 
 ## What it shows
-One overlay at a time, chosen with the "Map" switch (`settings.layer`):
+One overlay at a time, chosen with the layer picker in the top bar (`#layer-btn` / `#layer-menu`, `LAYERS`, `settings.layer`),
+grouped as "Plan" (Best spots) and "Why a spot scores" (the factors behind the score):
+- **Hidden** (`hidden`), **Quiet night** (`quiet`, road/rail dB), **Topography** (`topo`, slope + cold hollows in blue) and
+  **Terrain & rules** (`terrain`, ground for a tent by `LAND_FACTOR` class + protected areas hatched red/orange):
+  `FACTOR_LAYERS`, drawn in `composite()` from the grid (`R.hid/hdb/slp/hol/land/prot`, only from zoom `LAND_MIN_Z`),
+  colour tables in `buildFactorLuts()` (colour-blind variants too).
+- Workflow links: factor rows in the spot card ("Score", "Nearby") and in "Here" carry `data-layer`; clicking one shows
+  that layer, the current layer's rows are highlighted (`markLayerRows`), the legend has "← Best spots" (`#leg-back`).
+The original three:
 - **Best spots** (default, `score`): one score per cell, see `scorer()` in index.html.
   quietness (distance to nearest house vs. "keep at least", density vs. "too busy above",
   penalty within 150 m of hunting stands) × (0.4 + 0.6 × bonus for useful places nearby).
@@ -22,7 +30,13 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
 - Top bar: logo (pine + tent, inline SVG `<symbol id="logo">`, also the favicon), search,
   layer dropdown (`#layer-select`), status, Settings button.
 - Map: tool strip (`.tools`, `setTool`: `inspect` = click opens the spot card, saving happens
-  from the card; `off` = clicks ignored; add future tools here) and a legend box.
+  from the card; `off` = clicks ignored; add future tools here) and a legend box. Legend: the colour bar is drawn as it
+  looks on the grey map (`drawLegend` blends over map grey at the layer's opacity); a white marker (`setLegendMark`) shows
+  the value under the cursor; the explanation folds away behind the title (`wn:legOpen`). Points of interest are dots
+  up to zoom 12 and round icon badges from `BADGE_MIN_Z` (13).
+  Colour-blind friendly colours (Settings → Display, `settings.cbSafe`): `buildLuts()` swaps the map tables `LUT_S`/`LUT_D`
+  (orange ↔ blue-green instead of red ↔ green) and `body.cb` swaps the CSS meaning colours `--good/--mid/--bad`
+  (use these variables, not fixed greens/reds, for anything that means good/bad).
   Below the tools: the locate button (`#btn-locate`, not a click mode). It starts `watchPosition`
   (blue dot); the first fix jumps to zoom `NEAR_Z` (12), where the drawn grid holds the whole 5 km circle.
   `findNearby()` runs after each redraw at that zoom and lists the best `NEAR_N` cells ≥ `NEAR_SEP`
@@ -31,10 +45,18 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
   shown as a draggable ✥ marker with a dashed 5 km circle; GPS updates don't move a manual centre,
   the locate button brings it back to you. First step towards GPX route planning (IDEAS.md 4).
   Messages for phones go through `showHint()` (the status text is hidden there).
-- Side panel (`#panel`): spot card (when open), "Under the cursor" (hidden on touch devices), your spots.
+- Side panel (`#panel`, headings short: "Here", "Near you", "Route", "Your spots"): spot card (when open), "Here"
+  (under the cursor, hidden on touch devices), your spots. On desktop the panel floats over the map (the map is full
+  width) and each section is its own rounded card, like the tool strip and legend (owner's wish).
+  "Under the cursor" (`updateHover`) always shows the same rows ("—", "zoom in" or "…" when a value is missing),
+  a reserved line under each place name, and one two-line hint at the bottom (also names a protected area),
+  so the panel never changes height while the mouse moves.
   On phones (≤720 px) it is a bottom sheet: 150 px showing the card summary, tap/swipe the
   handle for 75 %.
-- All sliders live in the Settings sheet (`#settings`), over the panel on desktop, full screen on phones.
+- All sliders live in the Settings sheet (`#settings`): on desktop floating cards like the panel (the panel is hidden
+  while it is open, `body.set-open`), full screen on phones. `makeSlider({label, hint, …})`: short label + quiet hint left,
+  value fixed at the right (no moving bubble); `makeToggle(parent, label, key, onChange, hint)`; long explanations go
+  into `<details class="more">` ("How it works").
 
 ## Offline / installable app
 - `sw.js` (service worker, registered from index.html): app files network-first, CDN files
@@ -52,15 +74,38 @@ One overlay at a time, chosen with the "Map" switch (`settings.layer`):
 
 ## Saved spots
 Clicking the map opens a spot card (`openSpot`). Compact on purpose (the owner asked for it): name,
-big score + bar (`#sc-top`), key-fact chips (`updateCardSummary`: terrain, protection, hidden, slope,
-nearest house, tonight's weather), buttons, then collapsible `<details>` sections made with
-`cardSec(key, title, body)`, each with a one-line summary (`setSum(key, html)`): "Why this score"
-(`scorer(i, out)` breakdown; summary = the limiting factor), "Around the spot" (compass map `radarSVG`
-from `analyseSpot` over the 3×3 tiles), "Weather at night", "Sun & moon" (SunCalc from cdnjs),
-"Notes & rating". Open sections are remembered in `localStorage['wn:cardOpen']`.
+big score + a one-line reason ("Held back most by …") + bar (`#sc-top`), a 2-column grid of six key-fact tiles
+(`updateCardSummary`: terrain + protected area, hidden, nearest house, slope + cold hollow, noise, tonight's weather),
+buttons, then collapsible `<details>` sections made with
+`cardSec(key, icon, title, body)`, each with a summary line under the title (`setSum(key, html)`). No information twice:
+"Score" (`updateCardScore`) = everything about the spot itself with its effect on the score (terrain, slope +
+cold hollow, houses, hunting stands, hidden, quiet night, access, terrain within 100 m, protected area);
+"Nearby" (`updateCardAround`) = compass map `radarSVG` from `analyseSpot` over the 3×3 tiles + the useful
+places and their bonus; "Night" (key `wx`) = sunset, moon, next sunrise (SunCalc from cdnjs) then the weather per
+night; "Notes" (rating + text). Section titles: one or two words. Rows are built with `cardRow(icon, title, value, second line)`.
+Open sections are remembered in `localStorage['wn:cardOpen']`.
+**Nothing may jump when data arrives** (the owner asked for this): every tile and row is always there in the
+same place, showing "…" (or "no data" outside the offline regions, `cardWait()`) until its value is loaded; rows keep
+their second line (e.g. "no name on the map", "none within 2 km"); conditional info goes into an existing tile/row
+(cold hollow in the slope tile, protected area in the terrain tile) instead of adding one. Within a section, rows whose
+second line is always one short line come first; rows that can grow (terrain mix, protected-area name, place names,
+gust warning) come last. Keep second lines under ~38 characters (one line at the 340 px panel width).
 Weather: Open-Meteo (free, no key, CC BY 4.0, credited in the section), fetched only when a card
-opens (`loadWeather`, cached 30 min per ~1 km), one row per night 20:00–08:00 (`weatherNights`). Saved spots live only in
+opens (`loadWeather`, cached 30 min per ~1 km, up to 3 tries before it shows "offline"), one row per night 20:00–08:00 (`weatherNights`). Saved spots live only in
 `localStorage['wn:spots']`; export as GPX or JSON backup, import GPX/JSON, share via `#spot=lat,lon,name`.
+
+## Icons
+No emoji: all icons come from one inline SVG sprite in index.html (`<symbol id="i-…">`), used with
+`ic('name', colour)` in JavaScript or `<svg class="ic"><use href="#i-name"/></svg>` in HTML.
+Style: **Phosphor Icons duotone** (MIT, credited in a comment above the sprite), copied from
+`@phosphor-icons/core@2.1.1/assets/duotone/<name>-duotone.svg` (jsDelivr). `hollow`, `stand` (hunting high seat)
+and `shelter` are drawn for WildNav in the same style (256 grid, 16 px round lines, 20 % fill).
+The ground is called "Topography" in the UI: `topoIc(deg, hollow)` draws the ramp on the fly for every whole degree
+(same base line always, drawn at 2× the real angle, max 40°; 0° = a flat line) or shows the cold hollow;
+coloured green -> red by `slopeCol(deg)` (red from 15°).
+Category icons are in `CATS[k].icon`, terrain icons in `LAND[c][1]` (`landIc(c)` colours by suitability),
+`protIc(level)` for protected areas. Colour icons by meaning (category colour), not decoration. Text should
+wrap instead of being cut off with "…".
 
 ## Route (GPX)
 Panel section "Route": load a GPX track (also via Import when the file has a track but no waypoints),
@@ -102,8 +147,8 @@ cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best
     Older data had `.bin` with Float32 pairs; the app reads `.b16` when index.json says `bfmt: "u16"`.
   - `data/12/<x>/<y>.json` – points of interest `[{c, lat, lon, n}]`
   - `data/12/<x>/<y>.water.bin` – rivers/streams/canals and lake shores sampled every ~40 m,
-    Uint16 pairs (tile-relative Mercator x,y × 65535). Category `rivers` ("Rivers & lakes") in the
-    app; offline data only (no Overpass equivalent), no markers. Ditches, drains, intermittent
+    Uint16 pairs (tile-relative Mercator x,y × 65535). Category `rivers` ("Open water") in the
+    app; no markers. Ditches, drains, intermittent
     and culverted water are excluded on purpose.
   - `data/protected.json` – protected areas `[{n: name, l: level, t: type}]`, id = index + 1.
     Level 2 = nature reserve / national park (score × 0), 1 = landscape protection / Natura 2000
@@ -146,12 +191,11 @@ cell per 2 km of route is kept. `showRouteRes`: one night per "per day" km (best
 ## How data loading works
 - Data is organised in zoom-12 tiles (~6×6 km at 52°N).
 - At startup the app loads `data/index.json`. Tiles listed there are read from
-  `data/12/x/y.bin` + `.json` (all buildings as points, no built-up shortcut).
-- Tiles outside the offline data can fall back to the Overpass API. This is **off by default**
-  (setting `overpass`, toggle "Download other areas from OpenStreetMap"). Buildings are first
-  counted per ~750 m cell (8×8 per tile); cells above the "built-up" threshold are stored
-  as counts instead of points. Overpass results are cached in IndexedDB for 30 days.
-- `classify()` in `index.html` and in `build_tiles.py` must stay in sync.
+  `data/12/x/y.b16` + `.json` (all buildings as points), terrain/hidden/slope maps from zoom 11 (`ensureLand`).
+- There is **no data outside the prepared regions**. The old Overpass download fallback was removed
+  (owner's decision, 2026-09-30): without the terrain, hidden, noise and slope maps its score was misleading.
+  Its IndexedDB cache ('wildnav') is deleted once on start (`wn:idbGone`). Category rules live only in
+  `classify()` in `build_tiles.py`.
 
 ## Publishing (GitHub Pages serves the `gh-pages` branch)
 - `main` holds the code and its history; `gh-pages` holds the website: `index.html`, `sw.js`,

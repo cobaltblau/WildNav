@@ -5,7 +5,7 @@
 //  - data/index.json, protected.json:    network first
 //  - background map images:              network first (4 s), cached copy when offline;
 //                                         only images that were viewed, capped at MAP_MAX
-//  - everything else (Overpass, search):  not touched
+//  - everything else (search, weather):   not touched
 // Bump VERSION when this file's caching rules change.
 const VERSION = 'v1';
 const APP = `wn-app-${VERSION}`, LIB = 'wn-lib', DATA = 'wn-data', MAP = 'wn-map';

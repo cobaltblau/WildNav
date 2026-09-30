@@ -28,9 +28,12 @@
 <style>
 :root{
   --slate:#20282a; --surface:#2a3437; --line:#3a4749;
-  --ink:#e6ebe8; --muted:#93a3a0; --blaze:#f2c14e;
+  --ink:#e6ebe8; --muted:#a4b3b0; --blaze:#f2c14e;
   --haz:#d64545; --att:#3b82f6;
+  /* meaning colours (score, terrain, slope); body.cb swaps them for a colour-blind friendly set */
+  --good:#6cc38a; --mid:#c9b458; --bad:#e07a5f; --good-bar:#4caf6a; --mid-bar:#e0b24e; --bad-bar:#d64545; --bad-text:#f08a8a; --good-text:#9fd4a8;
 }
+body.cb{--good:#5fb8ae; --mid:#d9c46a; --bad:#e3893c; --good-bar:#2f9e93; --mid-bar:#dcb54a; --bad-bar:#d9722a; --bad-text:#f0a060; --good-text:#8fd3cb}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Barlow,system-ui,sans-serif;font-size:13px;color:var(--ink);background:var(--slate);
   display:flex;flex-direction:column;overflow:hidden;font-variant-numeric:tabular-nums;
@@ -45,12 +48,33 @@ header{display:flex;align-items:center;gap:12px;padding:7px 12px;background:var(
 .brand{font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;font-size:19px;letter-spacing:.01em;display:flex;align-items:center;gap:7px;flex-shrink:0}
 .logo{width:28px;height:28px;display:block}
 #search{display:flex;flex:0 1 300px;min-width:0}
-.layer-pick select{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit;font-weight:500;color:var(--ink);cursor:pointer}
+.layer-pick{position:relative;flex-shrink:0}
+#layer-btn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-weight:500;cursor:pointer}
+#layer-btn:hover,#layer-btn[aria-expanded="true"]{border-color:var(--muted)}
+#layer-btn .ic{width:17px;height:17px}
+#layer-btn .car{width:12px;height:12px;color:var(--muted);transform:rotate(90deg)}
+#layer-menu{position:absolute;top:calc(100% + 6px);left:0;width:300px;max-width:calc(100vw - 16px);z-index:1005;background:var(--slate);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 6px 24px #0008;padding:6px}
+.lm-h{font-size:11.5px;color:var(--muted);padding:6px 8px 3px}
+.lm-item{display:grid;grid-template-columns:24px 1fr;gap:1px 8px;align-items:center;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:6px 8px;cursor:pointer}
+.lm-item:hover{background:var(--surface)}
+.lm-item.on{background:var(--surface);box-shadow:inset 3px 0 0 var(--blaze)}
+.lm-item .ic{width:20px;height:20px;grid-row:1/3}
+.lm-item b{font-weight:600}
+.lm-item small{color:var(--muted);font-size:11.5px;line-height:1.3}
+/* rows in the card / "Here" that belong to a map layer: click = show that layer; the current layer is highlighted */
+.near [data-layer]{cursor:pointer}
+.near span[data-layer]:hover{color:var(--blaze)}
+.near .lk-on,.near b.lk-on{color:var(--blaze)}
+#info .irow[data-layer]{cursor:pointer}
+#info .irow.lk-on>span:first-child{color:var(--blaze)}
+.leg-back{position:absolute;top:5px;right:8px;background:none;border:0;color:var(--blaze);font-size:11.5px;font-weight:600;cursor:pointer;padding:0}
 .hbtn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;font-weight:500;flex-shrink:0}
 .hbtn:hover,.hbtn[aria-expanded="true"]{border-color:var(--muted)}
 .hbtn svg{width:16px;height:16px}
 #search input{flex:1;background:var(--surface);border:1px solid var(--line);border-right:0;border-radius:6px 0 0 6px;padding:5px 9px;min-width:0}
-#search button{background:var(--surface);border:1px solid var(--line);border-radius:0 6px 6px 0;padding:0 10px;cursor:pointer;color:var(--muted)}
+#search button{background:var(--surface);border:1px solid var(--line);border-radius:0 6px 6px 0;padding:0 8px;cursor:pointer;color:var(--muted);display:flex;align-items:center}
+#search button .ic{width:17px;height:17px}
 #status{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 #status.busy{color:var(--blaze)} #status.error{color:#f08a8a} #status.ok{color:#9fd4a8}
 #progress{position:absolute;left:0;right:0;bottom:-1px;height:2px;opacity:0;transition:opacity .2s}
@@ -66,7 +90,7 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .tools{position:absolute;left:10px;top:84px;z-index:1000;display:flex;flex-direction:column;gap:4px}
 .tools button{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--slate);color:var(--ink);
   border:1px solid var(--line);border-radius:6px;cursor:pointer;box-shadow:0 1px 5px #0006}
-.tools button svg{width:18px;height:18px}
+.tools button svg{width:20px;height:20px}
 .tools button:hover{border-color:var(--muted)}
 .tools button.on{border-color:var(--blaze);color:var(--blaze)}
 .tool-hint{position:absolute;left:52px;top:84px;z-index:1000;background:var(--slate);border:1px solid var(--line);border-radius:6px;
@@ -75,20 +99,43 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .legend-box{position:absolute;left:10px;bottom:22px;z-index:1000;width:220px;background:var(--slate);border:1px solid var(--line);
   border-radius:8px;padding:7px 9px 5px;box-shadow:0 1px 5px #0006}
 .legend-box .legend{margin-top:0}
-.leg-title{font-size:11.5px;font-weight:600;margin-bottom:4px}
+.leg-title{font-size:11.5px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:4px;width:100%;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.leg-title .car{width:11px;height:11px;color:var(--muted);transition:transform .15s}
+.legend-box.open .leg-title .car{transform:rotate(90deg)}
+.legend-box:not(.open) .leg-note{display:none}
+.leg-bar{position:relative}
+#leg-mark{position:absolute;top:-3px;width:4px;height:16px;margin-left:-2px;background:#fff;border-radius:2px;box-shadow:0 0 0 1px #000b;display:none;transition:left .08s}
 
 /* side panel (desktop) / bottom sheet (phone) */
-.panel{width:300px;background:var(--slate);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.panel{width:340px;background:var(--slate);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
 .sheet-handle{display:none}
+/* desktop: the panel floats over the map as separate cards, like the tool strip and the legend (owner's wish) */
+@media (min-width:721px){
+  .panel{position:absolute;top:10px;right:10px;bottom:24px;z-index:1001;width:340px;background:transparent;border:0;gap:8px;
+    pointer-events:none;scrollbar-width:none}
+  .panel::-webkit-scrollbar{display:none}
+  .panel>.sec,.panel>.foot{pointer-events:auto;background:var(--slate);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 5px #0006;flex-shrink:0}
+  .panel>.foot{padding:8px 12px}
+}
 
 /* settings sheet */
 .settings{position:absolute;top:0;right:0;bottom:0;width:330px;z-index:1002;background:var(--slate);border-left:1px solid var(--line);
   overflow-y:auto;box-shadow:-8px 0 30px #0007}
+/* desktop: floating cards over the map, like the side panel */
+@media (min-width:721px){
+  .settings{top:10px;right:10px;bottom:24px;width:340px;background:transparent;border:0;box-shadow:none;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
+  .settings::-webkit-scrollbar{display:none}
+  .settings[hidden]{display:none}
+  .settings>.set-head,.settings>.sec{background:var(--slate);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 5px #0006;flex-shrink:0}
+  .settings>.set-head{top:0}
+  body.set-open .panel{visibility:hidden}
+}
 .settings[hidden]{display:none}
 .set-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--slate);z-index:1}
 .set-head h2{font-family:"Barlow Semi Condensed",sans-serif;font-size:17px;font-weight:700}
 .sec{padding:12px 14px 13px;border-bottom:1px solid var(--line)}
 .sec h2{font-family:"Barlow Semi Condensed",sans-serif;font-size:15px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.sec h2 .ic{width:20px;height:20px}
 .sec h2 .sw{width:10px;height:10px;border-radius:2px}
 .note{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:6px}
 
@@ -98,6 +145,7 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .btn.primary{background:var(--blaze);border-color:var(--blaze);color:#1d1a10}
 .btn.primary:hover{filter:brightness(1.07)}
 .btn.icon{flex:0 0 36px}
+.btns .btn{display:flex;align-items:center;justify-content:center;gap:6px}
 .stats{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
 .stats b{color:var(--ink);font-weight:600}
 
@@ -106,41 +154,55 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 #seg-base button{font-size:11.5px;padding:5px 0}
 .seg button.on{background:var(--slate);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 
-.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:7px;font-size:12.5px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px;font-size:12.5px;line-height:1.25}
 .tog{width:32px;height:18px;border-radius:9px;background:var(--line);border:0;cursor:pointer;position:relative;flex-shrink:0}
 .tog::after{content:"";position:absolute;left:3px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--muted);transition:transform .15s}
 .tog.on{background:#57703a}.tog.on::after{transform:translateX(14px);background:var(--ink)}
 
-.slider-row{margin-top:8px}
-.slider-row>label{font-size:12px;color:var(--muted)}
-.slider-wrap{position:relative;padding-top:19px}
-.slider-wrap input{width:100%;accent-color:var(--blaze);display:block;cursor:pointer}
-.tip{position:absolute;top:0;transform:translateX(-50%);background:var(--surface);border:1px solid var(--line);
-  font-size:11px;padding:0 5px;border-radius:4px;white-space:nowrap;pointer-events:none;line-height:16px}
+.slider-row{margin-top:11px}
+.sl-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.sl-head label{font-size:12.5px;line-height:1.25}
+.sl-head label small,.toggle-row small,.cat-row .name small{display:block;font-size:11.5px;color:#6b7a77}
+.sl-val{font-weight:600;font-size:12.5px;white-space:nowrap}
+.slider-row input,.slider-bare input{width:100%;accent-color:var(--blaze);display:block;cursor:pointer;margin-top:4px}
+.slider-bare{display:contents}
+.slider-bare input{margin:0}
+.slider-bare .sl-val{text-align:right}
+details.more{margin-top:10px}
+details.more summary{font-size:12px;color:var(--muted);cursor:pointer;list-style:none}
+details.more summary::before{content:"▸ ";color:#6b7a77}
+details.more[open] summary::before{content:"▾ "}
+details.more summary::-webkit-details-marker{display:none}
 
-.cat-row{display:grid;grid-template-columns:10px 1fr auto 78px;align-items:end;gap:7px;margin-top:4px}
-.cat-row .dot{width:9px;height:9px;border-radius:50%;margin-bottom:5px}
-.cat-row .name{font-size:12.5px;margin-bottom:2px}
-.cat-row .cnt{font-size:11px;color:var(--muted);margin-bottom:3px}
-.cat-row .slider-row{margin-top:0}
-.cat-row .slider-wrap{padding-top:16px}
-.cat-row .tip{font-size:10px;line-height:13px}
+.cat-row{display:grid;grid-template-columns:20px 1fr 92px 38px;align-items:center;gap:8px;margin-top:8px}
+.cat-row .dot{display:flex}.cat-row .dot .ic{width:18px;height:18px}
+.cat-row .name{font-size:12.5px;line-height:1.2}
 
 .legend{margin-top:10px}
-.legend canvas{width:100%;height:10px;display:block;border-radius:3px;
-  background:repeating-conic-gradient(#3a4749 0 25%,#2a3437 0 50%) 0 0/8px 8px}
+.legend canvas{width:100%;height:10px;display:block;border-radius:3px}
 .leg-labels{position:relative;height:15px;font-size:10.5px;color:var(--muted);margin-top:2px}
 .leg-labels span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
 .leg-labels span:first-child{transform:none}
 .leg-labels span:last-child{transform:translateX(-100%)}
+.leg-labels span:only-child{transform:none}
 
 .info{font-size:12.5px;min-height:40px}
 .irow{display:flex;justify-content:space-between;gap:8px;padding:1.5px 0}
-.irow i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.irow>span{display:flex;align-items:center;gap:6px;min-width:0}
+.irow .ic{width:17px;height:17px}
 .irow b{font-weight:600;white-space:nowrap}
-.isub{font-size:11px;color:var(--muted);margin:-2px 0 2px 14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.isub{font-size:11.5px;color:var(--muted);margin:-1px 0 3px 24px;line-height:1.35}
 .isep{border-top:1px solid var(--line);margin:6px 0}
+.isub{min-height:1.35em}
+.inote{font-size:11.5px;color:var(--muted);line-height:1.35;min-height:2.7em;margin-top:8px}
 .muted{color:var(--muted)}
+.dim{color:#6b7a77}
+.dir{color:#6b7a77;font-weight:500;margin-right:4px}
+.irow .dsc{color:#6b7a77;font-weight:400;margin-right:6px}
+/* icons: Phosphor duotone (MIT) + a few drawn in the same style, as <symbol id="i-…"> below */
+.ic{width:1.3em;height:1.3em;flex-shrink:0;vertical-align:-.28em;display:inline-block}
+/* slightly muted colours, so the icons support the text instead of shouting (the owner asked for it) */
+.ic,.radar use{filter:saturate(.72) brightness(.94)}
 .spacer{flex:1}
 .foot{padding:8px 14px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
 
@@ -148,17 +210,30 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .leaflet-tooltip-top::before{border-top-color:var(--line)}
 /* saved spots + spot card */
 .wrap{position:relative}
-.spot-pin{color:var(--blaze);font-size:22px;line-height:24px;text-align:center;text-shadow:0 0 3px #000,0 0 6px #000a;cursor:pointer}
-.spot-pin.on{font-size:28px;color:#ffd97a}
-.spot-pin.temp{color:#fff;font-size:24px}
+.spot-pin{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--blaze);color:#1d1a10;
+  border:2px solid #fff;box-shadow:0 1px 5px #000a;cursor:pointer}
+.spot-pin .ic{width:16px;height:16px}
+.poi-badge{width:22px;height:22px;border-radius:50%;background:var(--c);border:2px solid #fff;display:flex;align-items:center;justify-content:center;
+  color:#fff;box-shadow:0 1px 4px #0008;filter:saturate(.75) brightness(.95)}
+.poi-badge .ic{width:14px;height:14px;filter:none}
+.spot-pin.on{transform:scale(1.2)}
+.spot-pin.temp{background:transparent;border:3px solid #fff;box-shadow:0 0 0 2px #000a,inset 0 0 0 2px #000a}
 .spot-card[hidden]{display:none}
-.sc-summary{font-size:12.5px;margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 10px}
-.sc-summary b{font-weight:600}
+.sc-summary{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.fact{display:flex;gap:8px;align-items:center;background:var(--surface);border-radius:8px;padding:6px 8px;min-width:0;min-height:56px}
+.fact .ic{width:22px;height:22px}
+.fact div{min-width:0;line-height:1.2}
+.fact b{display:block;font-weight:600;font-size:13px}
+.fact small{display:block;font-size:11.5px;color:var(--muted)}
+.fact.wide{grid-column:1/3}
+.fact.bad{box-shadow:inset 3px 0 0 var(--haz)}.fact.warn{box-shadow:inset 3px 0 0 #e0902f}
 .spot-card h3{font-family:"Barlow Semi Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
 .sc-head{display:flex;gap:8px;align-items:center}
 .sc-head input{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid var(--line);font-family:"Barlow Semi Condensed",sans-serif;font-size:18px;font-weight:700;padding:2px 0}
 .sc-head input:focus{outline:0;border-bottom-color:var(--blaze)}
-.sc-x{background:none;border:0;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:0 4px}
+.sc-x{background:none;border:0;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:2px;display:flex}
+.sc-x .ic{width:20px;height:20px}
+.sc-x:hover{color:var(--ink)}
 .sc-sub{font-size:11.5px;color:var(--muted);margin-top:4px}
 .sc-sub a{color:var(--muted)}
 .sc-stars{margin-top:6px;display:flex;gap:2px}
@@ -167,27 +242,40 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .spot-card textarea{width:100%;min-height:74px;margin-top:8px;resize:vertical;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;line-height:1.4}
 .spot-card textarea:focus{outline:0;border-color:var(--blaze)}
 .sc-btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-.sc-btns .btn{flex:1 1 auto;padding:6px 8px}
+.sc-btns .btn{flex:1 1 auto;padding:6px 8px;display:flex;align-items:center;justify-content:center;gap:5px}
+.btn .ic{width:17px;height:17px}
+.btn.icon{display:flex;align-items:center;justify-content:center}
 .sc-bar{height:6px;border-radius:3px;background:var(--surface);overflow:hidden;margin:3px 0 6px}
 .sc-bar i{display:block;height:100%}
 .radar{display:block;width:100%;height:auto;margin:0 auto}
 .radar text{font-family:Barlow,sans-serif}
-.near{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:2px 8px;font-size:12.5px;align-items:baseline}
+.leaflet-tooltip .ic{width:16px;height:16px;margin-right:3px}
+.near{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:7px 8px;font-size:13px;align-items:start;line-height:1.3}
+.near>span:nth-child(3n+1){display:flex;justify-content:center}
+.near .ic{width:20px;height:20px;vertical-align:0}
+.near .n .ic{width:15px;height:15px;vertical-align:-.25em}
 .near>span{min-width:0}
 .spot-card{overflow-x:hidden;flex-shrink:0}
-.sc-top{margin-top:6px;font-size:16px}
-.sc-top .sc-bar{margin:3px 0 2px}
+.sc-top{margin-top:8px;min-height:63px}
+.sc-score{display:flex;align-items:center;gap:10px}
+.sc-score .big{font-family:"Barlow Semi Condensed",sans-serif;font-weight:700;font-size:34px;line-height:1}
+.sc-score .big small{font-size:18px;margin-left:1px}
+.sc-score .word{font-weight:600;font-size:15px;display:block}
+.sc-score .why{font-size:12.5px;color:var(--muted);display:block;line-height:1.3}
+.sc-top .sc-bar{margin:7px 0 0;height:5px}
 .sc-sec{border-top:1px solid var(--line);margin-top:8px}
 .sc-sec:first-of-type{margin-top:10px}
-.sc-sec summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:8px;padding:8px 0 6px}
+.sc-sec summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:24px 1fr 16px;column-gap:6px;align-items:center;padding:9px 0 8px}
 .sc-sec summary::-webkit-details-marker{display:none}
-.sc-sec summary::before{content:"▸";color:var(--muted);font-size:11px;width:9px;transition:transform .15s}
-.sc-sec[open] summary::before{transform:rotate(90deg)}
-.sc-sec summary .t{font-family:"Barlow Semi Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
-.sc-sec summary .s{font-size:12px;margin-left:auto;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.sc-sec summary:hover .t{color:var(--ink)}
-.sc-body{padding-bottom:6px}
-.near .n{color:var(--muted);font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-sec summary>.ic{width:20px;height:20px;color:var(--muted)}
+.sc-sec summary .car{width:14px;height:14px;color:var(--muted);transition:transform .15s}
+.sc-sec[open] summary .car{transform:rotate(90deg)}
+.sc-sec summary .t{font-family:"Barlow Semi Condensed",sans-serif;font-size:15px;font-weight:600}
+.sc-sec summary .s{grid-column:2/3;font-size:12.5px;color:var(--muted);line-height:1.3;min-height:1.3em}
+.sc-sec summary .s .ic{width:16px;height:16px}
+.sc-sec summary:hover .t{color:var(--blaze)}
+.sc-body{padding:2px 0 10px}
+.near .n{color:var(--muted);font-size:12px;display:block;line-height:1.35;margin-top:1px}
 .near b{font-weight:600;white-space:nowrap}
 .sc-date{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 6px;color-scheme:dark}
 .spot-list{margin-top:4px}
@@ -204,7 +292,8 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 .rt-opts input,.rt-opts select{width:64px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px 5px;color:var(--ink)}
 .rt-opts select{width:auto}
 .rt-h{font-family:"Barlow Semi Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
-.near-centre{width:30px;height:30px;border-radius:50%;background:#147337;color:#fff;font-size:18px;line-height:28px;text-align:center;border:2px solid #fff;box-shadow:0 1px 6px #000a;cursor:grab}
+.near-centre{width:30px;height:30px;border-radius:50%;background:#147337;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 6px #000a;cursor:grab}
+.near-centre .ic{width:18px;height:18px}
 .tools button.locating svg{animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 .near-pin{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#147337;color:#fff;
@@ -218,7 +307,9 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
   header{gap:8px;padding:6px 8px}
   .brand span,#status,.hbtn .lbl{display:none}
   #search{flex:1}
-  .layer-pick select{padding:5px 4px}
+  #layer-btn{padding:5px 6px}
+  #layer-name{display:none}
+  #layer-menu{left:auto;right:-40px}
   .panel{position:absolute;left:0;right:0;bottom:0;width:auto;height:150px;z-index:1001;border-left:0;border-top:1px solid var(--line);
     border-radius:14px 14px 0 0;box-shadow:0 -6px 24px #0007;transition:height .25s}
   .panel.expanded{height:75%}
@@ -228,10 +319,11 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
   .leg-note{display:none}
   .tools{top:84px;gap:6px}
   .tools button{width:44px;height:44px}
-  .tools button svg{width:22px;height:22px}
+  .tools button svg{width:24px;height:24px}
   .tool-hint{left:62px}
   .panel{padding-bottom:env(safe-area-inset-bottom)}
   .settings{left:0;width:auto;border-left:0}
+  .settings>.sec{border-bottom:1px solid var(--line)}
   .leaflet-bottom{bottom:150px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -251,16 +343,85 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
     <line x1="0.5" y1="29.8" x2="31.5" y2="29.8" stroke="#93a3a0" stroke-width="1"/>
   </symbol>
 </svg>
+<!-- Icons: Phosphor Icons duotone (https://phosphoricons.com, MIT License, Copyright (c) 2023 Phosphor Icons),
+     copied from @phosphor-icons/core 2.1.1 assets/duotone/<name>-duotone.svg. hollow, stand, shelter are
+     drawn for WildNav in the same style (256 grid, 16 px lines, 20 % fill). Use with ic('name'). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-house" viewBox="0 0 256 256" fill="currentColor"><path d="M216,120v96H152V152H104v64H40V120a8,8,0,0,1,2.34-5.66l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,216,120Z" opacity="0.2"/><path d="M219.31,108.68l-80-80a16,16,0,0,0-22.62,0l-80,80A15.87,15.87,0,0,0,32,120v96a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V160h32v56a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V120A15.87,15.87,0,0,0,219.31,108.68ZM208,208H160V152a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8v56H48V120l80-80,80,80Z"/></symbol>
+<symbol id="i-drop" viewBox="0 0 256 256" fill="currentColor"><path d="M208,144a80,80,0,0,1-160,0c0-72,80-128,80-128S208,72,208,144Z" opacity="0.2"/><path d="M174,47.75a254.19,254.19,0,0,0-41.45-38.3,8,8,0,0,0-9.18,0A254.19,254.19,0,0,0,82,47.75C54.51,79.32,40,112.6,40,144a88,88,0,0,0,176,0C216,112.6,201.49,79.32,174,47.75ZM128,216a72.08,72.08,0,0,1-72-72c0-57.23,55.47-105,72-118,16.53,13,72,60.75,72,118A72.08,72.08,0,0,1,128,216Zm55.89-62.66a57.6,57.6,0,0,1-46.56,46.55A8.75,8.75,0,0,1,136,200a8,8,0,0,1-1.32-15.89c16.57-2.79,30.63-16.85,33.44-33.45a8,8,0,0,1,15.78,2.68Z"/></symbol>
+<symbol id="i-waves" viewBox="0 0 256 256" fill="currentColor"><path d="M216,70.39v112c-72,59.69-104-56.47-176,3.22v-112C112,13.92,144,130.08,216,70.39Z" opacity="0.2"/><path d="M222.16,177.25a8,8,0,0,1-1,11.25c-17.36,14.39-32.86,19.5-47,19.5-18.58,0-34.82-8.82-49.93-17-25.35-13.76-47.24-25.64-79.07.74a8,8,0,1,1-10.22-12.31c40.17-33.28,70.32-16.92,96.93-2.48,25.35,13.75,47.24,25.63,79.07-.74A8,8,0,0,1,222.16,177.25Zm-11.27-57c-31.83,26.38-53.72,14.5-79.07.74-26.61-14.43-56.76-30.79-96.93,2.49a8,8,0,0,0,10.22,12.31c31.83-26.38,53.72-14.5,79.07-.74,15.11,8.19,31.35,17,49.93,17,14.14,0,29.64-5.11,47-19.5a8,8,0,1,0-10.22-12.31ZM45.11,79.8c31.83-26.37,53.72-14.49,79.07-.74,15.11,8.2,31.35,17,49.93,17,14.14,0,29.64-5.12,47-19.5a8,8,0,1,0-10.22-12.31c-31.83,26.38-53.72,14.5-79.07.74C105.21,50.58,75.06,34.22,34.89,67.5A8,8,0,1,0,45.11,79.8Z"/></symbol>
+<symbol id="i-tent" viewBox="0 0 256 256" fill="currentColor"><path d="M136,192H8L72,48Z" opacity="0.2"/><path d="M255.31,188.75l-64-144A8,8,0,0,0,184,40H72a8,8,0,0,0-7.27,4.69.21.21,0,0,0,0,.06l0,.12,0,0L.69,188.75A8,8,0,0,0,8,200H248a8,8,0,0,0,7.31-11.25ZM64,184H20.31L64,85.7Zm16,0V85.7L123.69,184Zm61.2,0L84.31,56H178.8l56.89,128Z"/></symbol>
+<symbol id="i-binoculars" viewBox="0 0 256 256" fill="currentColor"><path d="M104,168a40,40,0,1,1-40-40A40,40,0,0,1,104,168Zm88-40a40,40,0,1,0,40,40A40,40,0,0,0,192,128Z" opacity="0.2"/><path d="M237.2,151.87v0a47.1,47.1,0,0,0-2.35-5.45L193.26,51.8a7.82,7.82,0,0,0-1.66-2.44,32,32,0,0,0-45.26,0A8,8,0,0,0,144,55V80H112V55a8,8,0,0,0-2.34-5.66,32,32,0,0,0-45.26,0,7.82,7.82,0,0,0-1.66,2.44L21.15,146.4a47.1,47.1,0,0,0-2.35,5.45v0A48,48,0,1,0,112,168V96h32v72a48,48,0,1,0,93.2-16.13ZM76.71,59.75a16,16,0,0,1,19.29-1v73.51a47.9,47.9,0,0,0-46.79-9.92ZM64,200a32,32,0,1,1,32-32A32,32,0,0,1,64,200ZM160,58.74a16,16,0,0,1,19.29,1l27.5,62.58A47.9,47.9,0,0,0,160,132.25ZM192,200a32,32,0,1,1,32-32A32,32,0,0,1,192,200Z"/></symbol>
+<symbol id="i-campfire" viewBox="0 0 256 256" fill="currentColor"><path d="M180,108a52,52,0,0,1-52,52,24,24,0,0,0,24-24c0-24-24-40-24-40s-24,16-24,40a24,24,0,0,0,24,24,52,52,0,0,1-52-52c0-44,52-76,52-76S180,64,180,108Z" opacity="0.2"/><path d="M128,168a60.07,60.07,0,0,0,60-60c0-47.92-53.53-81.41-55.81-82.81a8,8,0,0,0-8.38,0A156,156,0,0,0,96.24,48C77.77,67.13,68,87.9,68,108A60.07,60.07,0,0,0,128,168Zm-16-32c0-13.57,10-24.46,16-29.79,6,5.33,16,16.22,16,29.79a16,16,0,0,1-32,0Zm16-94.34C139.74,50,172,76,172,108a43.83,43.83,0,0,1-12.09,30.24c.05-.74.09-1.49.09-2.24,0-28-26.44-45.91-27.56-46.66a8,8,0,0,0-8.88,0C122.44,90.09,96,108,96,136c0,.75,0,1.5.09,2.24A43.83,43.83,0,0,1,84,108C84,76,116.27,50,128,41.66Zm95.62,184.76a8,8,0,0,1-10.05,5.2L128,204.39,42.43,231.62a8,8,0,1,1-4.85-15.25l64-20.37-64-20.38a8,8,0,1,1,4.85-15.24L128,187.6l85.57-27.22a8,8,0,1,1,4.85,15.24l-64,20.38,64,20.37A8,8,0,0,1,223.62,226.42Z"/></symbol>
+<symbol id="i-circle-dashed" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M96.26,37A8,8,0,0,1,102,27.29a104.11,104.11,0,0,1,52,0,8,8,0,0,1-2,15.75,8.15,8.15,0,0,1-2-.26,88.09,88.09,0,0,0-44,0A8,8,0,0,1,96.26,37ZM53.79,55.14a104,104,0,0,0-26,45,8,8,0,1,0,15.42,4.26,87.91,87.91,0,0,1,22-38.08A8,8,0,0,0,53.79,55.14ZM43.21,151.55a8,8,0,1,0-15.42,4.28,104,104,0,0,0,26,45,8,8,0,1,0,11.41-11.21A88.14,88.14,0,0,1,43.21,151.55ZM150,213.22a88,88,0,0,1-44,0,8,8,0,1,0-4,15.49,104.11,104.11,0,0,0,52,0,8,8,0,0,0-4-15.49ZM222.65,146a8,8,0,0,0-9.85,5.57,87.88,87.88,0,0,1-22,38.09,8,8,0,1,0,11.42,11.21,104.05,104.05,0,0,0,26-45A8,8,0,0,0,222.65,146Zm-9.86-41.54a8,8,0,0,0,15.42-4.28,104,104,0,0,0-26-45,8,8,0,1,0-11.41,11.21A88.14,88.14,0,0,1,212.79,104.45Z"/></symbol>
+<symbol id="i-grains" viewBox="0 0 256 256" fill="currentColor"><path d="M208,64v56a80,80,0,0,0-80,80,80,80,0,0,0-80-80V64a79.67,79.67,0,0,1,36.05,8.59v0C95.62,40.19,128,24,128,24S160.39,40.19,172,72.58h0A79.6,79.6,0,0,1,208,64Z" opacity="0.2"/><path d="M208,56a87.53,87.53,0,0,0-31.85,6c-14.32-29.7-43.25-44.46-44.57-45.13a8,8,0,0,0-7.16,0c-1.33.67-30.25,15.43-44.57,45.13A87.53,87.53,0,0,0,48,56a8,8,0,0,0-8,8v80a88,88,0,0,0,176,0V64A8,8,0,0,0,208,56ZM120,215.56A72.1,72.1,0,0,1,56,144V128.44A72.1,72.1,0,0,1,120,200Zm0-66.1a88,88,0,0,0-64-37.09V72.44A72.1,72.1,0,0,1,120,144ZM94.15,69.11C103.37,49.89,120.58,37.76,128,33.2c7.44,4.54,24.6,16.6,33.84,35.91A88.51,88.51,0,0,0,128,107.36,88.51,88.51,0,0,0,94.15,69.11ZM200,144a72.1,72.1,0,0,1-64,71.56V200a72.1,72.1,0,0,1,64-71.56Zm0-31.63a88,88,0,0,0-64,37.09V144a72.1,72.1,0,0,1,64-71.56Z"/></symbol>
+<symbol id="i-plant" viewBox="0 0 256 256" fill="currentColor"><path d="M138.54,149.46C106.62,96.25,149.18,43.05,239.63,48.37,245,138.82,191.75,181.39,138.54,149.46ZM16.26,88.26c-3.8,64.61,34.21,95,72.21,72.21C111.27,122.47,80.87,84.46,16.26,88.26Z" opacity="0.2"/><path d="M247.63,47.89a8,8,0,0,0-7.52-7.52c-51.76-3-93.32,12.74-111.18,42.22-11.8,19.48-11.78,43.16-.16,65.74a71.37,71.37,0,0,0-14.17,26.95L98.33,159c7.82-16.33,7.52-33.36-1-47.49C84.09,89.73,53.62,78,15.79,80.27a8,8,0,0,0-7.52,7.52c-2.23,37.83,9.46,68.3,31.25,81.5A45.82,45.82,0,0,0,63.44,176,54.58,54.58,0,0,0,87,170.33l25,25V224a8,8,0,0,0,16,0V194.51a55.61,55.61,0,0,1,12.27-35,73.91,73.91,0,0,0,33.31,8.4,60.9,60.9,0,0,0,31.83-8.86C234.89,141.21,250.67,99.65,247.63,47.89ZM86.06,146.74l-24.41-24.4a8,8,0,0,0-11.31,11.31l24.41,24.41c-9.61,3.18-18.93,2.39-26.94-2.46C32.47,146.31,23.79,124.32,24,96c28.31-.25,50.31,8.47,59.6,23.81C88.45,127.82,89.24,137.14,86.06,146.74Zm111.06-1.36c-13.4,8.11-29.15,8.73-45.15,2l53.69-53.7a8,8,0,0,0-11.31-11.32L140.65,136c-6.76-16-6.15-31.76,2-45.15,13.94-23,47-35.8,89.33-34.83C232.94,98.34,220.14,131.44,197.12,145.38Z"/></symbol>
+<symbol id="i-orange" viewBox="0 0 256 256" fill="currentColor"><path d="M208,152a80,80,0,1,1-80-80A80,80,0,0,1,208,152Z" opacity="0.2"/><path d="M165.87,72.58A64.06,64.06,0,0,0,200,16a8,8,0,0,0-8-8h-8a64,64,0,0,0-56,33.06A64,64,0,0,0,72,8H64a8,8,0,0,0,0,16h8a48.08,48.08,0,0,1,47.4,40.42,88,88,0,1,0,46.47,8.16ZM183.33,24a48.09,48.09,0,0,1-46.66,40A48.09,48.09,0,0,1,183.33,24ZM128,224a72,72,0,1,1,72-72A72.08,72.08,0,0,1,128,224Zm55.89-62.68a57.5,57.5,0,0,1-46.57,46.57A8.52,8.52,0,0,1,136,208a8,8,0,0,1-1.31-15.89,41.29,41.29,0,0,0,33.43-33.43,8,8,0,0,1,15.78,2.64Z"/></symbol>
+<symbol id="i-flower" viewBox="0 0 256 256" fill="currentColor"><path d="M206.35,136.29c-8.87-5.13-24.46-7.38-39.4-8.29,14.94-.91,30.53-3.16,39.4-8.29a32,32,0,1,0-32-55.42c-8.87,5.12-18.61,17.48-26.87,30C154.17,80.87,160,66.25,160,56a32,32,0,0,0-64,0c0,10.25,5.83,24.87,12.52,38.26-8.26-12.49-18-24.85-26.87-30a32,32,0,1,0-32,55.42c8.87,5.13,24.46,7.38,39.4,8.29-14.94.91-30.53,3.16-39.4,8.29a32,32,0,1,0,32,55.42c8.87-5.12,18.61-17.48,26.87-30C101.83,175.13,96,189.75,96,200a32,32,0,0,0,64,0c0-10.25-5.83-24.87-12.52-38.26,8.26,12.49,18,24.85,26.87,30a32,32,0,1,0,32-55.42ZM155.71,144A32,32,0,1,1,160,128,31.74,31.74,0,0,1,155.71,144Z" opacity="0.2"/><path d="M210.35,129.36c-.81-.47-1.7-.92-2.62-1.36.92-.44,1.81-.89,2.62-1.36a40,40,0,1,0-40-69.28c-.81.47-1.65,1-2.48,1.59.08-1,.13-2,.13-3a40,40,0,0,0-80,0c0,.94,0,1.94.13,3-.83-.57-1.67-1.12-2.48-1.59a40,40,0,1,0-40,69.28c.81.47,1.7.92,2.62,1.36-.92.44-1.81.89-2.62,1.36a40,40,0,1,0,40,69.28c.81-.47,1.65-1,2.48-1.59-.08,1-.13,2-.13,2.95a40,40,0,0,0,80,0c0-.94-.05-1.94-.13-2.95.83.57,1.67,1.12,2.48,1.59A39.79,39.79,0,0,0,190.29,204a40.43,40.43,0,0,0,10.42-1.38,40,40,0,0,0,9.64-73.28ZM104,128a24,24,0,1,1,24,24A24,24,0,0,1,104,128Zm74.35-56.79a24,24,0,1,1,24,41.57c-6.27,3.63-18.61,6.13-35.16,7.19A40,40,0,0,0,154.53,98.1C163.73,84.28,172.08,74.84,178.35,71.21ZM128,32a24,24,0,0,1,24,24c0,7.24-4,19.19-11.36,34.06a39.81,39.81,0,0,0-25.28,0C108,75.19,104,63.24,104,56A24,24,0,0,1,128,32ZM44.86,80a24,24,0,0,1,32.79-8.79c6.27,3.63,14.62,13.07,23.82,26.89A40,40,0,0,0,88.81,120c-16.55-1.06-28.89-3.56-35.16-7.18A24,24,0,0,1,44.86,80ZM77.65,184.79a24,24,0,1,1-24-41.57c6.27-3.63,18.61-6.13,35.16-7.19a40,40,0,0,0,12.66,21.87C92.27,171.72,83.92,181.16,77.65,184.79ZM128,224a24,24,0,0,1-24-24c0-7.24,4-19.19,11.36-34.06a39.81,39.81,0,0,0,25.28,0C148,180.81,152,192.76,152,200A24,24,0,0,1,128,224Zm83.14-48a24,24,0,0,1-32.79,8.79c-6.27-3.63-14.62-13.07-23.82-26.89A40,40,0,0,0,167.19,136c16.55,1.06,28.89,3.56,35.16,7.18A24,24,0,0,1,211.14,176Z"/></symbol>
+<symbol id="i-leaf" viewBox="0 0 256 256" fill="currentColor"><path d="M63.81,192.19c-47.89-79.81,16-159.62,151.64-151.64C223.43,176.23,143.62,240.08,63.81,192.19Z" opacity="0.2"/><path d="M223.45,40.07a8,8,0,0,0-7.52-7.52C139.8,28.08,78.82,51,52.82,94a87.09,87.09,0,0,0-12.76,49c.57,15.92,5.21,32,13.79,47.85l-19.51,19.5a8,8,0,0,0,11.32,11.32l19.5-19.51C81,210.73,97.09,215.37,113,215.94q1.67.06,3.33.06A86.93,86.93,0,0,0,162,203.18C205,177.18,227.93,116.21,223.45,40.07ZM153.75,189.5c-22.75,13.78-49.68,14-76.71.77l88.63-88.62a8,8,0,0,0-11.32-11.32L65.73,179c-13.19-27-13-54,.77-76.71,22.09-36.47,74.6-56.44,141.31-54.06C210.2,114.89,190.22,167.41,153.75,189.5Z"/></symbol>
+<symbol id="i-tree" viewBox="0 0 256 256" fill="currentColor"><path d="M232,127.82c.09,33.94-28.41,63.3-62.34,64.16a63.72,63.72,0,0,1-41.66-14,63.71,63.71,0,0,1-41.65,14c-33.93-.86-62.44-30.22-62.35-64.16a64,64,0,0,1,40.13-59.2,68,68,0,0,1,127.74,0A64,64,0,0,1,232,127.82Z" opacity="0.2"/><path d="M198.1,62.59a76,76,0,0,0-140.2,0A71.71,71.71,0,0,0,16,127.8C15.9,166,48,199,86.14,200A72.22,72.22,0,0,0,120,192.47V232a8,8,0,0,0,16,0V192.47A72.17,72.17,0,0,0,168,200l1.82,0C208,199,240.11,166,240,127.8A71.71,71.71,0,0,0,198.1,62.59ZM169.45,184a56.08,56.08,0,0,1-33.45-10v-41l43.58-21.78a8,8,0,1,0-7.16-14.32L136,115.06V88a8,8,0,0,0-16,0v51.06L83.58,120.84a8,8,0,1,0-7.16,14.32L120,156.94v17a56,56,0,0,1-33.45,10C56.9,183.23,31.92,157.52,32,127.84A55.79,55.79,0,0,1,67.11,76a8,8,0,0,0,4.53-4.67,60,60,0,0,1,112.72,0A8,8,0,0,0,188.89,76,55.79,55.79,0,0,1,224,127.84C224.08,157.52,199.1,183.23,169.45,184Z"/></symbol>
+<symbol id="i-tree-evergreen" viewBox="0 0 256 256" fill="currentColor"><path d="M32,192l56-72H48L128,16l80,104H168l56,72Z" opacity="0.2"/><path d="M230.31,187.09,184.36,128H208a8,8,0,0,0,6.34-12.88l-80-104a8,8,0,0,0-12.68,0l-80,104A8,8,0,0,0,48,128H71.64L25.69,187.09A8,8,0,0,0,32,200h88v40a8,8,0,0,0,16,0V200h88a8,8,0,0,0,6.31-12.91ZM48.36,184l46-59.09A8,8,0,0,0,88,112H64.25L128,29.12,191.75,112H168a8,8,0,0,0-6.31,12.91L207.64,184Z"/></symbol>
+<symbol id="i-soccer-ball" viewBox="0 0 256 256" fill="currentColor"><path d="M65.17,108.08l-33,25.34c-.1-1.8-.15-3.6-.15-5.42A95.61,95.61,0,0,1,53.23,67.78ZM46.92,179.42a96.12,96.12,0,0,0,57,41.52l-14.7-41.52Zm105.21,41.52a96.12,96.12,0,0,0,57-41.52H166.83ZM202.77,67.78l-11.94,40.3,33,25.34c.1-1.8.15-3.6.15-5.42A95.61,95.61,0,0,0,202.77,67.78Zm-38.52-28.7a96.34,96.34,0,0,0-72.5,0L128,64ZM152.72,160,168,115.5,128,88,88,115.5,103.28,160Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm76.52,147.42H170.9l-9.26-12.76,12.63-36.78,15-4.89,26.24,20.13A87.38,87.38,0,0,1,204.52,171.42Zm-164-34.3L66.71,117l15,4.89,12.63,36.78L85.1,171.42H51.48A87.38,87.38,0,0,1,40.47,137.12Zm10-50.64,5.51,18.6L40.71,116.77A87.33,87.33,0,0,1,50.43,86.48ZM109,152,97.54,118.65,128,97.71l30.46,20.94L147,152Zm91.07-46.92,5.51-18.6a87.33,87.33,0,0,1,9.72,30.29Zm-6.2-35.38-9.51,32.08-15.07,4.89L136,83.79V68.21l29.09-20A88.58,88.58,0,0,1,193.86,69.7ZM146.07,41.87,128,54.29,109.93,41.87a88.24,88.24,0,0,1,36.14,0ZM90.91,48.21l29.09,20V83.79L86.72,106.67l-15.07-4.89L62.14,69.7A88.58,88.58,0,0,1,90.91,48.21ZM63.15,187.42H83.52l7.17,20.27A88.4,88.4,0,0,1,63.15,187.42ZM110,214.13,98.12,180.71,107.35,168h41.3l9.23,12.71-11.83,33.42a88,88,0,0,1-36.1,0Zm55.36-6.44,7.17-20.27h20.37A88.4,88.4,0,0,1,165.31,207.69Z"/></symbol>
+<symbol id="i-mountains" viewBox="0 0 256 256" fill="currentColor"><path d="M144,52a20,20,0,1,1,20,20A20,20,0,0,1,144,52Zm49.44,55.92a8,8,0,0,0-13.77,0l-33,55.75-21-35.67H50.35L8,200H248Z" opacity="0.2"/><path d="M164,80a28,28,0,1,0-28-28A28,28,0,0,0,164,80Zm0-40a12,12,0,1,1-12,12A12,12,0,0,1,164,40Zm90.88,155.92-54.56-92.08A15.87,15.87,0,0,0,186.55,96h0a15.85,15.85,0,0,0-13.76,7.84L146.63,148l-44.84-76.1a16,16,0,0,0-27.58,0L1.11,195.94A8,8,0,0,0,8,208H248a8,8,0,0,0,6.88-12.08ZM88,80l23.57,40H64.43ZM22,192l33-56h66l33,56Zm150.57,0-16.66-28.28L186.55,112,234,192Z"/></symbol>
+<symbol id="i-barricade" viewBox="0 0 256 256" fill="currentColor"><path d="M232,80v68L156,72h68A8,8,0,0,1,232,80ZM32,72a8,8,0,0,0-8,8v4l76,76h72L84,72Z" opacity="0.2"/><path d="M224,64H32A16,16,0,0,0,16,80v72a16,16,0,0,0,16,16H56v32a8,8,0,0,0,16,0V168H184v32a8,8,0,0,0,16,0V168h24a16,16,0,0,0,16-16V80A16,16,0,0,0,224,64Zm0,64.69L175.31,80H224ZM80.69,80l72,72H103.31L32,80.69V80ZM32,103.31,80.69,152H32ZM224,152H175.31l-72-72h49.38L224,151.32V152Z"/></symbol>
+<symbol id="i-buildings" viewBox="0 0 256 256" fill="currentColor"><path d="M136,32V216H40V85.35a8,8,0,0,1,3.56-6.66l80-53.33A8,8,0,0,1,136,32Z" opacity="0.2"/><path d="M240,208H224V96a16,16,0,0,0-16-16H144V32a16,16,0,0,0-24.88-13.32L39.12,72A16,16,0,0,0,32,85.34V208H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM208,96V208H144V96ZM48,85.34,128,32V208H48ZM112,112v16a8,8,0,0,1-16,0V112a8,8,0,1,1,16,0Zm-32,0v16a8,8,0,0,1-16,0V112a8,8,0,1,1,16,0Zm0,56v16a8,8,0,0,1-16,0V168a8,8,0,0,1,16,0Zm32,0v16a8,8,0,0,1-16,0V168a8,8,0,0,1,16,0Z"/></symbol>
+<symbol id="i-cross" viewBox="0 0 256 256" fill="currentColor"><path d="M208,88v32a8,8,0,0,1-8,8H152v96a8,8,0,0,1-8,8H112a8,8,0,0,1-8-8V128H56a8,8,0,0,1-8-8V88a8,8,0,0,1,8-8h48V32a8,8,0,0,1,8-8h32a8,8,0,0,1,8,8V80h48A8,8,0,0,1,208,88Z" opacity="0.2"/><path d="M200,72H160V32a16,16,0,0,0-16-16H112A16,16,0,0,0,96,32V72H56A16,16,0,0,0,40,88v32a16,16,0,0,0,16,16H96v88a16,16,0,0,0,16,16h32a16,16,0,0,0,16-16V136h40a16,16,0,0,0,16-16V88A16,16,0,0,0,200,72Zm0,48H152a8,8,0,0,0-8,8v96H112V128a8,8,0,0,0-8-8H56V88h48a8,8,0,0,0,8-8V32h32V80a8,8,0,0,0,8,8h48Z"/></symbol>
+<symbol id="i-drop-half" viewBox="0 0 256 256" fill="currentColor"><path d="M208,144a80,80,0,0,1-80,80V16S208,72,208,144Z" opacity="0.2"/><path d="M174,47.75a254.19,254.19,0,0,0-41.45-38.3,8,8,0,0,0-9.18,0A254.19,254.19,0,0,0,82,47.75C54.51,79.32,40,112.6,40,144a88,88,0,0,0,176,0C216,112.6,201.49,79.32,174,47.75ZM56,144c0-50,42.26-92.71,64-111.4V215.54A72.08,72.08,0,0,1,56,144Zm80,71.54V32.6C157.74,51.29,200,94,200,144A72.08,72.08,0,0,1,136,215.54Z"/></symbol>
+<symbol id="i-shield-warning" viewBox="0 0 256 256" fill="currentColor"><path d="M216,56v56c0,96-88,120-88,120S40,208,40,112V56a8,8,0,0,1,8-8H208A8,8,0,0,1,216,56Z" opacity="0.2"/><path d="M120,136V96a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,48a12,12,0,1,0-12-12A12,12,0,0,0,128,184ZM224,56v56c0,52.72-25.52,84.67-46.93,102.19-23.06,18.86-46,25.27-47,25.53a8,8,0,0,1-4.2,0c-1-.26-23.91-6.67-47-25.53C57.52,196.67,32,164.72,32,112V56A16,16,0,0,1,48,40H208A16,16,0,0,1,224,56Zm-16,0L48,56l0,56c0,37.3,13.82,67.51,41.07,89.81A128.25,128.25,0,0,0,128,223.62a129.3,129.3,0,0,0,39.41-22.2C194.34,179.16,208,149.07,208,112Z"/></symbol>
+<symbol id="i-prohibit" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm88,104a87.56,87.56,0,0,1-20.41,56.28L71.72,60.4A88,88,0,0,1,216,128ZM40,128A87.56,87.56,0,0,1,60.41,71.72L184.28,195.6A88,88,0,0,1,40,128Z"/></symbol>
+<symbol id="i-warning" viewBox="0 0 256 256" fill="currentColor"><path d="M215.46,216H40.54C27.92,216,20,202.79,26.13,192.09L113.59,40.22c6.3-11,22.52-11,28.82,0l87.46,151.87C236,202.79,228.08,216,215.46,216Z" opacity="0.2"/><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z"/></symbol>
+<symbol id="i-eye-slash" viewBox="0 0 256 256" fill="currentColor"><path d="M128,56C48,56,16,128,16,128s32,72,112,72,112-72,112-72S208,56,128,56Zm0,112a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a127.11,127.11,0,0,0,52.07-10.83l22,24.21a8,8,0,1,0,11.84-10.76Zm47.33,75.84,41.67,45.85a32,32,0,0,1-41.67-45.85ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,19.75a48,48,0,0,0,63.66,70l14.73,16.2A112,112,0,0,1,128,192Zm6-95.43a8,8,0,0,1,3-15.72,48.16,48.16,0,0,1,38.77,42.64,8,8,0,0,1-7.22,8.71,6.39,6.39,0,0,1-.75,0,8,8,0,0,1-8-7.26A32.09,32.09,0,0,0,134,96.57Zm113.28,34.69c-.42.94-10.55,23.37-33.36,43.8a8,8,0,1,1-10.67-11.92A132.77,132.77,0,0,0,231.05,128a133.15,133.15,0,0,0-23.12-30.77C185.67,75.19,158.78,64,128,64a118.37,118.37,0,0,0-19.36,1.57A8,8,0,1,1,106,49.79,134,134,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41A8,8,0,0,1,247.31,131.26Z"/></symbol>
+<symbol id="i-ear" viewBox="0 0 256 256" fill="currentColor"><path d="M208,104c0,40-14.44,72-48,112-8.07,9.77-18.34,16-32,16a44,44,0,0,1-44-44c0-41.49-36-28-36-84a80,80,0,0,1,160,0Z" opacity="0.2"/><path d="M216,104a8,8,0,0,1-16,0,72,72,0,0,0-144,0c0,26.7,8.53,34.92,17.57,43.64C82.21,156,92,165.41,92,188a36,36,0,0,0,36,36c10.24,0,18.45-4.16,25.83-13.09a8,8,0,1,1,12.34,10.18C155.81,233.64,143,240,128,240a52.06,52.06,0,0,1-52-52c0-15.79-5.68-21.27-13.54-28.84C52.46,149.5,40,137.5,40,104a88,88,0,0,1,176,0Zm-38.13,57.08A8,8,0,0,0,166.93,164,8,8,0,0,1,152,160c0-9.33,4.82-15.76,10.4-23.2,6.37-8.5,13.6-18.13,13.6-32.8a48,48,0,0,0-96,0,8,8,0,0,0,16,0,32,32,0,0,1,64,0c0,9.33-4.82,15.76-10.4,23.2-6.37,8.5-13.6,18.13-13.6,32.8a24,24,0,0,0,44.78,12A8,8,0,0,0,177.87,161.08Z"/></symbol>
+<symbol id="i-bicycle" viewBox="0 0 256 256" fill="currentColor"><path d="M248,160a40,40,0,1,1-40-40A40,40,0,0,1,248,160ZM48,120a40,40,0,1,0,40,40A40,40,0,0,0,48,120Z" opacity="0.2"/><path d="M208,112a47.81,47.81,0,0,0-16.93,3.09L165.93,72H192a8,8,0,0,1,8,8,8,8,0,0,0,16,0,24,24,0,0,0-24-24H152a8,8,0,0,0-6.91,12l11.65,20H99.26L82.91,60A8,8,0,0,0,76,56H48a8,8,0,0,0,0,16H71.41L85.12,95.51,69.41,117.06a48.13,48.13,0,1,0,12.92,9.44l11.59-15.9L125.09,164A8,8,0,1,0,138.91,156l-30.32-52h57.48l11.19,19.17A48,48,0,1,0,208,112ZM80,160a32,32,0,1,1-20.21-29.74l-18.25,25a8,8,0,1,0,12.92,9.42l18.25-25A31.88,31.88,0,0,1,80,160Zm128,32a32,32,0,0,1-22.51-54.72L201.09,164A8,8,0,1,0,214.91,156L199.3,129.21A32,32,0,1,1,208,192Z"/></symbol>
+<symbol id="i-plus-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48-88a8,8,0,0,1-8,8H136v32a8,8,0,0,1-16,0V136H88a8,8,0,0,1,0-16h32V88a8,8,0,0,1,16,0v32h32A8,8,0,0,1,176,128Z"/></symbol>
+<symbol id="i-cloud-rain" viewBox="0 0 256 256" fill="currentColor"><path d="M224,92a68,68,0,0,1-68,68H76A44,44,0,1,1,90.2,74.34v.11A68.06,68.06,0,0,1,224,92Z" opacity="0.2"/><path d="M158.66,196.44l-32,48a8,8,0,1,1-13.32-8.88l32-48a8,8,0,0,1,13.32,8.88ZM232,92a76.08,76.08,0,0,1-76,76H132.28l-29.62,44.44a8,8,0,1,1-13.32-8.88L113.05,168H76A52,52,0,0,1,76,64a53.26,53.26,0,0,1,8.92.76A76.08,76.08,0,0,1,232,92Zm-16,0A60.06,60.06,0,0,0,96,88.46a8,8,0,0,1-16-.92q.21-3.66.77-7.23A38.11,38.11,0,0,0,76,80a36,36,0,0,0,0,72h80A60.07,60.07,0,0,0,216,92Z"/></symbol>
+<symbol id="i-wind" viewBox="0 0 256 256" fill="currentColor"><path d="M120,96a24,24,0,1,1,24-24A24,24,0,0,1,120,96Zm88-16a24,24,0,1,0,24,24A24,24,0,0,0,208,80Zm-56,80a24,24,0,1,0,24,24A24,24,0,0,0,152,160Z" opacity="0.2"/><path d="M184,184a32,32,0,0,1-32,32c-13.7,0-26.95-8.93-31.5-21.22a8,8,0,0,1,15-5.56C137.74,195.27,145,200,152,200a16,16,0,0,0,0-32H40a8,8,0,0,1,0-16H152A32,32,0,0,1,184,184Zm-64-80a32,32,0,0,0,0-64c-13.7,0-26.95,8.93-31.5,21.22a8,8,0,0,0,15,5.56C105.74,60.73,113,56,120,56a16,16,0,0,1,0,32H24a8,8,0,0,0,0,16Zm88-32c-13.7,0-26.95,8.93-31.5,21.22a8,8,0,0,0,15,5.56C193.74,92.73,201,88,208,88a16,16,0,0,1,0,32H32a8,8,0,0,0,0,16H208a32,32,0,0,0,0-64Z"/></symbol>
+<symbol id="i-moon-stars" viewBox="0 0 256 256" fill="currentColor"><path d="M210.69,158.18A88,88,0,1,1,97.82,45.31,96.08,96.08,0,0,0,192,160,96.78,96.78,0,0,0,210.69,158.18Z" opacity="0.2"/><path d="M240,96a8,8,0,0,1-8,8H216v16a8,8,0,0,1-16,0V104H184a8,8,0,0,1,0-16h16V72a8,8,0,0,1,16,0V88h16A8,8,0,0,1,240,96ZM144,56h8v8a8,8,0,0,0,16,0V56h8a8,8,0,0,0,0-16h-8V32a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16Zm72.77,97a8,8,0,0,1,1.43,8A96,96,0,1,1,95.07,37.8a8,8,0,0,1,10.6,9.06A88.07,88.07,0,0,0,209.14,150.33,8,8,0,0,1,216.77,153Zm-19.39,14.88c-1.79.09-3.59.14-5.38.14A104.11,104.11,0,0,1,88,64c0-1.79,0-3.59.14-5.38A80,80,0,1,0,197.38,167.86Z"/></symbol>
+<symbol id="i-cloud" viewBox="0 0 256 256" fill="currentColor"><path d="M240,128a80,80,0,0,1-80,80H72A56,56,0,1,1,85.92,97.74l0,.1A80,80,0,0,1,240,128Z" opacity="0.2"/><path d="M160,40A88.09,88.09,0,0,0,81.29,88.67,64,64,0,1,0,72,216h88a88,88,0,0,0,0-176Zm0,160H72a48,48,0,0,1,0-96c1.1,0,2.2,0,3.29.11A88,88,0,0,0,72,128a8,8,0,0,0,16,0,72,72,0,1,1,72,72Z"/></symbol>
+<symbol id="i-cloud-moon" viewBox="0 0 256 256" fill="currentColor"><path d="M106.31,130.38ZM102.38,17.62h0A64.06,64.06,0,0,1,25.62,94.38h0A64.12,64.12,0,0,0,63,138.93h0a44.08,44.08,0,0,1,43.33-8.54,68.13,68.13,0,0,1,45.47-47.32l.15,0c0-1,.07-2,.07-3A64,64,0,0,0,102.38,17.62Z" opacity="0.2"/><path d="M172,72a76.45,76.45,0,0,0-12.36,1A71.93,71.93,0,0,0,104.17,9.83a8,8,0,0,0-9.59,9.58A56.05,56.05,0,0,1,40,88a56.45,56.45,0,0,1-12.59-1.42,8,8,0,0,0-9.59,9.59,72.22,72.22,0,0,0,32.29,45.06A52,52,0,0,0,92,224h80a76,76,0,0,0,0-152ZM37.37,104c.87,0,1.75,0,2.63,0a72.08,72.08,0,0,0,72-72c0-.89,0-1.78,0-2.67a55.63,55.63,0,0,1,32,48,76.28,76.28,0,0,0-43,43.4A52,52,0,0,0,62,129.59,56.22,56.22,0,0,1,37.37,104ZM172,208H92a36,36,0,1,1,4.78-71.69c-.37,2.37-.63,4.79-.77,7.23a8,8,0,0,0,16,.92,58.91,58.91,0,0,1,1.88-11.81c0-.16.09-.32.12-.48A60.06,60.06,0,1,1,172,208Z"/></symbol>
+<symbol id="i-snowflake" viewBox="0 0 256 256" fill="currentColor"><path d="M220,128a92,92,0,1,1-92-92A92.1,92.1,0,0,1,220,128Z" opacity="0.2"/><path d="M223.77,150.09a8,8,0,0,1-5.86,9.68l-24.64,6,6.46,24.11a8,8,0,0,1-5.66,9.8A8.25,8.25,0,0,1,192,200a8,8,0,0,1-7.72-5.93l-7.72-28.8L136,141.86v46.83l21.66,21.65a8,8,0,0,1-11.32,11.32L128,203.31l-18.34,18.35a8,8,0,0,1-11.32-11.32L120,188.69V141.86L79.45,165.27l-7.72,28.8A8,8,0,0,1,64,200a8.25,8.25,0,0,1-2.08-.27,8,8,0,0,1-5.66-9.8l6.46-24.11-24.64-6a8,8,0,0,1,3.82-15.54l29.45,7.23L112,128,71.36,104.54l-29.45,7.23A7.85,7.85,0,0,1,40,112a8,8,0,0,1-1.91-15.77l24.64-6L56.27,66.07a8,8,0,0,1,15.46-4.14l7.72,28.8L120,114.14V67.31L98.34,45.66a8,8,0,0,1,11.32-11.32L128,52.69l18.34-18.35a8,8,0,0,1,11.32,11.32L136,67.31v46.83l40.55-23.41,7.72-28.8a8,8,0,0,1,15.46,4.14l-6.46,24.11,24.64,6A8,8,0,0,1,216,112a7.85,7.85,0,0,1-1.91-.23l-29.45-7.23L144,128l40.64,23.46,29.45-7.23A8,8,0,0,1,223.77,150.09Z"/></symbol>
+<symbol id="i-wifi-slash" viewBox="0 0 256 256" fill="currentColor"><path d="M238.2,87.69l-104,125.43a8,8,0,0,1-12.3,0L17.8,87.69a7.79,7.79,0,0,1,1.31-11.21,180.75,180.75,0,0,1,217.78,0A7.79,7.79,0,0,1,238.2,87.69Z" opacity="0.2"/><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38l4.55,5A187.93,187.93,0,0,0,14.28,70.1,15.93,15.93,0,0,0,8.11,80.91,15.65,15.65,0,0,0,11.65,92.8l104,125.43A15.93,15.93,0,0,0,128,224h0a15.93,15.93,0,0,0,12.31-5.77l28.1-33.88,33.67,37a8,8,0,1,0,11.84-10.76ZM128,208,24.09,82.74A171.5,171.5,0,0,1,57.91,62.79l99.63,109.6ZM244.35,92.8l-49.42,59.58a8,8,0,0,1-12.32-10.21l49.3-59.43A170.76,170.76,0,0,0,128,48a175.15,175.15,0,0,0-32.39,3,8,8,0,1,1-3-15.72A190.62,190.62,0,0,1,128,32,186.67,186.67,0,0,1,241.72,70.1a15.93,15.93,0,0,1,6.17,10.81A15.65,15.65,0,0,1,244.35,92.8Z"/></symbol>
+<symbol id="i-thermometer-cold" viewBox="0 0 256 256" fill="currentColor"><path d="M152,138V48a32,32,0,0,0-64,0v90a56,56,0,1,0,64,0Zm-32,70a24,24,0,1,1,24-24A24,24,0,0,1,120,208Z" opacity="0.2"/><path d="M248.91,77.72l-20,6.49,12.34,17a8,8,0,1,1-12.94,9.4L216,93.61l-12.34,17a8,8,0,0,1-12.94-9.4l12.34-17-20-6.49A8,8,0,0,1,188,62.5L208,69V48a8,8,0,0,1,16,0V69l20-6.49a8,8,0,0,1,4.95,15.22ZM152,184a32,32,0,1,1-40-31V120a8,8,0,0,1,16,0v33A32.06,32.06,0,0,1,152,184Zm-16,0a16,16,0,1,0-16,16A16,16,0,0,0,136,184Zm48,0A64,64,0,1,1,80,134V48a40,40,0,0,1,80,0v86A64.08,64.08,0,0,1,184,184Zm-16,0a48.08,48.08,0,0,0-20.58-39.4A8,8,0,0,1,144,138V48a24,24,0,0,0-48,0v90a8,8,0,0,1-3.42,6.56A48,48,0,1,0,168,184Z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 256 256" fill="currentColor"><path d="M184,128a56,56,0,1,1-56-56A56,56,0,0,1,184,128Z" opacity="0.2"/><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"/></symbol>
+<symbol id="i-sun-horizon" viewBox="0 0 256 256" fill="currentColor"><path d="M192,144a64.33,64.33,0,0,1-2,16H66a64,64,0,1,1,126-16Z" opacity="0.2"/><path d="M240,152H199.55a73.54,73.54,0,0,0,.45-8,72,72,0,0,0-144,0,73.54,73.54,0,0,0,.45,8H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM72,144a56,56,0,1,1,111.41,8H72.59A56.13,56.13,0,0,1,72,144Zm144,56a8,8,0,0,1-8,8H48a8,8,0,0,1,0-16H208A8,8,0,0,1,216,200ZM72.84,43.58a8,8,0,0,1,14.32-7.16l8,16a8,8,0,0,1-14.32,7.16Zm-56,48.84a8,8,0,0,1,10.74-3.57l16,8a8,8,0,0,1-7.16,14.31l-16-8A8,8,0,0,1,16.84,92.42Zm192,15.16a8,8,0,0,1,3.58-10.73l16-8a8,8,0,1,1,7.16,14.31l-16,8a8,8,0,0,1-10.74-3.58Zm-48-55.16,8-16a8,8,0,0,1,14.32,7.16l-8,16a8,8,0,1,1-14.32-7.16Z"/></symbol>
+<symbol id="i-moon" viewBox="0 0 256 256" fill="currentColor"><path d="M227.89,147.89A96,96,0,1,1,108.11,28.11,96.09,96.09,0,0,0,227.89,147.89Z" opacity="0.2"/><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"/></symbol>
+<symbol id="i-hourglass" viewBox="0 0 256 256" fill="currentColor"><path d="M188.82,82,128,128,67.2,82.4A8,8,0,0,1,64,76V40a8,8,0,0,1,8-8H184a8,8,0,0,1,8,8V75.64A8,8,0,0,1,188.82,82ZM64,180v36a8,8,0,0,0,8,8H184a8,8,0,0,0,8-8V180.36a8,8,0,0,0-3.18-6.38L128,128,67.2,173.6A8,8,0,0,0,64,180Z" opacity="0.2"/><path d="M200,75.64V40a16,16,0,0,0-16-16H72A16,16,0,0,0,56,40V76a16.07,16.07,0,0,0,6.4,12.8L114.67,128,62.4,167.2A16.07,16.07,0,0,0,56,180v36a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V180.36a16.09,16.09,0,0,0-6.35-12.77L141.27,128l52.38-39.59A16.09,16.09,0,0,0,200,75.64ZM184,216H72V180l56-42,56,42.35Zm0-140.36L128,118,72,76V40H184Z"/></symbol>
+<symbol id="i-magnifying-glass" viewBox="0 0 256 256" fill="currentColor"><path d="M192,112a80,80,0,1,1-80-80A80,80,0,0,1,192,112Z" opacity="0.2"/><path d="M229.66,218.34,179.6,168.28a88.21,88.21,0,1,0-11.32,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+<symbol id="i-hand-grabbing" viewBox="0 0 256 256" fill="currentColor"><path d="M208,108v44a80,80,0,0,1-160,0V140a20,20,0,0,1,20-20H88V92a20,20,0,0,1,40,0,20,20,0,0,1,40,0v16a20,20,0,0,1,40,0Z" opacity="0.2"/><path d="M188,80a27.79,27.79,0,0,0-13.36,3.4,28,28,0,0,0-46.64-11A28,28,0,0,0,80,92v20H68a28,28,0,0,0-28,28v12a88,88,0,0,0,176,0V108A28,28,0,0,0,188,80Zm12,72a72,72,0,0,1-144,0V140a12,12,0,0,1,12-12H80v24a8,8,0,0,0,16,0V92a12,12,0,0,1,24,0v28a8,8,0,0,0,16,0V92a12,12,0,0,1,24,0v28a8,8,0,0,0,16,0V108a12,12,0,0,1,24,0Z"/></symbol>
+<symbol id="i-map-pin-area" viewBox="0 0 256 256" fill="currentColor"><path d="M184,80c0,56-56,88-56,88S72,136,72,80a56,56,0,0,1,112,0Z" opacity="0.2"/><path d="M112,80a16,16,0,1,1,16,16A16,16,0,0,1,112,80ZM64,80a64,64,0,0,1,128,0c0,59.95-57.58,93.54-60,94.95a8,8,0,0,1-7.94,0C121.58,173.54,64,140,64,80Zm16,0c0,42.2,35.84,70.21,48,78.5,12.15-8.28,48-36.3,48-78.5a48,48,0,0,0-96,0Zm122.77,67.63a8,8,0,0,0-5.54,15C213.74,168.74,224,176.92,224,184c0,13.36-36.52,32-96,32s-96-18.64-96-32c0-7.08,10.26-15.26,26.77-21.36a8,8,0,0,0-5.54-15C29.22,156.49,16,169.41,16,184c0,31.18,57.71,48,112,48s112-16.82,112-48C240,169.41,226.78,156.49,202.77,147.63Z"/></symbol>
+<symbol id="i-gps-fix" viewBox="0 0 256 256" fill="currentColor"><path d="M128,48a80,80,0,1,0,80,80A80,80,0,0,0,128,48Zm0,112a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z" opacity="0.2"/><path d="M240,120H215.63A88.13,88.13,0,0,0,136,40.37V16a8,8,0,0,0-16,0V40.37A88.13,88.13,0,0,0,40.37,120H16a8,8,0,0,0,0,16H40.37A88.13,88.13,0,0,0,120,215.63V240a8,8,0,0,0,16,0V215.63A88.13,88.13,0,0,0,215.63,136H240a8,8,0,0,0,0-16ZM128,200a72,72,0,1,1,72-72A72.08,72.08,0,0,1,128,200Zm0-112a40,40,0,1,0,40,40A40,40,0,0,0,128,88Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,152Z"/></symbol>
+<symbol id="i-gear" viewBox="0 0 256 256" fill="currentColor"><path d="M207.86,123.18l16.78-21a99.14,99.14,0,0,0-10.07-24.29l-26.7-3a81,81,0,0,0-6.81-6.81l-3-26.71a99.43,99.43,0,0,0-24.3-10l-21,16.77a81.59,81.59,0,0,0-9.64,0l-21-16.78A99.14,99.14,0,0,0,77.91,41.43l-3,26.7a81,81,0,0,0-6.81,6.81l-26.71,3a99.43,99.43,0,0,0-10,24.3l16.77,21a81.59,81.59,0,0,0,0,9.64l-16.78,21a99.14,99.14,0,0,0,10.07,24.29l26.7,3a81,81,0,0,0,6.81,6.81l3,26.71a99.43,99.43,0,0,0,24.3,10l21-16.77a81.59,81.59,0,0,0,9.64,0l21,16.78a99.14,99.14,0,0,0,24.29-10.07l3-26.7a81,81,0,0,0,6.81-6.81l26.71-3a99.43,99.43,0,0,0,10-24.3l-16.77-21A81.59,81.59,0,0,0,207.86,123.18ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z" opacity="0.2"/><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.6,107.6,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.29,107.29,0,0,0-26.25-10.86,8,8,0,0,0-7.06,1.48L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.6,107.6,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.21,107.21,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06Zm-16.1-6.5a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8.06,8.06,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8.06,8.06,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z"/></symbol>
+<symbol id="i-trash" viewBox="0 0 256 256" fill="currentColor"><path d="M200,56V208a8,8,0,0,1-8,8H64a8,8,0,0,1-8-8V56Z" opacity="0.2"/><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/></symbol>
+<symbol id="i-x" viewBox="0 0 256 256" fill="currentColor"><path d="M216,56V200a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40H200A16,16,0,0,1,216,56Z" opacity="0.2"/><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+<symbol id="i-star" viewBox="0 0 256 256" fill="currentColor"><path d="M229.06,108.79l-48.7,42,14.88,62.79a8.4,8.4,0,0,1-12.52,9.17L128,189.09,73.28,222.74a8.4,8.4,0,0,1-12.52-9.17l14.88-62.79-48.7-42A8.46,8.46,0,0,1,31.73,94L95.64,88.8l24.62-59.6a8.36,8.36,0,0,1,15.48,0l24.62,59.6L224.27,94A8.46,8.46,0,0,1,229.06,108.79Z" opacity="0.2"/><path d="M239.18,97.26A16.38,16.38,0,0,0,224.92,86l-59-4.76L143.14,26.15a16.36,16.36,0,0,0-30.27,0L90.11,81.23,31.08,86a16.46,16.46,0,0,0-9.37,28.86l45,38.83L53,211.75a16.38,16.38,0,0,0,24.5,17.82L128,198.49l50.53,31.08A16.4,16.4,0,0,0,203,211.75l-13.76-58.07,45-38.83A16.43,16.43,0,0,0,239.18,97.26Zm-15.34,5.47-48.7,42a8,8,0,0,0-2.56,7.91l14.88,62.8a.37.37,0,0,1-.17.48c-.18.14-.23.11-.38,0l-54.72-33.65a8,8,0,0,0-8.38,0L69.09,215.94c-.15.09-.19.12-.38,0a.37.37,0,0,1-.17-.48l14.88-62.8a8,8,0,0,0-2.56-7.91l-48.7-42c-.12-.1-.23-.19-.13-.5s.18-.27.33-.29l63.92-5.16A8,8,0,0,0,103,91.86l24.62-59.61c.08-.17.11-.25.35-.25s.27.08.35.25L153,91.86a8,8,0,0,0,6.75,4.92l63.92,5.16c.15,0,.24,0,.33.29S224,102.63,223.84,102.73Z"/></symbol>
+<symbol id="i-link" viewBox="0 0 256 256" fill="currentColor"><path d="M218.34,119.6,183.6,154.34a46.58,46.58,0,0,1-44.31,12.26c-.31.34-.62.67-.95,1L103.6,202.34A46.63,46.63,0,1,1,37.66,136.4L72.4,101.66A46.6,46.6,0,0,1,116.71,89.4c.31-.34.62-.67,1-1L152.4,53.66a46.63,46.63,0,0,1,65.94,65.94Z" opacity="0.2"/><path d="M240,88.23a54.43,54.43,0,0,1-16,37L189.25,160a54.27,54.27,0,0,1-38.63,16h-.05A54.63,54.63,0,0,1,96,119.84a8,8,0,0,1,16,.45A38.62,38.62,0,0,0,150.58,160h0a38.39,38.39,0,0,0,27.31-11.31l34.75-34.75a38.63,38.63,0,0,0-54.63-54.63l-11,11A8,8,0,0,1,135.7,59l11-11A54.65,54.65,0,0,1,224,48,54.86,54.86,0,0,1,240,88.23ZM109,185.66l-11,11A38.41,38.41,0,0,1,70.6,208h0a38.63,38.63,0,0,1-27.29-65.94L78,107.31A38.63,38.63,0,0,1,144,135.71a8,8,0,0,0,7.78,8.22H152a8,8,0,0,0,8-7.78A54.86,54.86,0,0,0,144,96a54.65,54.65,0,0,0-77.27,0L32,130.75A54.62,54.62,0,0,0,70.56,224h0a54.28,54.28,0,0,0,38.64-16l11-11A8,8,0,0,0,109,185.66Z"/></symbol>
+<symbol id="i-magnifying-glass-plus" viewBox="0 0 256 256" fill="currentColor"><path d="M192,112a80,80,0,1,1-80-80A80,80,0,0,1,192,112Z" opacity="0.2"/><path d="M229.66,218.34,179.6,168.28a88.21,88.21,0,1,0-11.32,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Zm112,0a8,8,0,0,1-8,8H120v24a8,8,0,0,1-16,0V120H80a8,8,0,0,1,0-16h24V80a8,8,0,0,1,16,0v24h24A8,8,0,0,1,152,112Z"/></symbol>
+<symbol id="i-download-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48V208H40V48A16,16,0,0,1,56,32H200A16,16,0,0,1,216,48Z" opacity="0.2"/><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
+<symbol id="i-upload-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48V208H40V48A16,16,0,0,1,56,32H200A16,16,0,0,1,216,48Z" opacity="0.2"/><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0ZM93.66,77.66,120,51.31V144a8,8,0,0,0,16,0V51.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,77.66Z"/></symbol>
+<symbol id="i-file-arrow-down" viewBox="0 0 256 256" fill="currentColor"><path d="M208,88H152V32Z" opacity="0.2"/><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-42.34-61.66a8,8,0,0,1,0,11.32l-24,24a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L120,164.69V120a8,8,0,0,1,16,0v44.69l10.34-10.35A8,8,0,0,1,157.66,154.34Z"/></symbol>
+<symbol id="i-path" viewBox="0 0 256 256" fill="currentColor"><path d="M224,200a24,24,0,1,1-24-24A24,24,0,0,1,224,200Z" opacity="0.2"/><path d="M200,168a32.06,32.06,0,0,0-31,24H72a32,32,0,0,1,0-64h96a40,40,0,0,0,0-80H72a8,8,0,0,0,0,16h96a24,24,0,0,1,0,48H72a48,48,0,0,0,0,96h97a32,32,0,1,0,31-40Zm0,48a16,16,0,1,1,16-16A16,16,0,0,1,200,216Z"/></symbol>
+<symbol id="i-compass" viewBox="0 0 256 256" fill="currentColor"><path d="M128,32a96,96,0,1,0,96,96A96,96,0,0,0,128,32Zm16,112L80,176l32-64,64-32Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM172.42,72.84l-64,32a8.05,8.05,0,0,0-3.58,3.58l-32,64A8,8,0,0,0,80,184a8.1,8.1,0,0,0,3.58-.84l64-32a8.05,8.05,0,0,0,3.58-3.58l32-64a8,8,0,0,0-10.74-10.74ZM138,138,97.89,158.11,118,118l40.15-20.07Z"/></symbol>
+<symbol id="i-notepad" viewBox="0 0 256 256" fill="currentColor"><path d="M208,40V200a24,24,0,0,1-24,24H72a24,24,0,0,1-24-24V40Z" opacity="0.2"/><path d="M168,128a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,128Zm-8,24H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16ZM216,40V200a32,32,0,0,1-32,32H72a32,32,0,0,1-32-32V40a8,8,0,0,1,8-8H72V24a8,8,0,0,1,16,0v8h32V24a8,8,0,0,1,16,0v8h32V24a8,8,0,0,1,16,0v8h24A8,8,0,0,1,216,40Zm-16,8H184v8a8,8,0,0,1-16,0V48H136v8a8,8,0,0,1-16,0V48H88v8a8,8,0,0,1-16,0V48H56V200a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16Z"/></symbol>
+<symbol id="i-chart-bar" viewBox="0 0 256 256" fill="currentColor"><path d="M208,40V208H152V40Z" opacity="0.2"/><path d="M224,200h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V80H96a8,8,0,0,0-8,8v40H48a8,8,0,0,0-8,8v64H32a8,8,0,0,0,0,16H224a8,8,0,0,0,0-16ZM160,48h40V200H160ZM104,96h40V200H104ZM56,144H88v56H56Z"/></symbol>
+<symbol id="i-arrows-out-cardinal" viewBox="0 0 256 256" fill="currentColor"><path d="M232,128,128,232,24,128,128,24Z" opacity="0.2"/><path d="M90.34,61.66a8,8,0,0,1,0-11.32l32-32a8,8,0,0,1,11.32,0l32,32a8,8,0,0,1-11.32,11.32L136,43.31V96a8,8,0,0,1-16,0V43.31L101.66,61.66A8,8,0,0,1,90.34,61.66Zm64,132.68L136,212.69V160a8,8,0,0,0-16,0v52.69l-18.34-18.35a8,8,0,0,0-11.32,11.32l32,32a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Zm83.32-72-32-32a8,8,0,0,0-11.32,11.32L212.69,120H160a8,8,0,0,0,0,16h52.69l-18.35,18.34a8,8,0,0,0,11.32,11.32l32-32A8,8,0,0,0,237.66,122.34ZM43.31,136H96a8,8,0,0,0,0-16H43.31l18.35-18.34A8,8,0,0,0,50.34,90.34l-32,32a8,8,0,0,0,0,11.32l32,32a8,8,0,0,0,11.32-11.32Z"/></symbol>
+<symbol id="i-caret-right" viewBox="0 0 256 256" fill="currentColor"><path d="M176,128,96,208V48Z" opacity="0.2"/><path d="M181.66,122.34l-80-80A8,8,0,0,0,88,48V208a8,8,0,0,0,13.66,5.66l80-80A8,8,0,0,0,181.66,122.34ZM104,188.69V67.31L164.69,128Z"/></symbol>
+<symbol id="i-warning-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Z" opacity="0.2"/><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/></symbol>
+<symbol id="i-shield-check" viewBox="0 0 256 256" fill="currentColor"><path d="M216,56v56c0,96-88,120-88,120S40,208,40,112V56a8,8,0,0,1,8-8H208A8,8,0,0,1,216,56Z" opacity="0.2"/><path d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"/></symbol>
+<symbol id="i-map-trifold" viewBox="0 0 256 256" fill="currentColor"><path d="M160,72V216L96,184V40Z" opacity="0.2"/><path d="M228.92,49.69a8,8,0,0,0-6.86-1.45L160.93,63.52,99.58,32.84a8,8,0,0,0-5.52-.6l-64,16A8,8,0,0,0,24,56V200a8,8,0,0,0,9.94,7.76l61.13-15.28,61.35,30.68A8.15,8.15,0,0,0,160,224a8,8,0,0,0,1.94-.24l64-16A8,8,0,0,0,232,200V56A8,8,0,0,0,228.92,49.69ZM104,52.94l48,24V203.06l-48-24ZM40,62.25l48-12v127.5l-48,12Zm176,131.5-48,12V78.25l48-12Z"/></symbol>
+<symbol id="i-hollow" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><clipPath id="i-hollow-c"><rect x="0" y="136" width="256" height="120"/></clipPath><path d="M16,72C72,72,80,208,128,208S184,72,240,72Z" fill="currentColor" opacity="0.2" stroke="none" clip-path="url(#i-hollow-c)"/><path d="M16,72C72,72,80,208,128,208S184,72,240,72"/><line x1="98.0" y1="104.0" x2="158.0" y2="104.0" stroke-width="12"/><line x1="113.0" y1="78.0" x2="143.0" y2="130.0" stroke-width="12"/><line x1="143.0" y1="78.0" x2="113.0" y2="130.0" stroke-width="12"/></symbol>
+<symbol id="i-stand" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><rect x="72" y="56" width="112" height="64" rx="4" fill="currentColor" opacity="0.2" stroke="none"/><path d="M60,60L128,24L196,60"/><rect x="72" y="60" width="112" height="60" rx="4"/><path d="M96,88H160" stroke-width="12"/><path d="M84,120L60,232M172,120L196,232M72,176H184"/></symbol>
+<symbol id="i-shelter" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M24,112L128,40L232,112Z" fill="currentColor" opacity="0.2" stroke="none"/><path d="M24,112L128,40L232,112"/><path d="M64,88V216M192,88V216M96,168H160M104,168V208M152,168V208" /></symbol>
+</svg>
 
 <header>
   <div class="brand"><svg class="logo" role="img" aria-label="WildNav logo"><use href="#logo"/></svg><span>WildNav</span></div>
-  <form id="search"><input id="q" placeholder="Go to a place…" aria-label="Search place"><button type="submit" aria-label="Search">⌕</button></form>
-  <label class="layer-pick"><select id="layer-select" aria-label="Map layer">
-    <option value="score">Best spots</option><option value="density">Houses</option><option value="nearby">Useful places</option>
-  </select></label>
+  <form id="search"><input id="q" placeholder="Go to a place…" aria-label="Search place"><button type="submit" aria-label="Search"><svg class="ic"><use href="#i-magnifying-glass"/></svg></button></form>
+  <div class="layer-pick"><button id="layer-btn" aria-haspopup="true" aria-expanded="false" aria-controls="layer-menu" title="What the map shows">
+    <span id="layer-ic"></span><span id="layer-name"></span><svg class="ic car" aria-hidden="true"><use href="#i-caret-right"/></svg></button>
+    <div id="layer-menu" hidden></div></div>
   <div id="status">Ready</div>
   <button class="hbtn" id="btn-settings" aria-expanded="false" aria-controls="settings" title="Settings">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+    <svg aria-hidden="true"><use href="#i-gear"/></svg>
     <span class="lbl">Settings</span></button>
   <div id="progress"><div id="progress-fill"></div></div>
 </header>
@@ -270,20 +431,21 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 
   <div class="tools" role="toolbar" aria-label="What a click on the map does">
     <button data-tool="inspect" title="Look at spots: click the map to see what a spot is like, and save it from there" aria-label="Look at spots">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></button>
+      <svg aria-hidden="true"><use href="#i-magnifying-glass"/></svg></button>
     <button data-tool="off" title="Click off: clicks on the map do nothing (just move and zoom)" aria-label="Clicks off">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></button>
+      <svg aria-hidden="true"><use href="#i-hand-grabbing"/></svg></button>
     <button data-tool="near" title="Find spots here: click the map to list the best spots within 5 km of that point (drag the centre marker to move it)" aria-label="Find spots here">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-dasharray="3 2.5"/><path d="M12 7.2l1.45 2.95 3.25.47-2.35 2.3.55 3.23L12 14.6l-2.9 1.55.55-3.23-2.35-2.3 3.25-.47z" fill="currentColor" stroke-width="1"/></svg></button>
+      <svg aria-hidden="true"><use href="#i-map-pin-area"/></svg></button>
     <div class="tool-gap"></div>
     <button id="btn-locate" title="Show where I am and the best spots within 5 km" aria-label="Locate me" aria-pressed="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5"/></svg></button>
+      <svg aria-hidden="true"><use href="#i-gps-fix"/></svg></button>
   </div>
   <div class="tool-hint" id="tool-hint" role="status"></div>
 
   <div class="legend-box" id="legend-box">
-    <div class="leg-title" id="leg-title"></div>
-    <div class="legend"><canvas id="leg" width="256" height="1"></canvas><div class="leg-labels" id="leg-labels"></div></div>
+    <button class="leg-back" id="leg-back" hidden title="Back to the combined score">← Best spots</button>
+    <button class="leg-title" id="leg-toggle" aria-expanded="false" title="Show or hide the explanation"><span id="leg-title"></span><svg class="ic car" aria-hidden="true"><use href="#i-caret-right"/></svg></button>
+    <div class="legend"><div class="leg-bar"><canvas id="leg" width="256" height="1"></canvas><i id="leg-mark"></i></div><div class="leg-labels" id="leg-labels"></div></div>
     <div class="note leg-note" id="layer-note" style="margin-top:2px"></div>
   </div>
 
@@ -292,24 +454,24 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
     <section class="sec spot-card" id="spot-card" hidden aria-label="Spot details"></section>
 
     <section class="sec" id="near-sec" hidden aria-label="Best spots near you">
-      <div class="sc-head"><h2 style="flex:1;margin:0">Best spots near you</h2>
-        <button class="sc-x" id="near-close" title="Close the list" aria-label="Close the list">×</button></div>
+      <div class="sc-head"><h2 style="flex:1;margin:0"><svg class="ic" style="color:#3fae6a"><use href="#i-map-pin-area"/></svg>Near you</h2>
+        <button class="sc-x" id="near-close" title="Close the list" aria-label="Close the list"><svg class="ic"><use href="#i-x"/></svg></button></div>
       <div class="spot-list" id="near-list"></div>
     </section>
 
     <section class="sec" id="hover-sec">
-      <h2>Under the cursor</h2>
+      <h2><svg class="ic" style="color:var(--muted)"><use href="#i-magnifying-glass"/></svg>Here</h2>
       <div class="info" id="info"><span class="muted">Move the cursor over the map, or click it to look at a spot.</span></div>
     </section>
 
     <section class="sec" id="route-sec" aria-label="Route">
-      <h2><span style="color:#e8743a">🚲</span>Route</h2>
+      <h2><svg class="ic" style="color:#e8743a"><use href="#i-path"/></svg>Route</h2>
       <div id="route-box"></div>
       <input type="file" id="route-file" accept=".gpx,application/gpx+xml" hidden>
     </section>
 
     <section class="sec">
-      <h2><span style="color:var(--blaze)">★</span>Your spots</h2>
+      <h2><svg class="ic" style="color:var(--blaze)"><use href="#i-star"/></svg>Your spots</h2>
       <div class="spot-list" id="spot-list"></div>
       <div class="note">Click the map to look at a spot, then press “Save spot”. Spots are stored in this browser only: export a backup now and then.</div>
       <div class="btns">
@@ -329,58 +491,49 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
   </aside>
 
   <div class="settings" id="settings" hidden role="dialog" aria-label="Settings">
-    <div class="set-head"><h2>Settings</h2><button class="sc-x" id="settings-close" title="Close" aria-label="Close settings">×</button></div>
+    <div class="set-head"><h2>Settings</h2><button class="sc-x" id="settings-close" title="Close" aria-label="Close settings"><svg class="ic"><use href="#i-x"/></svg></button></div>
 
     <section class="sec">
-      <h2><span class="sw" style="background:var(--haz)"></span>Keep away from houses</h2>
+      <h2><svg class="ic" style="color:#d64545"><use href="#i-house"/></svg>Houses</h2>
       <div id="haz-sliders"></div>
     </section>
 
     <section class="sec">
-      <h2><span class="sw" style="background:#4caf6a"></span>Hidden, quiet &amp; flat</h2>
+      <h2><svg class="ic" style="color:#6cc38a"><use href="#i-eye-slash"/></svg>Hidden &amp; quiet</h2>
       <div id="hide-sliders"></div>
-      <div class="note">From zoom 11 in the offline regions. “Hidden”: can people on roads, paths or in houses see or hear you? Forest, scrub and hedges hide you; open fields don't. Counts more than the house distance. “Quiet night”: road and railway noise, full penalty from 55 dB. “Avoid slopes”: from a 30 m elevation model, so small flat patches on a slope may not show.</div>
+      <details class="more"><summary>How it works</summary><div class="note">From zoom 11 in the offline regions. “Hidden”: can people on roads, paths or in houses see or hear you? Forest, scrub and hedges hide you; open fields don't. Counts more than the house distance. “Quiet night”: road and railway noise, full penalty from 55 dB. “Avoid slopes”: from a 30 m elevation model, so small flat patches on a slope may not show.</div></details>
     </section>
 
     <section class="sec">
-      <h2><span class="sw" style="background:var(--att)"></span>Good to have nearby</h2>
+      <h2><svg class="ic" style="color:#22b8d6"><use href="#i-plus-circle"/></svg>Useful places</h2>
       <div id="att-cut"></div>
       <div id="rows-attract"></div>
     </section>
 
     <section class="sec">
-      <h2>Display</h2>
-      <div class="slider-row" style="margin-top:0"><label>Base map</label></div>
-      <div class="seg" id="seg-base" style="margin-top:4px"></div>
+      <h2><svg class="ic" style="color:var(--muted)"><use href="#i-map-trifold"/></svg>Display</h2>
+      <div class="sl-head" style="margin-top:0"><label>Base map</label></div>
+      <div class="seg" id="seg-base" style="margin-top:5px"></div>
       <div id="display-toggles"></div>
       <div id="display-sliders"></div>
     </section>
 
     <section class="sec">
-      <h2>Map data</h2>
+      <h2><svg class="ic" style="color:var(--muted)"><use href="#i-download-simple"/></svg>Map data</h2>
       <div class="stats" id="stats" style="margin-top:0"></div>
-      <div class="note">Regions with offline data load instantly at any zoom.</div>
-      <div id="data-toggles"></div>
-      <div id="overpass-opts">
-        <div id="data-sliders"></div>
-        <div class="btns">
-          <button class="btn primary" id="btn-load">Load visible area</button>
-          <button class="btn icon" id="btn-clear" title="Delete downloaded data" aria-label="Delete downloaded data">🗑</button>
-        </div>
-        <div class="note">Outside the offline regions, data is downloaded from the Overpass API (slow, shared service) automatically from zoom 13 and stays cached in the browser. Cells above the built-up threshold are counted instead of downloaded; the threshold applies to areas loaded from now on.</div>
-      </div>
-      <div class="note" id="perf"></div>
+      <details class="more"><summary>How it works</summary><div class="note">The data is prepared in advance from OpenStreetMap and elevation data (buildings, paths, terrain, protected areas, the hidden and noise maps, slopes) and loads straight from this site. Areas outside the prepared regions have no data.</div>
+        <div class="note" id="perf"></div></details>
     </section>
 
     <section class="sec">
-      <h2>Offline use</h2>
+      <h2><svg class="ic" style="color:var(--muted)"><use href="#i-wifi-slash"/></svg>Offline</h2>
       <div class="stats" id="offline-stats" style="margin-top:0">Checking…</div>
       <div class="btns">
-        <button class="btn primary" id="btn-save-area" title="Store the data of the visible map area on this device">Save this area</button>
-        <button class="btn icon" id="btn-clear-offline" title="Delete stored offline data" aria-label="Delete stored offline data">🗑</button>
+        <button class="btn primary" id="btn-save-area" title="Store the data of the visible map area on this device"><svg class="ic"><use href="#i-download-simple"/></svg>Save this area</button>
+        <button class="btn icon" id="btn-clear-offline" title="Delete stored offline data" aria-label="Delete stored offline data"><svg class="ic"><use href="#i-trash"/></svg></button>
       </div>
-      <div class="note">Stores buildings, water, terrain, protected areas, the hidden/noise maps and slopes for the visible area. The app itself and every area you've viewed also stay available offline. The background map only works offline where you've already looked at it (bulk downloads aren't allowed by OpenStreetMap), so for navigation without signal also export your spots as GPX to an offline map app.</div>
-      <div class="note" id="install-hint"><b>iPhone:</b> in Safari tap Share → “Add to Home Screen”. Installed, WildNav opens like an app and iOS keeps its stored data.</div>
+      <div class="note" id="install-hint"><b>iPhone:</b> Share → “Add to Home Screen” keeps the stored data.</div>
+      <details class="more"><summary>How it works</summary><div class="note">Stores buildings, water, terrain, protected areas, the hidden/noise maps and slopes for the visible area. The app itself and every area you've viewed also stay available offline. The background map only works offline where you've already looked at it (bulk downloads aren't allowed by OpenStreetMap), so for navigation without signal also export your spots as GPX to an offline map app. Installed from Safari's “Add to Home Screen”, WildNav opens like an app and iOS keeps its stored data.</div></details>
     </section>
   </div>
 </div>
@@ -391,86 +544,36 @@ body.grey .leaflet-tile-pane,.tiles-grey{filter:grayscale(1) brightness(1.06) co
 // CONFIG
 // ════════════════════════════════════════════════════════════════════
 const TILE_Z = 12, N12 = 1 << TILE_Z;        // data tiles: ~6×6 km at 52°N
-const DB_PREFIX = 'v3/';
-const CACHE_TTL = 30 * 864e5;                 // 30 days
-const AUTO_MIN_Z = 13;
-const MANUAL_MAX_TILES = 150;
-const CONCURRENCY = 2;
 const OFFLINE_URL = 'data/';                  // offline tiles made by build_tiles.py
 const OFFLINE_CONCURRENCY = 6;
 const MARGIN = 0.35;                          // render this much beyond the view
 const MAX_PAD = 220;                          // max padding cells for distance reach
-const MARKER_MIN_Z = 11;
+const MARKER_MIN_Z = 11, BADGE_MIN_Z = 13;       // dots from 11, icon badges from 13
 const DMAX = 3000;                            // density scale top, buildings/km²
 const EARTH_C = 40075016.686;
 const CELL_SIZES = [8, 6, 4, 3, 2];
 const CELL_LABELS = ['coarse', 'low', 'medium', 'high', 'sharp'];
-const MIRRORS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-];
-
+// icon from the sprite above; col = colour (default: text colour)
+const ic = (n, col) => `<svg class="ic"${col ? ` style="color:${col}"` : ''} aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const CATS = {
-  buildings:  { label: 'Buildings',       icon: '🏠', color: '#d64545', group: 'hazard',  weight: 1   },
-  hunting:    { label: 'Hunting stands',  icon: '🎯', color: '#e0902f', group: 'hazard',  weight: 1   },
-  water:      { label: 'Water sources',   icon: '💧', color: '#22b8d6', group: 'attract', weight: 0.8 },
-  rivers:     { label: 'Rivers & lakes',  icon: '🌊', color: '#3f6fd8', group: 'attract', weight: 0.8 },   // offline data only, no markers
-  shelters:   { label: 'Shelters & huts', icon: '🛖', color: '#4caf6a', group: 'attract', weight: 0.8 },
-  campsites:  { label: 'Camp sites',      icon: '⛺', color: '#2f9e8f', group: 'attract', weight: 0   },
-  viewpoints: { label: 'Viewpoints',      icon: '🔭', color: '#9b7fe0', group: 'attract', weight: 0.2 },
-  firepits:   { label: 'Fire pits',       icon: '🔥', color: '#e8743a', group: 'attract', weight: 0.8 },
+  buildings:  { label: 'Buildings',       icon: 'house', color: '#d64545', group: 'hazard',  weight: 1   },
+  hunting:    { label: 'Hunting stands',  icon: 'stand', color: '#e0902f', group: 'hazard',  weight: 1   },
+  rivers:     { label: 'Open water',      icon: 'waves', color: '#3f6fd8', group: 'attract', weight: 0.8 },   // offline data only, no markers
+  water:      { label: 'Water sources',   icon: 'drop', color: '#22b8d6', group: 'attract', weight: 0.8 },
+  shelters:   { label: 'Shelters & huts', icon: 'shelter', color: '#4caf6a', group: 'attract', weight: 0.8 },
+  campsites:  { label: 'Camp sites',      icon: 'tent', color: '#2f9e8f', group: 'attract', weight: 0   },
+  viewpoints: { label: 'Viewpoints',      icon: 'binoculars', color: '#9b7fe0', group: 'attract', weight: 0.2 },
+  firepits:   { label: 'Fire pits',       icon: 'campfire', color: '#e8743a', group: 'attract', weight: 0.8 },
 };
 const CAT_KEYS = Object.keys(CATS);
 const HAZ = CAT_KEYS.filter(k => CATS[k].group === 'hazard');
 const ATT = CAT_KEYS.filter(k => CATS[k].group === 'attract');
 
-function classify(bld, am, tour, nat, leis, mm) {
-  if (am === 'hunting_stand') return 'hunting';
-  if (am === 'shelter' || tour === 'wilderness_hut' || tour === 'alpine_hut') return 'shelters';
-  if (nat === 'spring' || am === 'drinking_water' || mm === 'water_well') return 'water';
-  if (tour === 'camp_site') return 'campsites';
-  if (tour === 'viewpoint') return 'viewpoints';
-  if (leis === 'firepit' || am === 'bbq') return 'firepits';
-  if (bld && bld !== 'no' && bld !== 'ruins') return 'buildings';
-  return null;
-}
-
-// Each data tile is split into SUB×SUB cells (~750 m at 52°N).
-// Step 1 counts buildings per cell (cheap: no geometry).
-// Step 2 downloads building positions only for sparse cells; dense cells are stored as "built-up" with their count.
-const SUB = 8;
-const bbStr = b => [b.s, b.w, b.n, b.e].map(v => v.toFixed(6)).join(',');
-function tileBoundsZ(x, y, z) { const n = 2 ** z; return { w: x / n * 360 - 180, e: (x + 1) / n * 360 - 180, n: yToLat(y / n), s: yToLat((y + 1) / n) }; }
-function subCells(x, y) {
-  const out = [];
-  for (let r = 0; r < SUB; r++) for (let c = 0; c < SUB; c++) out.push(tileBoundsZ(x * SUB + c, y * SUB + r, TILE_Z + 3));
-  return out;
-}
-function cellAreaKm2(b) { const mid = (b.n + b.s) / 2 * Math.PI / 180; return (b.e - b.w) * 111.32 * Math.cos(mid) * (b.n - b.s) * 110.574; }
-function countQuery(cells) {
-  return '[out:csv(::count;false)][timeout:120];\n' + cells.map(b => `nwr["building"](${bbStr(b)});out count;`).join('\n');
-}
-function dataQuery(tile, buildingBoxes) {
-  const tb = bbStr(tile);
-  const bl = buildingBoxes.map(b => `  nwr["building"](${bbStr(b)});`).join('\n');
-  return `[out:csv(::lat,::lon,building,amenity,tourism,natural,leisure,man_made,name;false)][timeout:120];
-(
-${bl}
-  nwr["amenity"~"^(hunting_stand|shelter|drinking_water|bbq)$"](${tb});
-  nwr["tourism"~"^(wilderness_hut|alpine_hut|viewpoint|camp_site)$"](${tb});
-  nwr["natural"="spring"](${tb});
-  nwr["man_made"="water_well"](${tb});
-  nwr["leisure"="firepit"](${tb});
-);
-out center qt;`;
-}
-
 // ════════════════════════════════════════════════════════════════════
 // SETTINGS (persisted)
 // ════════════════════════════════════════════════════════════════════
-const DEFAULTS = { basemap: 'grey', denseKm2: 1000, layer: 'score', markers: true, grey: false,
-  overpass: false, auto: true, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {},
+const DEFAULTS = { basemap: 'grey', layer: 'score', markers: true, grey: false,
+  cbSafe: false, opacity: 0.7, cellIdx: 2, cutH: 650, busyKm2: 30, cutA: 1500, densR: 550, weights: {},
   hideW: 1, quietW: 0.7, slopeW: 1 };
 CAT_KEYS.forEach(k => DEFAULTS.weights[k] = CATS[k].weight);
 const settings = (() => {
@@ -479,7 +582,7 @@ const settings = (() => {
     return { ...DEFAULTS, ...s, weights: { ...DEFAULTS.weights, ...(s.weights || {}) } };
   } catch { return JSON.parse(JSON.stringify(DEFAULTS)); }
 })();
-if (!['score', 'density', 'nearby'].includes(settings.layer)) settings.layer = 'score';
+if (!['score', 'hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].includes(settings.layer)) settings.layer = 'score';
 settings.weights.buildings = 1;                            // no slider: houses always count fully
 for (const k of CAT_KEYS) settings.weights[k] = Math.min(1, settings.weights[k]);   // sliders now go 0..100 %
 let saveT;
@@ -516,29 +619,9 @@ function tilesInBounds(b, limit = 5000) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// INDEXEDDB (tile cache — much larger than localStorage, stores typed arrays)
+// The old Overpass tile cache (IndexedDB 'wildnav') is no longer used: remove it once (only downloaded OSM data)
 // ════════════════════════════════════════════════════════════════════
-const db = (() => {
-  let p;
-  const open = () => p || (p = new Promise((res, rej) => {
-    const r = indexedDB.open('wildnav', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('tiles');
-    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
-  }));
-  const tx = async (mode, fn) => {
-    const d = await open();
-    return new Promise((res, rej) => {
-      const t = d.transaction('tiles', mode), req = fn(t.objectStore('tiles'));
-      t.oncomplete = () => res(req && req.result); t.onerror = () => rej(t.error);
-    });
-  };
-  return {
-    get: k => tx('readonly', s => s.get(k)),
-    put: (k, v) => tx('readwrite', s => s.put(v, k)),
-    count: () => tx('readonly', s => s.count()),
-    clear: () => tx('readwrite', s => s.clear()),
-  };
-})();
+try { if (!localStorage.getItem('wn:idbGone')) { indexedDB.deleteDatabase('wildnav'); localStorage.setItem('wn:idbGone', '1'); } } catch {}
 
 // ════════════════════════════════════════════════════════════════════
 // MAP + STICKY FIELD LAYER
@@ -614,15 +697,13 @@ const markerLayer = L.layerGroup().addTo(map);
 // TILE STORE + LOADER
 // ════════════════════════════════════════════════════════════════════
 const tiles = new Map();          // "x/y" → { b: Float32Array (tile-relative x,y pairs), pois: [...] }
-const busy = new Set(), idbMiss = new Set(), failed = new Set(), queued = new Set();
-const queue = []; let active = 0, mirrorIdx = 0;
+const busy = new Set();
 let jobsTotal = 0, jobsDone = 0, jobsFailed = 0;
 const catCount = Object.fromEntries(CAT_KEYS.map(k => [k, 0]));
-const pendingRects = new Map();
-let denseCells = 0;
 
-// Offline data: tiles listed in data/index.json are read from static files instead of Overpass.
-// They hold every building as a point, so they need no built-up shortcut and no IndexedDB cache.
+// Data: only the prepared tiles listed in data/index.json (build_tiles.py), read as static files.
+// Outside them there is no data (the Overpass download was removed: without the terrain, hidden, noise
+// and slope maps its score would be misleading).
 const offline = new Set();
 const offQueue = []; let offActive = 0, offVersion = '', offB16 = false;   // offB16: buildings as Uint16 (.b16)
 // 'no-cache' asks the server every time (cheap if unchanged), so newly built regions show up at once;
@@ -630,7 +711,7 @@ const offQueue = []; let offActive = 0, offVersion = '', offB16 = false;   // of
 const offlineReady = fetch(OFFLINE_URL + 'index.json', { cache: 'no-cache' })
   .then(r => r.ok ? r.json() : { tiles: [] })
   .then(j => { if (j.z === TILE_Z) { j.tiles.forEach(k => offline.add(k)); offVersion = '?v=' + encodeURIComponent(j.built || ''); offB16 = j.bfmt === 'u16'; } })
-  .catch(() => {});                           // no offline data (or opened as a file): Overpass only
+  .catch(() => {});                           // no data folder (or opened as a file)
 
 // .b16: building centres as Uint16 pairs (tile-relative × 65535, ~10 cm), half the size of Float32
 function b16ToFloat(buf) { const u = new Uint16Array(buf), f = new Float32Array(u.length); for (let i = 0; i < u.length; i++) f[i] = u[i] / 65535; return f; }
@@ -648,60 +729,23 @@ function pumpOffline() {
       // rivers & lake shores (Uint16 pairs, 0..65535 across the tile); missing in older data folders
       fetch(base + '.water.bin' + offVersion).then(r => r.ok ? r.arrayBuffer() : new ArrayBuffer(0)).catch(() => new ArrayBuffer(0)),
     ]).then(([buf, pois, wbuf]) => { busy.delete(k); addTile(x, y, { b: offB16 ? b16ToFloat(buf) : new Float32Array(buf), pois, w: new Uint16Array(wbuf) }); })
-      .catch(err => { console.warn('offline tile failed, using Overpass', k, err); busy.delete(k); offline.delete(k); autoLoad(); })
+      .catch(err => { console.warn('tile failed', k, err); busy.delete(k); jobsFailed++; })
       .finally(() => { offActive--; jobsDone++; pumpOffline(); });
   }
   updateProgress();
 }
 
-function ensureTiles(list, allowFetch) {
+function ensureTiles(list) {
   const c = map.getCenter(), cx = mercX(c.lng) * N12, cy = mercY(c.lat) * N12;
   list.sort((a, b) => ((a.x + .5 - cx) ** 2 + (a.y + .5 - cy) ** 2) - ((b.x + .5 - cx) ** 2 + (b.y + .5 - cy) ** 2));
   for (const { x, y } of list) {
     const k = tkey(x, y);
-    if (tiles.has(k) || busy.has(k) || queued.has(k)) continue;
-    if (offline.has(k)) { enqueueOffline(x, y); continue; }
-    if (idbMiss.has(k)) { if (allowFetch && !failed.has(k)) enqueue(x, y); continue; }
-    busy.add(k);
-    db.get(DB_PREFIX + k).then(rec => {
-      busy.delete(k);
-      if (rec && Date.now() - rec.ts < CACHE_TTL) addTile(x, y, rec);
-      else { idbMiss.add(k); if (allowFetch && !failed.has(k)) enqueue(x, y); }
-    }).catch(() => { busy.delete(k); idbMiss.add(k); });
+    if (!tiles.has(k) && !busy.has(k) && offline.has(k)) enqueueOffline(x, y);
   }
-}
-
-function enqueue(x, y) {
-  const k = tkey(x, y);
-  if (queued.has(k)) return;
-  queued.add(k); queue.push({ x, y }); jobsTotal++;
-  const r = L.rectangle(tileLatLngBounds(x, y), { color: '#f2c14e', weight: 1.5, dashArray: '5 5', fillOpacity: 0.05, interactive: false }).addTo(map);
-  pendingRects.set(k, r);
-  pump();
-}
-
-function pump() {
-  while (active < CONCURRENCY && queue.length) {
-    const { x, y } = queue.shift(), k = tkey(x, y);
-    active++;
-    fetchTile(x, y)
-      .then(() => { const r = pendingRects.get(k); if (r) r.remove(); })
-      .catch(err => {
-        console.warn('tile failed', k, err); failed.add(k); jobsFailed++;
-        const r = pendingRects.get(k); if (r) { r.setStyle({ color: '#d64545', dashArray: null }); setTimeout(() => r.remove(), 4000); }
-      })
-      .finally(() => { pendingRects.delete(k); queued.delete(k); active--; jobsDone++; pump(); });
-  }
-  updateProgress();
-}
-
-function reorderQueue() {
-  const c = map.getCenter(), cx = mercX(c.lng) * N12, cy = mercY(c.lat) * N12;
-  queue.sort((a, b) => ((a.x + .5 - cx) ** 2 + (a.y + .5 - cy) ** 2) - ((b.x + .5 - cx) ** 2 + (b.y + .5 - cy) ** 2));
 }
 
 function updateProgress() {
-  const pending = queue.length + active + offQueue.length + offActive, bar = $('#progress');
+  const pending = offQueue.length + offActive, bar = $('#progress');
   if (pending === 0) {
     bar.classList.remove('on');
     if (jobsTotal) setStatus(jobsFailed ? `${jobsFailed} area${jobsFailed > 1 ? 's' : ''} failed to load — try again` : 'Up to date', jobsFailed ? 'error' : 'ok');
@@ -713,90 +757,13 @@ function updateProgress() {
   setStatus(`Loading area ${Math.min(jobsDone + 1, jobsTotal)} of ${jobsTotal}`, 'busy');
 }
 
-async function overpass(q) {
-  let err;
-  for (let attempt = 0; attempt < MIRRORS.length * 2; attempt++) {
-    const i = (mirrorIdx + attempt) % MIRRORS.length;
-    try {
-      const res = await fetch(MIRRORS[i] + '?data=' + encodeURIComponent(q));
-      if (res.status === 429 || res.status === 504) { await sleep(10000 * (attempt + 1)); throw new Error('server busy ' + res.status); }
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const txt = await res.text();
-      if (txt.trimStart().startsWith('<') || txt.includes('runtime error')) throw new Error('query error');
-      mirrorIdx = i;
-      return txt;
-    } catch (e) { err = e; }
-  }
-  throw err;
-}
-
-let lastTiming = '';
-async function fetchTile(x, y) {
-  const k = tkey(x, y), cells = subCells(x, y);
-  const t0 = performance.now();
-  const counts = (await overpass(countQuery(cells))).split('\n').map(v => v.trim()).filter(Boolean).map(Number);
-  if (counts.length !== cells.length || counts.some(n => !isFinite(n))) throw new Error('unexpected count response');
-  const t1 = performance.now();
-
-  const dense = [], denseSet = new Set();
-  counts.forEach((n, i) => { if (n > settings.denseKm2 * cellAreaKm2(cells[i])) { dense.push([i, n]); denseSet.add(i); } });
-
-  // Building boxes: whole tile if nothing is dense, else row-runs of sparse, non-empty cells
-  let boxes = [];
-  if (!dense.length) { if (counts.some(n => n > 0)) boxes = [tileBoundsZ(x, y, TILE_Z)]; }
-  else {
-    for (let r = 0; r < SUB; r++) {
-      let run = null;
-      for (let c = 0; c < SUB; c++) {
-        const i = r * SUB + c;
-        if (!denseSet.has(i) && counts[i] > 0) { if (run) run.e = cells[i].e; else run = { ...cells[i] }; }
-        else if (run) { boxes.push(run); run = null; }
-      }
-      if (run) boxes.push(run);
-    }
-  }
-
-  const txt = await overpass(dataQuery(tileBoundsZ(x, y, TILE_Z), boxes));
-  const t2 = performance.now();
-  const rec = parseCSV(txt, x, y, denseSet);
-  rec.dense = dense; rec.ts = Date.now();
-  lastTiming = `Last area: counting ${((t1 - t0) / 1000).toFixed(1)} s, loading ${((t2 - t1) / 1000).toFixed(1)} s, ${dense.length} of ${cells.length} cells built-up`;
-  db.put(DB_PREFIX + k, rec).then(updateCacheCount).catch(() => {});
-  idbMiss.delete(k);
-  addTile(x, y, rec);
-}
-
-function parseCSV(txt, x, y, denseSet) {
-  const b = [], pois = [];
-  for (const line of txt.split('\n')) {
-    if (!line) continue;
-    const c = line.split('\t');
-    if (c[0] === '' || c[1] === '') continue;
-    const lat = +c[0], lon = +c[1];
-    if (!isFinite(lat) || !isFinite(lon)) continue;
-    const cat = classify(c[2], c[3], c[4], c[5], c[6], c[7]);
-    if (!cat) continue;
-    if (cat === 'buildings') {
-      const fx = mercX(lon) * N12 - x, fy = mercY(lat) * N12 - y;
-      // skip buildings that belong to a built-up cell (they were caught by a neighbouring box)
-      if (denseSet && denseSet.size && fx >= 0 && fx < 1 && fy >= 0 && fy < 1 &&
-          denseSet.has(Math.floor(fy * SUB) * SUB + Math.floor(fx * SUB))) continue;
-      b.push(fx, fy);
-    }
-    else pois.push({ c: cat, lat, lon, n: c[8] || '' });
-  }
-  return { b: new Float32Array(b), pois };
-}
-
 let dataT;
 function addTile(x, y, rec) {
   const k = tkey(x, y);
   if (tiles.has(k)) return;
   const pois = rec.pois.map(p => ({ ...p, mx: mercX(p.lon), my: mercY(p.lat) }));
-  const dense = rec.dense || [];
-  tiles.set(k, { x, y, b: rec.b, w: rec.w || null, pois, dense });
-  catCount.buildings += rec.b.length / 2 + dense.reduce((s, d) => s + d[1], 0);
-  denseCells += dense.length;
+  tiles.set(k, { x, y, b: rec.b, w: rec.w || null, pois });
+  catCount.buildings += rec.b.length / 2;
   pois.forEach(p => catCount[p.c]++);
   dataChanged();
 }
@@ -813,12 +780,16 @@ function dataChanged() {                         // batch redraws while many til
 // decoded, so they are only loaded from zoom LAND_MIN_Z on and around an open spot card.
 const LAND_MIN_Z = 11, LAND_PX = 512, LAND_WATER = 16, landBusy = new Set();
 const LAND = {
-  0: ['Not mapped', '·'], 1: ['Field / farmland', '🌾'], 2: ['Meadow / grassland', '🌱'],
-  3: ['Orchard, vineyard or allotments', '🍎'], 4: ['Heath', '🌿'], 5: ['Scrub', '🌿'], 6: ['Forest (broadleaved)', '🌳'],
-  7: ['Forest (conifer)', '🌲'], 8: ['Forest (mixed)', '🌳'], 9: ['Park or sports ground', '⚽'], 10: ['Sand, beach or rock', '🏖'],
-  11: ['Quarry, landfill or construction', '🚧'], 12: ['Built-up area / farmyard', '🏘'], 13: ['Cemetery', '✝'],
-  14: ['Wetland / marsh', '💦'], 15: ['Military area', '⚠'], 16: ['Water', '🌊'],
+  0: ['Not mapped', 'circle-dashed'], 1: ['Field / farmland', 'grains'], 2: ['Meadow / grassland', 'plant'],
+  3: ['Orchard, vineyard or allotments', 'orange'], 4: ['Heath', 'flower'], 5: ['Scrub', 'leaf'], 6: ['Forest (broadleaved)', 'tree'],
+  7: ['Forest (conifer)', 'tree-evergreen'], 8: ['Forest (mixed)', 'tree-evergreen'], 9: ['Park or sports ground', 'soccer-ball'], 10: ['Sand, beach or rock', 'mountains'],
+  11: ['Quarry, landfill or construction', 'barricade'], 12: ['Built-up area / farmyard', 'buildings'], 13: ['Cemetery', 'cross'],
+  14: ['Wetland / marsh', 'drop-half'], 15: ['Military area', 'shield-warning'], 16: ['Water', 'waves'],
 };
+// icon for a terrain code, coloured by how good it is for a tent
+const landIc = c => ic(LAND[c][1], LAND_FACTOR[c] >= 1 ? 'var(--good)' : LAND_FACTOR[c] >= 0.5 ? 'var(--mid)' : 'var(--bad)');
+// protected area icon: level 2 = no camping, 1 = check the rules
+const protIc = l => l === 2 ? ic('prohibit', '#f08a8a') : ic('warning', '#e0a04e');
 // How suitable each terrain is for pitching a tent (multiplies the spot score).
 const LAND_FACTOR = { 0: 1, 1: 0.7, 2: 1, 3: 0.3, 4: 1, 5: 0.8, 6: 1, 7: 1, 8: 1, 9: 0.3, 10: 0.8,
   11: 0.1, 12: 0, 13: 0, 14: 0.3, 15: 0, 16: 0 };
@@ -923,7 +894,6 @@ function slopeAt(lat, lon) {
 }
 // cold-air hollow: clearly below the surroundings and fairly flat (on a slope the cold air drains away)
 const isHollow = sl => sl && sl.hollow >= 6 && sl.deg < 6;
-const hollowText = sl => `hollow, about ${sl.hollow} m below the surroundings: cold air and dew collect here on clear, calm nights`;
 // hide map values at a point: { h: 0..1 hidden, db, bike (m) } or null if not loaded
 function hideAt(lat, lon) {
   const gx = mercX(lon) * N12, gy = mercY(lat) * N12, t = tiles.get(tkey(Math.floor(gx), Math.floor(gy)));
@@ -948,16 +918,8 @@ function landAt(lat, lon) {
 
 function updateStats() {
   const poi = CAT_KEYS.filter(k => k !== 'buildings').reduce((s, k) => s + catCount[k], 0);
-  $('#stats').innerHTML = `<b>${fmtN(catCount.buildings)}</b> buildings and <b>${fmtN(poi)}</b> points of interest loaded from <b>${tiles.size}</b> areas<span id="cache-count"></span>`
-    + (denseCells ? `<br><b>${denseCells}</b> built-up cells shown as solid` : '')
-    + (lastTiming ? `<br>${lastTiming}` : '');
+  $('#stats').innerHTML = `<b>${fmtN(catCount.buildings)}</b> buildings and <b>${fmtN(poi)}</b> points of interest loaded from <b>${tiles.size}</b> areas`;
   CAT_KEYS.forEach(k => { const el = $('#cnt-' + k); if (el) el.textContent = catCount[k] ? fmtN(catCount[k]) : ''; });
-  updateCacheCount();
-}
-let ccT;
-function updateCacheCount() {
-  clearTimeout(ccT);
-  ccT = setTimeout(() => db.count().then(n => { const el = $('#cache-count'); if (el) el.textContent = ` · ${n} cached`; }).catch(() => {}), 400);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1067,7 +1029,7 @@ function buildGrid(z, S, x0, y0, gw, gh) {
     cellM[r] = S * EARTH_C * Math.cos(lat * Math.PI / 180) / worldPx;
   }
 
-  const seeds = {}, counts = new Float32Array(N), cov = new Uint8Array(N), dmask = new Uint8Array(N);
+  const seeds = {}, counts = new Float32Array(N), cov = new Uint8Array(N);
   const span = worldPx / N12, k = span / S;
   const tx0 = clampT(Math.floor(gx0 / span)), tx1 = clampT(Math.floor((gx0 + W * S) / span));
   const ty0 = clampT(Math.floor(gy0 / span)), ty1 = clampT(Math.floor((gy0 + H * S) / span));
@@ -1076,7 +1038,7 @@ function buildGrid(z, S, x0, y0, gw, gh) {
     ? [...tiles.values()].filter(inRange)
     : (() => { const a = []; for (let x = tx0; x <= tx1; x++) for (let y = ty0; y <= ty1; y++) { const t = tiles.get(tkey(x, y)); if (t) a.push(t); } return a; })();
 
-  let pts = 0, land = null, prot = null, hid = null, hdb = null, hbike = null, hmask = null, slp = null;
+  let pts = 0, land = null, prot = null, hid = null, hdb = null, hbike = null, hmask = null, slp = null, hol = null;
   for (const t of list) {
     const ox = (t.x * span - gx0) / S, oy = (t.y * span - gy0) / S;
     // coverage mask: only loaded areas get coloured
@@ -1114,11 +1076,15 @@ function buildGrid(z, S, x0, y0, gw, gh) {
       }
     }
     if (t.slope) {                             // slope of each cell centre, ¼ degrees + 1 (0 = no data)
-      slp = slp || new Uint16Array(N);
-      const sc = SLOPE_PX / k, S2 = t.slope.s;
+      slp = slp || new Uint16Array(N); hol = hol || new Uint8Array(N);
+      const sc = SLOPE_PX / k, S2 = t.slope.s, AS = t.slope.asp;
       for (let yy = cy0; yy < cy1; yy++) {
         const py = Math.min(SLOPE_PX - 1, Math.max(0, (yy + 0.5 - oy) * sc | 0)) * SLOPE_PX, row = yy * W;
-        for (let xx = cx0; xx < cx1; xx++) slp[row + xx] = S2[py + Math.min(SLOPE_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0))] + 1;
+        for (let xx = cx0; xx < cx1; xx++) {
+          const j = py + Math.min(SLOPE_PX - 1, Math.max(0, (xx + 0.5 - ox) * sc | 0));
+          slp[row + xx] = S2[j] + 1;
+          hol[row + xx] = (AS[j] & 15) * 2 >= 6 && S2[j] < 24 ? 1 : 0;   // cold hollow, same rule as isHollow()
+        }
       }
     }
 
@@ -1130,20 +1096,6 @@ function buildGrid(z, S, x0, y0, gw, gh) {
         if (fx < 0 || fy < 0 || fx >= W || fy >= H) continue;
         const idx = (fy | 0) * W + (fx | 0);
         sb[idx] = 1; counts[idx]++; pts++;
-      }
-    }
-    if (t.dense.length) {                      // built-up cells: solid houses, count spread evenly
-      const sb = seeds.buildings || (seeds.buildings = new Uint8Array(N)), sk = k / SUB;
-      for (const [ci, n] of t.dense) {
-        const r = (ci / SUB) | 0, c = ci % SUB;
-        const ux0 = Math.floor(ox + c * sk), ux1 = Math.max(ux0 + 1, Math.ceil(ox + (c + 1) * sk));
-        const uy0 = Math.floor(oy + r * sk), uy1 = Math.max(uy0 + 1, Math.ceil(oy + (r + 1) * sk));
-        const per = n / ((ux1 - ux0) * (uy1 - uy0));
-        const xa = Math.max(0, ux0), xb = Math.min(W, ux1), ya = Math.max(0, uy0), yb = Math.min(H, uy1);
-        for (let yy = ya; yy < yb; yy++) for (let xx = xa; xx < xb; xx++) {
-          const idx = yy * W + xx; sb[idx] = 1; counts[idx] += per; dmask[idx] = 1;
-        }
-        pts += n;
       }
     }
     if (t.w && t.w.length) {
@@ -1164,8 +1116,8 @@ function buildGrid(z, S, x0, y0, gw, gh) {
   const fields = {};
   for (const c of CAT_KEYS) fields[c] = seeds[c] ? edtField(seeds[c], W, H, cellM) : null;
   const nw = map.unproject([x0, y0], z), se = map.unproject([x0 + gw * S, y0 + gh * S], z);
-  return { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, dmask, fields, density: null, pts, land, prot,
-        hid, hdb, hbike, hmask, slp,
+  return { valid: true, z, S, x0, y0, gw, gh, pad, W, H, gx0, gy0, cellM, cellMc, counts, cov, fields, density: null, pts, land, prot,
+        hid, hdb, hbike, hmask, slp, hol,
         bounds: L.latLngBounds(nw, se) };
 }
 
@@ -1190,11 +1142,36 @@ function lut(stops) {
   return out;
 }
 // house density (log scale): green (none) → yellow → orange → red → dark red
-const LUT_D = lut([[0, 60, 170, 90, 110], [0.22, 238, 200, 60, 190], [0.45, 240, 128, 40, 225], [0.7, 214, 50, 45, 245], [1, 110, 20, 25, 255]]);
+// (colour-blind friendly: blue → yellow → orange → brown → dark purple)
+let LUT_D, LUT_S;
 // good-to-have: solid blue (close) → transparent (far)
 const LUT_A = lut([[0, 29, 78, 216, 235], [0.5, 59, 130, 246, 130], [1, 96, 165, 250, 0]]);
-// best spots: red (avoid) → clear (ok) → green (great)
-const LUT_S = lut([[0, 176, 84, 70, 80], [0.1, 196, 130, 104, 36], [0.2, 235, 215, 140, 0], [0.4, 150, 210, 120, 90], [1, 20, 115, 55, 235]]);
+// best spots: red (avoid) → pale yellow-green (ok) → green (great); "ok" is a light tint, not clear (owner's wish)
+// (colour-blind friendly: orange → pale yellow → blue-green)
+function buildLuts() {
+  document.body.classList.toggle('cb', !!settings.cbSafe);
+  LUT_D = settings.cbSafe ? lut([[0, 70, 140, 190, 110], [0.22, 235, 215, 120, 190], [0.45, 235, 150, 60, 225], [0.7, 190, 80, 40, 245], [1, 95, 35, 70, 255]])
+    : lut([[0, 60, 170, 90, 110], [0.22, 238, 200, 60, 190], [0.45, 240, 128, 40, 225], [0.7, 214, 50, 45, 245], [1, 110, 20, 25, 255]]);
+  LUT_S = settings.cbSafe ? lut([[0, 190, 95, 40, 80], [0.1, 215, 140, 80, 36], [0.2, 215, 205, 140, 42], [0.4, 120, 195, 185, 100], [1, 15, 105, 110, 235]])
+    : lut([[0, 176, 84, 70, 80], [0.1, 196, 130, 104, 36], [0.2, 210, 208, 140, 42], [0.4, 150, 205, 120, 100], [1, 20, 115, 55, 235]]);
+}
+buildLuts();
+// Factor layers ("why a spot scores"): hidden, quiet night, topography, terrain & rules
+let LUT_H, LUT_Q, LUT_T, TERR;
+const HOLLOW_RGBA = [80, 150, 235, 150];
+function buildFactorLuts() {
+  const cb = settings.cbSafe;
+  LUT_H = cb ? lut([[0, 200, 100, 40, 130], [0.35, 225, 200, 140, 55], [0.6, 110, 190, 180, 110], [1, 10, 95, 110, 230]])      // in plain view -> well hidden
+    : lut([[0, 205, 105, 70, 130], [0.35, 225, 195, 125, 55], [0.6, 140, 200, 120, 110], [1, 25, 110, 60, 230]]);
+  LUT_Q = lut([[0, 170, 150, 215, 0], [0.2, 170, 150, 215, 35], [0.45, 150, 100, 200, 120], [0.8, 115, 40, 150, 200], [1, 75, 20, 95, 240]]);   // purple: fine for everyone
+  LUT_T = cb ? lut([[0, 90, 180, 190, 35], [0.15, 205, 200, 130, 70], [0.4, 230, 160, 70, 150], [0.75, 205, 100, 30, 210], [1, 120, 50, 20, 240]])
+    : lut([[0, 110, 190, 120, 35], [0.15, 200, 200, 120, 70], [0.4, 225, 160, 80, 150], [0.75, 200, 70, 50, 210], [1, 130, 30, 30, 240]]);
+  // terrain for a tent: good / fair / poor / no  (+ hatching for protected areas, drawn in composite)
+  TERR = cb ? [[60, 160, 170, 80], [225, 205, 110, 110], [230, 150, 60, 150], [190, 90, 30, 190]]
+    : [[70, 170, 100, 80], [225, 205, 110, 110], [230, 150, 70, 150], [200, 60, 50, 190]];
+}
+buildFactorLuts();
+const terrClass = c => { const f = LAND_FACTOR[c]; return f >= 1 ? 0 : f >= 0.7 ? 1 : f >= 0.3 ? 2 : 3; };
 
 const imgs = {};
 function getImg(key, w, h) { let im = imgs[key]; if (!im || im.width !== w || im.height !== h) im = imgs[key] = new ImageData(w, h); return im; }
@@ -1214,6 +1191,20 @@ function getImg(key, w, h) { let im = imgs[key]; if (!im || im.width !== w || im
 //  × slope factor (FABDEM, ~47 m): 1 − slopeW × slopePenalty(degrees). A slope never rules a spot out
 //    completely on its own (max. penalty 0.95), since there may be a flat patch the 30 m model misses.
 const slopePenalty = d => d <= 5 ? 0 : d <= 15 ? 0.8 * (d - 5) / 10 : Math.min(0.95, 0.8 + 0.15 * (d - 15) / 10);
+// topography icon: flat / gentle / steep (or the cold hollow), coloured green -> red with the slope (red from 15°)
+const slopeCol = d => { const t = Math.min(1, Math.max(0, (d - 2) / 13));   // green -> red (colour-blind: blue-green -> orange)
+  return settings.cbSafe ? `hsl(${Math.round(175 - 150 * t)} 50% 58%)` : `hsl(${Math.round(140 - 130 * t)} 50% 60%)`; };
+// Drawn on the fly in the icon style (256 grid, 16 px lines, 20 % fill): the base line is always the same, the ramp
+// rises with every whole degree (drawn at twice the real angle, max 40°, so small slopes still show); 0° = flat line.
+function topoIc(d, hollow, col) {
+  if (hollow) return ic('hollow', '#8ecae6');
+  const deg = Math.round(d), a = Math.min(40, deg * 2) * Math.PI / 180, x0 = 32, x1 = 224, y = 208;
+  const top = y - (x1 - x0) * Math.tan(a), c = Math.cos(a), sn = Math.sin(a);
+  const body = deg < 1 ? `<path d="M${x0},${y}H${x1}"/>`
+    : `<path d="M${x0},${y}H${x1}V${top.toFixed(1)}Z" fill="currentColor" opacity="0.2" stroke="none"/><path d="M${x0},${y}H${x1}V${top.toFixed(1)}Z"/>` +
+      (deg >= 3 ? `<path d="M${x0 + 64},${y}A64,64,0,0,0,${(x0 + 64 * c).toFixed(1)},${(y - 64 * sn).toFixed(1)}"/>` : '');
+  return `<svg class="ic" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" style="color:${col || slopeCol(d)}" aria-hidden="true">${body}</svg>`;
+}
 const slopeWord = d => d < 3 ? 'flat' : d < 6 ? 'gentle slope' : d < 12 ? 'sloped, look for a flat patch' : d < 20 ? 'steep' : 'very steep';
 const NOISE_OK = 35, NOISE_BAD = 55;           // dB(A): no penalty below, full penalty above
 const noisePenalty = db => Math.max(0, Math.min(1, (db - NOISE_OK) / (NOISE_BAD - NOISE_OK)));
@@ -1267,6 +1258,36 @@ function composite() {
         if (!cov[i]) { px[o + 3] = 0; continue; }
         const li = Math.min(255, score(i) * 255 | 0) << 2;
         px[o] = LUT_S[li]; px[o + 1] = LUT_S[li + 1]; px[o + 2] = LUT_S[li + 2]; px[o + 3] = LUT_S[li + 3];
+      }
+    }
+    hazLayer.update(R.bounds, img);
+    hazLayer.setOpacity(Math.min(1, settings.opacity + 0.15));
+    attLayer.clear();
+    return;
+  }
+
+  if (FACTOR_LAYERS.includes(settings.layer)) {
+    const img = getImg('h', gw, gh), px = img.data, l = settings.layer;
+    const { hmask: HM, hid: HI, hdb: HD, slp: SL, hol: HO, land: LD, prot: PR } = R;
+    for (let y = 0; y < gh; y++) {
+      let i = (y + pad) * W + pad, o = y * gw * 4;
+      for (let x = 0; x < gw; x++, i++, o += 4) {
+        let T = null, li = -1;
+        if (!cov[i]) T = null;
+        else if (l === 'hidden') { if (HM && HM[i]) { T = LUT_H; li = HI[i]; } }
+        else if (l === 'quiet') { if (HM && HM[i]) { T = LUT_Q; li = Math.max(0, Math.min(255, (HD[i] - 30) * 8.5 | 0)); } }
+        else if (l === 'topo') { if (SL && SL[i]) {
+          if (HO && HO[i]) { px[o] = HOLLOW_RGBA[0]; px[o + 1] = HOLLOW_RGBA[1]; px[o + 2] = HOLLOW_RGBA[2]; px[o + 3] = HOLLOW_RGBA[3]; continue; }
+          T = LUT_T; li = Math.min(255, (SL[i] - 1) * 3.1875 | 0); } }                 // ¼° units: 20° = 80 -> 255
+        else if (LD) {                               // terrain & rules
+          const p = PR ? PR[i] : 0;
+          if (p && ((x + y) & 3) < 2) {              // diagonal hatching over protected areas
+            px[o] = p === 2 ? 200 : 235; px[o + 1] = p === 2 ? 40 : 140; px[o + 2] = p === 2 ? 45 : 40; px[o + 3] = 210; continue;
+          }
+          const c = TERR[terrClass(LD[i])]; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = c[3]; continue;
+        }
+        if (!T) { px[o + 3] = 0; continue; }
+        const q = li << 2; px[o] = T[q]; px[o + 1] = T[q + 1]; px[o + 2] = T[q + 2]; px[o + 3] = T[q + 3];
       }
     }
     hazLayer.update(R.bounds, img);
@@ -1329,13 +1350,16 @@ function render() {
 function rebuildMarkers() {
   markerLayer.clearLayers();
   if (!settings.markers || map.getZoom() < MARKER_MIN_Z) return;
-  const b = map.getBounds().pad(0.2), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast();
+  const b = map.getBounds().pad(0.2), s = b.getSouth(), n = b.getNorth(), w = b.getWest(), e = b.getEast(), badges = map.getZoom() >= BADGE_MIN_Z;
   for (const t of tiles.values()) for (const p of t.pois) {
     if (p.lat < s || p.lat > n || p.lon < w || p.lon > e || settings.weights[p.c] === 0) continue;
-    const c = CATS[p.c];
-    L.circleMarker([p.lat, p.lon], { renderer: poiRenderer, radius: 5, weight: 1.5, color: '#fff', fillColor: c.color, fillOpacity: 1 })
-      .bindTooltip(`${c.icon} ${esc(p.n || c.label)}`, { direction: 'top', offset: [0, -5] })
-      .addTo(markerLayer);
+    const c = CATS[p.c], tip = `${ic(c.icon, c.color)}${esc(p.n || c.label)}`;
+    // zoomed in: round badges with the category icon; further out plain dots (fast, many points)
+    if (badges) L.marker([p.lat, p.lon], { icon: L.divIcon({ className: '', html: `<div class="poi-badge" style="--c:${c.color}">${ic(c.icon)}</div>`,
+        iconSize: [22, 22], iconAnchor: [11, 11] }), keyboard: false, zIndexOffset: -500 })
+      .bindTooltip(tip, { direction: 'top', offset: [0, -11] }).addTo(markerLayer);
+    else L.circleMarker([p.lat, p.lon], { renderer: poiRenderer, radius: 5, weight: 1.5, color: '#fff', fillColor: c.color, fillOpacity: 1 })
+      .bindTooltip(tip, { direction: 'top', offset: [0, -5] }).addTo(markerLayer);
   }
 }
 
@@ -1344,10 +1368,10 @@ function rebuildMarkers() {
 // ════════════════════════════════════════════════════════════════════
 let hoverLL = null, hoverRaf = 0;
 map.on('mousemove', e => { hoverLL = e.latlng; if (!hoverRaf) hoverRaf = requestAnimationFrame(updateHover); });
-map.on('mouseout', () => { hoverLL = null; $('#info').innerHTML = '<span class="muted">Move the cursor over the map.</span>'; });
+map.on('mouseout', () => { hoverLL = null; updateHover(); });
 
 function infoRow(c, val, sub) {
-  return `<div class="irow"><span><i style="background:${c.color}"></i>${c.label}</span><b>${val}</b></div>` + (sub ? `<div class="isub">${esc(sub)}</div>` : '');
+  return `<div class="irow" data-layer="${c.group === 'hazard' ? 'density' : 'nearby'}"><span>${ic(c.icon, c.color)}${c.label}</span><b>${val}</b></div>` + (sub ? `<div class="isub">${esc(sub)}</div>` : '');
 }
 // index of the render-grid cell under a location, or -1 (not drawn / no data there)
 function gridIndex(ll) {
@@ -1358,50 +1382,76 @@ function gridIndex(ll) {
 }
 const scoreWord = s => s < 0.1 ? 'avoid' : s < 0.3 ? 'ok' : s < 0.6 ? 'good' : 'great';
 
+// "Under the cursor": always the same rows in the same order (the owner asked that nothing jumps);
+// a value that isn't there shows "—" (or "zoom in" / "…"), names and hints have a reserved line.
 function updateHover() {
   hoverRaf = 0;
-  if (!hoverLL) return;
-  const i = gridIndex(hoverLL);
-  if (i < 0) { $('#info').innerHTML = (settings.overpass ? '<span class="muted">No data here yet. Zoom in to 13 or press “Load visible area”.</span>'
-    : '<span class="muted">No offline data here. Turn on “Download other areas from OpenStreetMap” to load it.</span>'); return; }
+  const i = hoverLL ? gridIndex(hoverLL) : -1, has = i >= 0;
+  const HL = { Terrain: 'terrain', Topography: 'topo', Hidden: 'hidden', 'Road noise': 'quiet',
+    'Protected area': 'terrain', 'House density': 'density' };
+  const row = (icon, label, val) => `<div class="irow"${HL[label] ? ` data-layer="${HL[label]}"` : ''}><span class="muted">${icon}${label}</span><b>${val}</b></div>`;
+  const sub = t => `<div class="isub">${t || '&nbsp;'}</div>`;
+  const dv = (desc, val) => `<span class="dsc">${desc}</span>${val}`;   // quiet description first, value last (stays in place)
+  const none = '—', landVal = !has ? none : map.getZoom() < LAND_MIN_Z ? 'zoom in' : '…';
   const reach = R.pad * R.cellMc, rows = [];
-  const s = scorer()(i);
-  rows.push(`<div class="irow"><span>Spot score</span><b>${Math.round(s * 100)} % · ${scoreWord(s)}</b></div>`);
-  if (R.land) rows.push(`<div class="irow"><span class="muted">Terrain</span><b>${LAND[R.land[i]][1]} ${LAND[R.land[i]][0]}</b></div>`);
-  if (R.hmask && R.hmask[i]) {
-    const h = R.hid[i] / 255, db = R.hdb[i], bk = R.hbike[i] * 10;
-    rows.push(`<div class="irow"><span class="muted">Hidden</span><b>${Math.round(h * 100)} % · ${hideWord(h)}</b></div>`,
-      `<div class="irow"><span class="muted">Road noise</span><b>${db} dB · ${noiseWord(db)}</b></div>`,
-      `<div class="irow"><span class="muted">Nearest path or track</span><b>${bk >= 2550 ? 'over 2.5 km' : fmtDist(bk)}</b></div>`);
-  }
-  if (R.slp && R.slp[i]) { const d = (R.slp[i] - 1) / 4; rows.push(`<div class="irow"><span class="muted">Slope</span><b>${Math.round(d)}° · ${slopeWord(d)}</b></div>`); }
-  { const sl = slopeAt(hoverLL.lat, hoverLL.lng); if (isHollow(sl)) rows.push(`<div class="irow"><span class="muted">Cold hollow</span><b>🥶 ${sl.hollow} m below surroundings</b></div>`); }
-  const pa = R.prot && R.prot[i] ? protAt(hoverLL.lat, hoverLL.lng) : null;
-  if (pa) rows.push(`<div class="irow"><span class="muted">${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}</span><b>${pa.l === 2 ? 'no camping' : 'check rules'}</b></div>`
-    + (pa.n ? `<div class="isub">${esc(pa.n)}</div>` : ''));
+  const s = has ? scorer()(i) : -1;
+  // legend marker: same value the map colour comes from
+  if (!has) setLegendMark(null);
+  else if (settings.layer === 'score') setLegendMark(s);
+  else if (settings.layer === 'hidden') setLegendMark(R.hmask && R.hmask[i] ? R.hid[i] / 255 : null);
+  else if (settings.layer === 'quiet') setLegendMark(R.hmask && R.hmask[i] ? (R.hdb[i] - 30) / 30 : null);
+  else if (settings.layer === 'topo') setLegendMark(R.slp && R.slp[i] ? (R.slp[i] - 1) / 80 : null);
+  else if (settings.layer === 'terrain') setLegendMark(R.land ? (terrClass(R.land[i]) + 0.5) / 4 : null);
+  else if (settings.layer === 'density') setLegendMark(R.density ? Math.log1p(Math.max(0, R.density[i])) / Math.log1p(DMAX) : null);
+  else { const ka = ATT.filter(c => R.fields[c] && settings.weights[c] > 0); let d = Infinity;
+    for (const c of ka) d = Math.min(d, R.fields[c][i] / settings.weights[c]);
+    setLegendMark(ka.length ? Math.min(1, d / settings.cutA) : null); }
+  rows.push(`<div class="irow" data-layer="score"><span>${ic('star', 'var(--blaze)')}Spot score</span><b>${has ? dv(scoreWord(s), `${Math.round(s * 100)} %`) : none}</b></div>`);
+  rows.push(row(has && R.land ? landIc(R.land[i]) : ic('circle-dashed'), 'Terrain', has && R.land ? LAND[R.land[i]][0] : landVal));
+  if (has && R.slp && R.slp[i]) { const d = (R.slp[i] - 1) / 4, sl = slopeAt(hoverLL.lat, hoverLL.lng), ho = isHollow(sl);
+    rows.push(row(topoIc(d, ho), 'Topography', dv(ho ? 'cold hollow' : slopeWord(d).split(',')[0], `${Math.round(d)}°`))); }
+  else rows.push(row(topoIc(0, false, 'currentColor'), 'Topography', landVal));
+  const hd = has && R.hmask && R.hmask[i];
+  const h = hd ? R.hid[i] / 255 : 0, db = hd ? R.hdb[i] : 0, bk = hd ? R.hbike[i] * 10 : 0;
+  rows.push(row(ic('eye-slash'), 'Hidden', hd ? dv(hideWord(h), `${Math.round(h * 100)} %`) : landVal),
+    row(ic('ear'), 'Road noise', hd ? dv(noiseWord(db), `${db} dB`) : landVal),
+    row(ic('bicycle'), 'Nearest path or track', hd ? (bk >= 2550 ? 'over 2.5 km' : fmtDist(bk)) : landVal));
+  const pa = has && R.prot && R.prot[i] ? protAt(hoverLL.lat, hoverLL.lng) : null;
+  rows.push(row(pa ? protIc(pa.l) : ic('shield-check'), 'Protected area', pa ? (pa.l === 2 ? 'no camping' : 'check rules') : has && R.land ? 'none' : landVal)
+);
   rows.push('<div class="isep"></div>');
+  const ha = has ? analyseSpot({ lat: hoverLL.lat, lon: hoverLL.lng }) : null;   // directions to houses, stands, rivers (within 2 km)
+  const hb = { buildings: ha && ha.house && ha.house.b, hunting: ha && ha.hunting[0] && ha.hunting[0].b, rivers: ha && ha.near.rivers && ha.near.rivers.b };
   for (const k of HAZ) {
-    const f = R.fields[k], d = f ? f[i] : Infinity;
-    rows.push(infoRow(CATS[k], d > reach ? 'over ' + fmtDist(reach) : fmtDist(d)));
+    const f = has && R.fields[k], d = f ? f[i] : Infinity;
+    rows.push(infoRow(CATS[k], !has ? none : d > reach ? 'over ' + fmtDist(reach) : distDir(d, hb[k])));
   }
-  if (R.density) rows.push(`<div class="irow"><span class="muted">House density</span><b>${Math.round(Math.max(0, R.density[i]))} per km²</b></div>`);
-  if (R.dmask[i]) rows.push('<div class="isub" style="margin-left:0">Built-up area: houses counted, not loaded one by one</div>');
+  rows.push(row(ic('buildings'), 'House density', has && R.density ? `${Math.round(Math.max(0, R.density[i]))} per km²` : none));
   rows.push('<div class="isep"></div>');
-  const best = {};
-  for (const t of tiles.values()) for (const p of t.pois) {
+  const best = {}, at = hoverLL && localFrame(hoverLL.lat, hoverLL.lng);
+  if (has) for (const t of tiles.values()) for (const p of t.pois) {
     if (CATS[p.c].group !== 'attract') continue;
-    const d = hdist(hoverLL.lat, hoverLL.lng, p.lat, p.lon);
-    if (!best[p.c] || d < best[p.c].d) best[p.c] = { d, n: p.n };
+    const [d, bb] = at(p.lat, p.lon);
+    if (!best[p.c] || d < best[p.c].d) best[p.c] = { d, b: bb, n: p.n };
   }
-  for (const k of ATT) {
+  for (const k of ATT) {                       // rivers first: the only one without a name line
     if (k === 'rivers') {                      // lines and shores: read the distance field directly
-      const f = R.fields.rivers, d = f ? f[i] : Infinity;
-      rows.push(infoRow(CATS[k], !isFinite(d) || d > 1e9 ? '—' : d > reach ? 'over ' + fmtDist(reach) : fmtDist(d)));
+      const f = has && R.fields.rivers, d = f ? f[i] : Infinity;
+      rows.push(infoRow(CATS[k], !isFinite(d) || d > 1e9 ? none : d > reach ? 'over ' + fmtDist(reach) : distDir(d, hb.rivers)));
       continue;
     }
-    const b = best[k]; rows.push(infoRow(CATS[k], b ? fmtDist(b.d) : '—', b && b.n));
+    // second line: the name, or that it has none, so the line is never empty
+    const b = best[k]; rows.push(infoRow(CATS[k], b ? distDir(b.d, b.b) : none) + sub(b ? (b.n ? esc(b.n) : '<span class="dim">unnamed</span>') : has ? 'none loaded nearby' : ''));
   }
+  // one hint line at the bottom, always there (two lines reserved); in a protected area it names the area
+  const hint = !hoverLL ? 'Move the cursor over the map, or click it to look at a spot.'
+    : pa ? esc(pa.t + (pa.n ? ': ' + pa.n : '')) + (pa.l === 2 ? ' (no camping)' : ' (check the rules)')
+    : has ? (tool === 'inspect' ? 'Click to open this spot.'
+      : tool === 'near' ? 'Click to find the best spots around here.' : 'Clicks are off: pick the magnifier to look at spots.')
+    : 'No data here: this area is outside the prepared regions.';
+  rows.push(`<div class="inote">${hint}</div>`);
   $('#info').innerHTML = rows.join('');
+  markLayerRows();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -1425,7 +1475,7 @@ function storeSpots() {
 let noteT;
 const storeSoon = () => { clearTimeout(noteT); noteT = setTimeout(storeSpots, 400); };
 
-const pinIcon = cls => L.divIcon({ className: 'spot-pin ' + cls, html: '★', iconSize: [28, 28], iconAnchor: [14, 14] });
+const pinIcon = cls => L.divIcon({ className: 'spot-pin ' + cls, html: cls === 'temp' ? '' : ic('star'), iconSize: [26, 26], iconAnchor: [13, 13] });
 function drawSpotPins() {
   spotLayer.clearLayers();
   for (const s of spots)
@@ -1438,7 +1488,7 @@ function renderSpotList() {
   const box = $('#spot-list');
   if (!spots.length) { box.innerHTML = '<div class="muted" style="font-size:12px">No saved spots yet.</div>'; return; }
   box.innerHTML = spots.map((s, j) => `<div class="spot-item" data-j="${j}" tabindex="0">
-      <span class="nm">${esc(s.name || 'Unnamed spot')}</span><span class="st">${'★'.repeat(s.rating || 0)}</span></div>`).join('');
+      <span class="nm">${esc(s.name || 'Unnamed spot')}</span><span class="st">${'★'.repeat(s.rating || 0)}<span class="dim">${'★'.repeat(5 - (s.rating || 0))}</span></span></div>`).join('');
   box.querySelectorAll('.spot-item').forEach(el => {
     const go = () => { const s = spots[+el.dataset.j]; map.setView([s.lat, s.lon], Math.max(map.getZoom(), 14)); openSpot(s); };
     el.onclick = go; el.onkeydown = e => { if (e.key === 'Enter') go(); };
@@ -1454,6 +1504,9 @@ function localFrame(lat0, lon0) {
   };
 }
 const dirName = b => DIRS[Math.round(b / 45) % 8];
+// distance with its compass direction in front, the direction quieter: "SE 1.2 km"
+const dirTag = b => b == null ? '' : `<span class="dir">${dirName(b)}</span>`;
+const distDir = (d, b) => dirTag(b) + fmtDist(d);
 
 function tilesAround(s) {
   const cx = Math.floor(mercX(s.lon) * N12), cy = Math.floor(mercY(s.lat) * N12), out = [];
@@ -1512,13 +1565,14 @@ function sunInfo(s) {
   const day = new Date(cardDate); day.setHours(12, 0, 0, 0);
   const t = SunCalc.getTimes(day, s.lat, s.lon);
   const az = time => { const p = SunCalc.getPosition(time, s.lat, s.lon); return (p.azimuth * 180 / Math.PI + 180) % 360; };
+  const t2 = SunCalc.getTimes(new Date(day.getTime() + 864e5), s.lat, s.lon);   // next morning ends the night
   const moon = SunCalc.getMoonIllumination(day), mt = SunCalc.getMoonTimes(day, s.lat, s.lon);
   const ok = d => d instanceof Date && !isNaN(d);
   return {
-    rise: ok(t.sunrise) ? { t: t.sunrise, b: az(t.sunrise) } : null,
+    rise: ok(t2.sunrise) ? { t: t2.sunrise, b: az(t2.sunrise) } : null,
     set: ok(t.sunset) ? { t: t.sunset, b: az(t.sunset) } : null,
-    goldenEve: ok(t.goldenHour) ? t.goldenHour : null, goldenMorn: ok(t.goldenHourEnd) ? t.goldenHourEnd : null,
-    dusk: ok(t.dusk) ? t.dusk : null, dawn: ok(t.dawn) ? t.dawn : null,
+    goldenEve: ok(t.goldenHour) ? t.goldenHour : null, goldenMorn: ok(t2.goldenHourEnd) ? t2.goldenHourEnd : null,
+    dusk: ok(t.dusk) ? t.dusk : null, dawn: ok(t2.dawn) ? t2.dawn : null,
     moonFrac: moon.fraction, moonPhase: moon.phase, moonRise: ok(mt.rise) ? mt.rise : null, moonSet: ok(mt.set) ? mt.set : null,
   };
 }
@@ -1539,56 +1593,74 @@ function radarSVG(a, sun) {
   }
   if (a.houses500) o.push(`<circle cx="${C}" cy="${C}" r="${r(500)}" fill="#d64545" opacity=".07"/>`);
   DIRS.forEach((n, j) => { if (j % 2) return; const [x, y] = P(RADAR_MAX * 1.16, j * 45);
-    o.push(`<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--muted)">${n}</text>`); });
-  const icon = (d, b, ch, title, size = 15) => { const [x, y] = P(d, b);
-    o.push(`<text x="${x}" y="${y + size * 0.35}" text-anchor="middle" font-size="${size}"><title>${esc(title)}</title>${ch}</text>`); };
-  if (sun) for (const [s, ch, lbl] of [[sun.rise, '🌅', 'Sunrise'], [sun.set, '🌇', 'Sunset']]) if (s) {
+    o.push(`<text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="600" fill="#6b7a77">${n}</text>`); });
+  // icon on a small dark disc so it stays readable over the rings
+  const icon = (d, b, name, col, title, size = 17) => { const [x, y] = P(d, b);
+    o.push(`<g><title>${esc(title)}</title><circle cx="${x}" cy="${y}" r="${size * 0.68}" fill="var(--slate)" stroke="${col}" stroke-opacity=".5"/>` +
+      `<use href="#i-${name}" x="${x - size / 2}" y="${y - size / 2}" width="${size}" height="${size}" style="color:${col}"/></g>`); };
+  if (sun) for (const [s, col, lbl] of [[sun.rise, '#f2c14e', 'Sunrise'], [sun.set, '#e8743a', 'Sunset']]) if (s) {
     const [x, y] = P(RADAR_MAX, s.b);
-    o.push(`<line x1="${C}" y1="${C}" x2="${x}" y2="${y}" stroke="#f2c14e" stroke-width="1.5" stroke-dasharray="4 4" opacity=".7"/>`);
-    icon(RADAR_MAX * 1.02, s.b, ch, `${lbl} ${fmtTime(s.t)}, ${dirName(s.b)}`, 16);
+    o.push(`<line x1="${C}" y1="${C}" x2="${x}" y2="${y}" stroke="${col}" stroke-width="1.5" stroke-dasharray="4 4" opacity=".7"/>`);
+    icon(RADAR_MAX * 1.02, s.b, 'sun-horizon', col, `${lbl} ${fmtTime(s.t)}, ${dirName(s.b)}`, 18);
   }
-  for (const h of a.sectors) if (h) icon(h.d, h.b, '🏠', `Nearest house to the ${dirName(h.b)}: ${fmtDist(h.d)}`, 13);
-  for (const h of a.hunting) icon(h.d, h.b, '🎯', `Hunting stand ${fmtDist(h.d)} ${dirName(h.b)}`, 13);
-  for (const k of ATT) { const n = a.near[k]; if (n) icon(n.d, n.b, CATS[k].icon, `${CATS[k].label}${n.n ? ' – ' + n.n : ''}: ${fmtDist(n.d)} ${dirName(n.b)}`); }
-  o.push(`<text x="${C}" y="${C + 7}" text-anchor="middle" font-size="20" fill="#f2c14e" stroke="#000" stroke-width=".6">★</text></svg>`);
+  for (const h of a.sectors) if (h) icon(h.d, h.b, 'house', CATS.buildings.color, `Nearest house to the ${dirName(h.b)}: ${fmtDist(h.d)}`, 14);
+  for (const h of a.hunting) icon(h.d, h.b, 'stand', CATS.hunting.color, `Hunting stand ${fmtDist(h.d)} ${dirName(h.b)}`, 14);
+  for (const k of ATT) { const n = a.near[k]; if (n) icon(n.d, n.b, CATS[k].icon, CATS[k].color, `${CATS[k].label}${n.n ? ' – ' + n.n : ''}: ${fmtDist(n.d)} ${dirName(n.b)}`); }
+  o.push(`<circle cx="${C}" cy="${C}" r="13" fill="#f2c14e" stroke="#fff" stroke-width="2"/><use href="#i-star" x="${C - 8}" y="${C - 8}" width="16" height="16" style="color:#1d1a10"/></svg>`);
   return o.join('');
 }
 
 function openSpot(s) {
-  cur = s; card.hidden = false; cardScore = null;
+  cur = s; card.hidden = false; cardScore = null; cardBonus = -1;
   $('#hover-sec').hidden = true; panel.scrollTop = 0;
-  offlineReady.then(() => {                      // offline list first, else it might ask Overpass
-    ensureTiles(tilesAround(s), settings.overpass);
+  offlineReady.then(() => {                      // wait for the list of prepared tiles
+    ensureTiles(tilesAround(s));
     ensureLand(tilesAround(s));                  // tiles that are already loaded (the others follow via dataChanged)
   });
   renderCard(); drawSpotPins();
 }
 function closeSpot() { cur = null; card.hidden = true; $('#hover-sec').hidden = false; setSheet(false); drawSpotPins(); }
 
-// One line at the top of the card: score · terrain · protection · nearest house (visible in the collapsed phone sheet)
+// Key facts under the score: a small grid of icon + value + label
 let cardScore = null;
+const cap = t => t[0].toUpperCase() + t.slice(1);
+// Always the same six tiles in the same places; a value shows "…" until its data is in,
+// so nothing moves when data arrives (the owner asked for that).
+const cardInOffline = () => offline.has(tkey(Math.floor(mercX(cur.lon) * N12), Math.floor(mercY(cur.lat) * N12)));
+const cardWait = () => cardInOffline() ? '…' : 'no data';
 function updateCardSummary() {
   const el = $('#sc-summary'); if (!el) return;
-  const parts = [];
-  const lc = landAt(cur.lat, cur.lon); if (lc >= 0) parts.push(`${LAND[lc][1]} ${esc(LAND[lc][0])}`);
-  const pa = protAt(cur.lat, cur.lon); if (pa) parts.push(`${pa.l === 2 ? '⛔' : '⚠'} ${esc(pa.t)}`);
-  const hd = hideAt(cur.lat, cur.lon); if (hd) parts.push(`👁 ${hideWord(hd.h)}`);
-  const sl = slopeAt(cur.lat, cur.lon); if (sl && sl.deg >= 6) parts.push(`⛰ ${Math.round(sl.deg)}°`);
-  if (isHollow(sl)) parts.push('🥶 cold hollow');
-  const a = cardAnalysis; if (a && a.house) parts.push(`🏠 ${fmtDist(a.house.d)} ${dirName(a.house.b)}`);
-  const wx = wxCache.get(`${cur.lat.toFixed(2)},${cur.lon.toFixed(2)}`), n0 = wx && wx.nights[0];
-  if (n0) parts.push(`${n0.rain >= 1 ? '🌧' : '🌙'} ${Math.round(n0.tmin)}°${n0.rain >= 0.1 ? `, ${n0.rain.toFixed(1)} mm` : ''}`);
-  el.innerHTML = parts.map(p => `<span>${p}</span>`).join('') || '<span class="muted">Loading…</span>';
+  const facts = [], f = (icon, val, lbl, cls = '') => facts.push(`<div class="fact ${cls}">${icon}<div><b>${val}</b><small>${lbl}</small></div></div>`);
+  const off = ic('circle-dashed', 'var(--line)'), w = cardWait();
+  // terrain (+ protected area: red/orange edge and the rule as the label)
+  const lc = landAt(cur.lat, cur.lon), pa = protAt(cur.lat, cur.lon);
+  if (lc >= 0 && pa) f(protIc(pa.l), esc(LAND[lc][0]), `${esc(pa.t)}: ${pa.l === 2 ? 'no camping' : 'check the rules'}`, pa.l === 2 ? 'bad' : 'warn');
+  else if (lc >= 0) f(landIc(lc), esc(LAND[lc][0]), 'terrain, not protected');
+  else f(off, w, 'terrain');
+  const hd = hideAt(cur.lat, cur.lon);
+  f(hd ? ic('eye-slash', 'var(--good)') : off, hd ? cap(hideWord(hd.h)) : w, 'from roads & houses');
+  const a = cardAnalysis, aOk = a && !a.missing;
+  f(aOk ? ic('house', CATS.buildings.color) : off, aOk ? (a.house ? distDir(a.house.d, a.house.b) : `over ${fmtDist(RADAR_MAX)}`) : '…', 'nearest house');
+  // slope (+ cold hollow in the same tile)
+  const sl = slopeAt(cur.lat, cur.lon);
+  if (!sl) f(off, w, 'topography');
+  else if (isHollow(sl)) f(topoIc(sl.deg, true), 'Cold hollow', `${sl.hollow} m deep · ${Math.round(sl.deg)}°`);
+  else f(topoIc(sl.deg), sl.deg < 3 ? 'Flat' : `${Math.round(sl.deg)}° slope`, sl.deg < 3 ? 'topography' : slopeWord(sl.deg).split(',')[0]);
+  f(hd ? ic('ear', '#b39ddb') : off, hd ? `${hd.db} dB` : w, hd ? noiseWord(hd.db) : 'road noise');
+  const key = `${cur.lat.toFixed(2)},${cur.lon.toFixed(2)}`, wx = wxCache.get(key), n0 = wx && wx.nights[0];
+  f(n0 ? ic(wxIcon(n0), '#8ecae6') : off, n0 ? `${Math.round(n0.tmin)}° · ${n0.rain >= 0.1 ? n0.rain.toFixed(1) + ' mm' : 'dry'}` : wxFailed.has(key) ? 'offline' : '…', 'tonight');
+  el.innerHTML = facts.join('');
 }
 
 // Collapsible card sections (<details>); which ones are open is remembered in this browser
 const cardOpen = new Set((() => { try { return JSON.parse(localStorage.getItem('wn:cardOpen')) || []; } catch { return []; } })());
-const cardSec = (key, title, body) => `<details class="sc-sec" data-sec="${key}"${cardOpen.has(key) ? ' open' : ''}>
-  <summary><span class="t">${title}</span><span class="s" id="sum-${key}"></span></summary><div class="sc-body">${body}</div></details>`;
+const cardSec = (key, icon, title, body) => `<details class="sc-sec" data-sec="${key}"${cardOpen.has(key) ? ' open' : ''}>
+  <summary>${ic(icon)}<span class="t">${title}</span><svg class="ic car" aria-hidden="true"><use href="#i-caret-right"/></svg><span class="s" id="sum-${key}">…</span></summary><div class="sc-body">${body}</div></details>`;
 const setSum = (key, html) => { const el = $('#sum-' + key); if (el) el.innerHTML = html; };
 function updateNotesSummary() {
   if (!cur) return;
-  const st = cur.rating ? '<span style="color:var(--blaze)">' + '★'.repeat(cur.rating) + '</span>' : '';
+  // always five stars (given ones yellow), so the note text after them doesn't move
+  const st = `<span style="color:var(--blaze)">${'★'.repeat(cur.rating || 0)}</span><span class="dim">${'★'.repeat(5 - (cur.rating || 0))}</span>`;
   setSum('notes', [st, cur.note ? esc(cur.note.split('\n')[0].slice(0, 40)) : (cur.id ? 'no notes yet' : 'add notes, then save')].filter(Boolean).join(' · '));
 }
 
@@ -1596,20 +1668,19 @@ function renderCard() {
   const s = cur, saved = !!s.id;
   card.innerHTML = `
     <div class="sc-head"><input id="sc-name" value="${esc(s.name || '')}" placeholder="${saved ? 'Unnamed spot' : 'Name this spot'}" aria-label="Spot name">
-      <button class="sc-x" id="sc-close" title="Close" aria-label="Close">×</button></div>
+      <button class="sc-x" id="sc-close" title="Close" aria-label="Close">${ic('x')}</button></div>
     <div class="sc-top" id="sc-top"></div>
     <div class="sc-summary" id="sc-summary"></div>
     <div class="sc-btns">
-      ${saved ? '<button class="btn" id="sc-del">Delete</button>' : '<button class="btn primary" id="sc-save">Save spot</button>'}
-      <button class="btn" id="sc-share" title="Copy a link to this spot">Copy link</button>
-      <button class="btn" id="sc-zoom">Zoom to</button>
+      ${saved ? `<button class="btn" id="sc-del">${ic('trash')}Delete</button>` : `<button class="btn primary" id="sc-save">${ic('star')}Save spot</button>`}
+      <button class="btn" id="sc-share" title="Copy a link to this spot">${ic('link')}Copy link</button>
+      <button class="btn" id="sc-zoom">${ic('magnifying-glass-plus')}Zoom to</button>
     </div>
-    ${cardSec('score', 'Why this score', '<div id="sc-score"></div>')}
-    ${cardSec('around', 'Around the spot', '<div id="sc-radar"></div><div class="near" id="sc-near"></div>')}
-    ${cardSec('wx', 'Weather at night', '<div class="near" id="sc-wx"></div>')}
-    ${cardSec('sun', 'Sun &amp; moon', `<div style="font-size:12px;margin-bottom:6px"><span class="muted">Date </span><input type="date" class="sc-date" id="sc-date" value="${cardDate.getFullYear()}-${String(cardDate.getMonth() + 1).padStart(2, '0')}-${String(cardDate.getDate()).padStart(2, '0')}" aria-label="Date"></div>
-      <div class="near" id="sc-sun"></div>`)}
-    ${cardSec('notes', 'Notes &amp; rating', `<div class="sc-stars" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" class="${n <= (s.rating || 0) ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
+    ${cardSec('score', 'chart-bar', 'Score', '<div id="sc-score"></div>')}
+    ${cardSec('around', 'compass', 'Nearby', '<div id="sc-radar"></div><div class="near" id="sc-near"></div>')}
+    ${cardSec('wx', 'moon-stars', 'Night', `<div style="font-size:12.5px;margin:0 0 8px 30px"><span class="muted">Night of </span><input type="date" class="sc-date" id="sc-date" value="${cardDate.getFullYear()}-${String(cardDate.getMonth() + 1).padStart(2, '0')}-${String(cardDate.getDate()).padStart(2, '0')}" aria-label="Date"></div>
+      <div class="near" id="sc-sun"></div><div class="near" id="sc-wx" style="margin-top:9px;padding-top:9px;border-top:1px solid var(--line)"></div>`)}
+    ${cardSec('notes', 'notepad', 'Notes', `<div class="sc-stars" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-n="${n}" class="${n <= (s.rating || 0) ? 'on' : ''}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
       <textarea id="sc-note" placeholder="Notes: access, ground, where to pitch, water, who you met…">${esc(s.note || '')}</textarea>
       <div class="sc-sub">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${s.created ? ' · saved ' + new Date(s.created).toLocaleDateString() : ''}</div>`)}`;
   card.querySelectorAll('details.sc-sec').forEach(d => d.ontoggle = () => {
@@ -1647,23 +1718,30 @@ function renderCard() {
 // ── Weather at night: Open-Meteo forecast (free, no key, CC BY 4.0), fetched only when a card opens,
 // so only that spot's position is sent. One row per night (20:00 – 08:00 local time).
 const wxCache = new Map();                       // rounded position -> { t, nights }
+const wxFailed = new Set();                      // positions whose forecast could not be fetched
 const WX_TTL = 30 * 60e3;
 async function loadWeather(s) {
   const el = () => cur === s && !card.hidden ? $('#sc-wx') : null;
   const key = `${s.lat.toFixed(2)},${s.lon.toFixed(2)}`, hit = wxCache.get(key);
   if (hit && Date.now() - hit.t < WX_TTL) { renderWeather(el(), hit.nights); return; }
-  if (el()) el().innerHTML = '<span></span><span class="muted">Loading the forecast…</span><b></b>';
+  wxFailed.delete(key);
+  if (el()) renderWeather(el(), null);            // placeholder rows, same size as the real ones
   try {
-    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + s.lat.toFixed(3) + '&longitude=' + s.lon.toFixed(3) +
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + s.lat.toFixed(3) + '&longitude=' + s.lon.toFixed(3) +
       '&hourly=temperature_2m,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover' +
-      '&timezone=auto&forecast_days=7');
-    if (!r.ok) throw new Error(r.status);
-    const nights = weatherNights((await r.json()).hourly);
-    wxCache.set(key, { t: Date.now(), nights });
+      '&timezone=auto&forecast_days=7';
+    let data;
+    for (let k = 0; ; k++) {                       // up to 3 tries (2 s, 5 s apart): one network hiccup shouldn't mean "offline"
+      try { const r = await fetch(url); if (!r.ok) throw new Error(r.status); data = await r.json(); break; }
+      catch (e) { if (k >= 2 || !navigator.onLine) throw e; await new Promise(res => setTimeout(res, k ? 5000 : 2000)); }
+    }
+    const nights = weatherNights(data.hourly);
+    wxCache.set(key, { t: Date.now(), nights }); wxFailed.delete(key);
     renderWeather(el(), nights);
   } catch {
-    if (el()) el().innerHTML = '<span>📡</span><span class="muted">No forecast: the weather needs an internet connection.</span><b></b>';
-    if (el()) setSum('wx', 'offline');
+    wxFailed.add(key); if (cur === s) updateCardSummary();
+    if (el()) el().innerHTML = `<span>${ic('wifi-slash')}</span><span class="muted">No forecast: the weather needs an internet connection.</span><b></b>`;
+    if (cur === s) { nightSum.wx = 'weather offline'; setNightSum(); }
   }
 }
 function weatherNights(h) {
@@ -1682,73 +1760,88 @@ function weatherNights(h) {
   });
   return [...nights.values()].filter(n => n.n >= 10).map(n => ({ ...n, cloud: n.cloud / n.n }));
 }
+const wxIcon = n => n.rain >= 1 ? 'cloud-rain' : n.gust >= 50 ? 'wind' : n.cloud < 20 ? 'moon-stars' : n.cloud < 85 ? 'cloud-moon' : 'cloud';
+// Card rows: icon | title + second line | value. Rows whose second line always fits one line come first;
+// rows that can grow (names, lists, warnings) are at the end of a section, so nothing above them moves.
+const cardRow = (icon, title, val, sub) => `<span>${icon}</span><span>${title}<span class="n">${sub}</span></span><b>${val}</b>`;
+const cardOff = () => ic('circle-dashed', 'var(--line)');
+// "Night" section summary: sunset (from SunCalc) + tonight's weather (from Open-Meteo), whichever is known
+const nightSum = { sun: '', wx: '' };
+const setNightSum = () => setSum('wx', [nightSum.sun, nightSum.wx].filter(Boolean).join(' · ') || '…');
+
 function renderWeather(el, nights) {
   if (!el) return;
+  const sl = cur && slopeAt(cur.lat, cur.lon), off = cardOff();
+  const hollowRow = isHollow(sl) ? cardRow(ic('hollow', '#8ecae6'), `Cold hollow, ${sl.hollow} m deep`, '', 'up to 5° colder on clear, calm nights')
+    : sl ? cardRow(topoIc(sl.deg), 'Not in a hollow', '', 'the forecast should fit this spot')
+    : cardRow(off, '…', '', 'checking for cold air at night');
+  const credit = '<span></span><span class="n" style="grid-column:2/4">Weather data by <a href="https://open-meteo.com/" style="color:inherit">Open-Meteo.com</a> (CC BY 4.0)</span>';
+  if (!nights) {                                   // still loading: six rows shaped like the real ones
+    el.innerHTML = Array(6).fill(cardRow(off, '<span class="muted">…</span>', '', 'loading the forecast<br>&nbsp;')).join('') + hollowRow + credit;
+    return;
+  }
   const today = new Date(); today.setHours(12, 0, 0, 0);
-  const sky = c => c < 20 ? 'clear sky ✨' : c < 50 ? 'partly cloudy' : c < 85 ? 'cloudy' : 'overcast';
+  const sky = c => c < 20 ? 'clear sky' : c < 50 ? 'partly cloudy' : c < 85 ? 'cloudy' : 'overcast';
+  const gusty = [];
   const rows = nights.slice(0, 6).map(n => {
     const days = Math.round((n.date - today) / 864e5), on = n.date.toDateString() === new Date(cardDate).toDateString();
     const name = days === 0 ? 'Tonight' : days === 1 ? 'Tomorrow night' : n.date.toLocaleDateString('en-GB', { weekday: 'long' }) + ' night';
-    const warn = [n.tmin <= 0 ? '❄ frost' : '', n.gust >= 60 ? '⚠ strong gusts: avoid old trees and dead branches' : ''].filter(Boolean).join(' · ');
-    const ic = n.rain >= 1 ? '🌧' : n.gust >= 50 ? '💨' : n.cloud < 20 ? '🌌' : '☁';
-    return `<span>${ic}</span><span>${on ? '<b>' + name + '</b>' : name}<span class="n">${n.rain >= 0.1 ? `rain ${n.rain.toFixed(1)} mm` : 'dry'} (${n.prob} %) · ` +
-      `wind ${Math.round(n.wind)} km/h from ${dirName(n.dir)}, gusts ${Math.round(n.gust)} · ${sky(n.cloud)}${warn ? ' · ' + warn : ''}</span></span><b>min ${Math.round(n.tmin)}°</b>`;
+    if (n.gust >= 60) gusty.push(name.toLowerCase());
+    // always two short lines: rain + sky, then wind
+    return cardRow(ic(wxIcon(n), '#8ecae6'), on ? '<b>' + name + '</b>' : name,
+      `${n.tmin <= 0 ? ic('snowflake', '#8ecae6') + ' ' : ''}min ${Math.round(n.tmin)}°`,
+      `${n.rain >= 0.1 ? `rain ${n.rain.toFixed(1)} mm` : 'dry'} (${n.prob} %) · ${sky(n.cloud)}<br>` +
+      `${n.gust >= 60 ? ic('warning', '#e0a04e') + ' ' : ''}wind ${Math.round(n.wind)} km/h from ${dirName(n.dir)}, gusts ${Math.round(n.gust)}`);
   });
   const n0 = nights[0];
-  setSum('wx', n0 ? `tonight ${Math.round(n0.tmin)}°, ${n0.rain >= 0.1 ? n0.rain.toFixed(1) + ' mm rain' : 'dry'}${n0.gust >= 50 ? ', gusty' : ''}` : '');
-  updateCardSummary();
-  const sl = cur && slopeAt(cur.lat, cur.lon);
-  if (rows.length && isHollow(sl)) rows.push(`<span>🥶</span><span>Colder than forecast<span class="n">this spot is in a hollow (${sl.hollow} m below the surroundings): on clear, calm nights it can be 2–5° colder</span></span><b></b>`);
-  el.innerHTML = (rows.join('') || '<span></span><span class="muted">No forecast available.</span><b></b>') +
-    '<span></span><span class="n" style="grid-column:2/4">Weather data by <a href="https://open-meteo.com/" style="color:inherit">Open-Meteo.com</a> (CC BY 4.0)</span>';
+  nightSum.wx = n0 ? `tonight ${Math.round(n0.tmin)}°, ${n0.rain >= 0.1 ? n0.rain.toFixed(1) + ' mm rain' : 'dry'}${n0.gust >= 50 ? ', gusty' : ''}` : '';
+  setNightSum(); updateCardSummary();
+  const gustRow = gusty.length ? cardRow(ic('warning', '#e0a04e'), 'Strong gusts', '', `${gusty.join(', ')}: avoid old trees and dead branches`) : '';
+  el.innerHTML = (rows.join('') || '<span></span><span class="muted">No forecast available.</span><b></b>') + hollowRow + gustRow + credit;
 }
 
 function updateCardAround() {
   if (!cur || card.hidden) return;
-  const a = cardAnalysis = analyseSpot(cur), sun = sunInfo(cur);
+  const a = cardAnalysis = analyseSpot(cur), sun = sunInfo(cur), wait = a.missing ? '…' : null;
   $('#sc-radar').innerHTML = radarSVG(a, sun);
-  const row = (ic, label, val, sub) => `<span>${ic}</span><span>${label}${sub ? `<span class="n">${esc(sub)}</span>` : ''}</span><b>${val}</b>`;
-  const rows = [];
-  if (a.missing) rows.push(row('⏳', '<span class="muted">Loading data around the spot…</span>', ''));
-  const here = landAt(cur.lat, cur.lon), mix = terrainMix(cur);
-  if (here >= 0) rows.push(row(LAND[here][1], 'Terrain here', esc(LAND[here][0]),
-    mix ? 'within 100 m: ' + mix.filter(m => m.f >= 0.05).map(m => `${LAND[m.c][0].toLowerCase()} ${Math.round(m.f * 100)} %`).join(', ') : ''));
-  else if (offline.has(tkey(Math.floor(mercX(cur.lon) * N12), Math.floor(mercY(cur.lat) * N12))))
-    rows.push(row('⏳', '<span class="muted">Loading terrain…</span>', ''));
-  const pa = protAt(cur.lat, cur.lon);
-  if (pa) rows.push(row(pa.l === 2 ? '⛔' : '⚠', `<b>${esc(pa.t)}</b>`, pa.l === 2 ? 'no camping' : 'check rules',
-    (pa.n ? pa.n + ' · ' : '') + (pa.l === 2 ? 'camping is not allowed here; often you must also stay on the paths'
-      : 'camping is often restricted; check the local rules')));
-  rows.push(row('🏠', 'Nearest house', a.house ? `${fmtDist(a.house.d)} ${dirName(a.house.b)}` : `over ${fmtDist(RADAR_MAX)}`,
-    a.houses500 ? `${a.houses500} building${a.houses500 > 1 ? 's' : ''} within 500 m` : 'none within 500 m'));
-  if (a.hunting.length) rows.push(row('🎯', 'Hunting stands', `${fmtDist(a.hunting[0].d)} ${dirName(a.hunting[0].b)}`,
-    a.hunting.length > 1 ? `${a.hunting.length} within 1 km` : ''));
+  // Around the spot = the useful places only (terrain, houses etc. are in "Why this score")
+  const rows = [cardRow(ic('plus-circle', CATS.water.color), 'Useful places bonus', cardScore === null ? '' : Math.round(cardBonus * 100) + ' %',
+    `places within ${fmtDist(settings.cutA)} add to the score`)];
   for (const k of ATT) { const n = a.near[k];
-    rows.push(row(CATS[k].icon, CATS[k].label, n ? `${fmtDist(n.d)} ${dirName(n.b)}` : '—', n && n.n)); }
-  $('#sc-near').innerHTML = rows.join('');
-  setSum('around', ATT.map(k => a.near[k] ? { k, d: a.near[k].d } : null).filter(Boolean).sort((u, v) => u.d - v.d).slice(0, 3)
-    .map(n => `${CATS[n.k].icon} ${fmtDist(n.d)}`).join(' · ') || 'nothing useful within 2 km');
-  $('#sc-sun').innerHTML = !sun ? row('☀', '<span class="muted">Sun times unavailable (SunCalc did not load)</span>', '') : [
-    row('🌅', 'Sunrise', sun.rise ? `${fmtTime(sun.rise.t)} ${dirName(sun.rise.b)}` : '—', `first light ${fmtTime(sun.dawn)}, golden hour until ${fmtTime(sun.goldenMorn)}`),
-    row('🌇', 'Sunset', sun.set ? `${fmtTime(sun.set.t)} ${dirName(sun.set.b)}` : '—', `golden hour from ${fmtTime(sun.goldenEve)}, dark ${fmtTime(sun.dusk)}`),
-    row(sun.moonPhase < 0.5 ? '🌔' : '🌖', 'Moon', Math.round(sun.moonFrac * 100) + ' % lit', `${moonName(sun.moonPhase)} · rises ${fmtTime(sun.moonRise)}, sets ${fmtTime(sun.moonSet)}`),
+    rows.push(cardRow(ic(CATS[k].icon, CATS[k].color), CATS[k].label, wait || (n ? distDir(n.d, n.b) : '—'),
+      wait ? 'loading…' : !n ? `none within ${fmtDist(RADAR_MAX)}` : (n.n ? esc(n.n) : k === 'rivers' ? 'river, stream or lake shore' : '<span class="dim">unnamed</span>'))); }
+  $('#sc-near').innerHTML = rows.map(r => lk('nearby', r)).join(''); markLayerRows();
+  setSum('around', wait ? 'loading…' : ATT.map(k => a.near[k] ? { k, d: a.near[k].d } : null).filter(Boolean).sort((u, v) => u.d - v.d).slice(0, 3)
+    .map(n => `${ic(CATS[n.k].icon, CATS[n.k].color)} ${distDir(n.d, a.near[n.k].b)}`).join(' · ') || 'nothing useful within 2 km');
+  // Night: in the order of the night, each with one short second line
+  $('#sc-sun').innerHTML = !sun ? cardRow(ic('sun'), '<span class="muted">Sun times unavailable</span>', '', 'SunCalc did not load') : [
+    cardRow(ic('sun-horizon', '#e8743a'), 'Sunset', sun.set ? dirTag(sun.set.b) + fmtTime(sun.set.t) : '—', `golden hour ${fmtTime(sun.goldenEve)} · dark ${fmtTime(sun.dusk)}`),
+    cardRow(ic('moon', '#e6ebe8'), 'Moon', Math.round(sun.moonFrac * 100) + ' % lit', `${moonName(sun.moonPhase)} · rises ${fmtTime(sun.moonRise)}`),
+    cardRow(ic('sun-horizon', '#f2c14e'), 'Sunrise', sun.rise ? dirTag(sun.rise.b) + fmtTime(sun.rise.t) : '—', `first light ${fmtTime(sun.dawn)} · golden till ${fmtTime(sun.goldenMorn)}`),
   ].join('');
+  nightSum.sun = sun && sun.set ? `sunset ${fmtTime(sun.set.t)}` : ''; setNightSum();
   { const wx = wxCache.get(`${cur.lat.toFixed(2)},${cur.lon.toFixed(2)}`); if (wx) renderWeather($('#sc-wx'), wx.nights); }   // e.g. hollow note once the slope map is in
-  if (sun) setSum('sun', `🌇 ${fmtTime(sun.set && sun.set.t)} · ${sun.moonPhase < 0.5 ? '🌔' : '🌖'} ${Math.round(sun.moonFrac * 100)} %`);
   updateCardSummary();
+  if (cardScore !== null) updateCardScore();      // houses, hunting stands and terrain mix come from this analysis
 }
 
+let cardBonus = 0;
 function updateCardScore() {
   if (!cur || card.hidden) return;
-  const el = $('#sc-score'), i = gridIndex(L.latLng(cur.lat, cur.lon));
+  const el = $('#sc-score'), i = gridIndex(L.latLng(cur.lat, cur.lon)), off = cardOff();
+  // fixed rows first (always one short second line), rows that can grow last
+  const ph = t => cardRow(off, t, '', '…');
   if (i < 0) { $('#sc-top').innerHTML = '<span class="muted" style="font-size:12px">Move the map so the spot is in view (with data) to see its score.</span>';
-    el.innerHTML = ''; setSum('score', ''); cardScore = null; updateCardSummary(); return; }
+    el.innerHTML = `<div class="near">${['Terrain', 'Topography', 'Away from houses', 'Hunting stands', 'Hidden from paths & houses', 'Quiet night', 'Access',
+      ].map(ph).join('')}${cardRow(off, 'Terrain within 100 m', '', '…<br>&nbsp;')}${ph('Protected area')}</div>`;
+    setSum('score', 'spot not in view'); cardScore = null; updateCardSummary(); return; }
   const p = { cats: [] }, pct = v => Math.round(v * 100) + ' %';
   let s = scorer()(i, p);
   // The map grid is coarse (tens of metres); for the card use the exact terrain and protection at the spot.
   const exLand = landAt(cur.lat, cur.lon), exProt = protAt(cur.lat, cur.lon);
   if (exLand >= 0) { p.land = exLand; p.qLand = LAND_FACTOR[exLand]; }
   if (exLand >= 0 || exProt) { p.prot = exProt ? exProt.l : 0; p.qProt = PROT_FACTOR[p.prot]; }
+  p.qHouses = Math.min(p.qDist, p.qDens);
   const exHide = hideAt(cur.lat, cur.lon);
   if (exHide) {
     Object.assign(p, { hidden: exHide.h, db: exHide.db, bike: exHide.bike, qHouses: Math.sqrt(Math.min(p.qDist, p.qDens)),
@@ -1760,30 +1853,46 @@ function updateCardScore() {
     qSlope: 1 - settings.slopeW * slopePenalty(exSlope.deg) });
   s = p.qProt * p.qLand * p.qSlope * p.quiet * (0.4 + 0.6 * p.bonus);
   const bar = (v, col) => `<div class="sc-bar"><i style="width:${Math.max(2, v * 100)}%;background:${col}"></i></div>`;
-  const lim = [];
-  // the score uses the render grid; for the text prefer the exact distance from the card's analysis
-  const houseD = cardAnalysis && cardAnalysis.house ? cardAnalysis.house.d : p.dB;
-  if (p.qDist < 1) lim.push(`nearest house ${fmtDist(houseD)} (want ${fmtDist(settings.cutH)})`);
-  if (p.qDens < 1) lim.push(`${Math.round(p.dens)} houses/km² (limit ${settings.busyKm2})`);
-  if (p.qHunt < 1) lim.push(`hunting stand ${fmtDist(p.dh)} away`);
-  const col = s < 0.1 ? '#f08a8a' : s < 0.3 ? 'var(--blaze)' : '#9fd4a8';
-  $('#sc-top').innerHTML = `<b style="color:${col}">${pct(s)} · ${scoreWord(s)}</b>${bar(s, s < 0.1 ? '#d64545' : s < 0.3 ? '#e0b24e' : '#4caf6a')}`;
-  const parts = [['terrain', p.qLand], ['protected area', p.qProt], ['slope', p.slope >= 0 ? p.qSlope : 1], ['houses', p.qHouses * p.qHunt],
-    ['hidden', p.hidden >= 0 ? p.qHide : 1], ['traffic noise', p.hidden >= 0 ? p.qNoise : 1]].sort((u, v) => u[1] - v[1]);
-  setSum('score', parts[0][1] < 0.7 ? `limited by ${parts[0][0]} (${pct(parts[0][1])})` : `no big problems · useful places ${pct(p.bonus)}`);
-  el.innerHTML = `<div class="near">
-      ${p.prot ? `<span>${p.prot === 2 ? '⛔' : '⚠'}</span><span>Protected area<span class="n">${p.prot === 2 ? 'nature reserve or national park: no camping' : 'landscape protection / Natura 2000: check the rules'}</span></span><b>${pct(p.qProt)}</b>` : ''}
-      ${p.land >= 0 ? `<span>${LAND[p.land][1]}</span><span>Terrain: ${esc(LAND[p.land][0])}<span class="n">${p.qLand < 1 ? LAND_WHY[p.land] || '' : 'fine for a tent'}</span></span><b>${pct(p.qLand)}</b>` : ''}
-      ${p.slope >= 0 ? `<span>⛰</span><span>Slope: about ${Math.round(p.slope)}°<span class="n">${slopeWord(p.slope)}${p.slope >= 3 && p.faces !== undefined ? ` · faces ${dirName(p.faces)}` : ''}${p.elev !== undefined ? ` · ${p.elev} m above sea level` : ''}</span></span><b>${pct(p.qSlope)}</b>` : ''}
-      ${p.hollow ? `<span>🥶</span><span>Cold hollow<span class="n">${hollowText(p.hollow)} (not part of the score)</span></span><b></b>` : ''}
-      <span>🏠</span><span>Away from houses<span class="n">${lim.length ? esc(lim.join(' · ')) : 'no houses or hunting stands too close'}</span></span><b>${pct(p.qHouses * p.qHunt)}</b>
-      ${p.hidden >= 0 ? `<span>👁</span><span>Hidden<span class="n">${pct(p.hidden)} · ${hideWord(p.hidden)} from roads, paths and houses</span></span><b>${pct(p.qHide)}</b>
-      <span>🔇</span><span>Quiet night<span class="n">road noise about ${p.db} dB · ${noiseWord(p.db)}</span></span><b>${pct(p.qNoise)}</b>
-      <span>🚲</span><span>Access<span class="n">nearest path or track ${p.bike >= 2550 ? 'over 2.5 km' : fmtDist(p.bike)} away</span></span><b></b>`
-      : '<span></span><span class="muted" style="font-size:11.5px">Hidden, quiet night and access: zoom in to 11 or more (offline regions only).</span><b></b>'}
-      <span>✚</span><span>Useful places bonus<span class="n">${p.cats.length ? p.cats.sort((u, v) => v.c - u.c).map(c => `${CATS[c.k].icon} ${fmtDist(c.d)}`).join('  ') : `nothing within ${fmtDist(settings.cutA)}`}</span></span><b>${pct(p.bonus)}</b>
-    </div>`;
-  cardScore = s; updateCardSummary();
+  const col = s < 0.1 ? 'var(--bad-text)' : s < 0.3 ? 'var(--blaze)' : 'var(--good-text)';
+  const parts = [['terrain', p.qLand], ['protection', p.qProt], ['the slope', p.slope >= 0 ? p.qSlope : 1], ['houses', p.qHouses],
+    ['a hunting stand', p.qHunt], ['being visible', p.hidden >= 0 ? p.qHide : 1], ['traffic noise', p.hidden >= 0 ? p.qNoise : 1]].sort((u, v) => u[1] - v[1]);
+  // short on purpose: at most two lines next to the big number
+  const why = parts[0][1] < 0.7 ? `Held back by ${parts[0][0]}` + (parts[1][1] < 0.7 ? ` and ${parts[1][0]}` : '') : 'No big problems here';
+  $('#sc-top').innerHTML = `<div class="sc-score"><span class="big" style="color:${col}">${Math.round(s * 100)}<small>%</small></span>
+    <span><span class="word" style="color:${col}">${cap(scoreWord(s))}</span><span class="why">${why}</span></span></div>${bar(s, s < 0.1 ? 'var(--bad-bar)' : s < 0.3 ? 'var(--mid-bar)' : 'var(--good-bar)')}`;
+  setSum('score', parts[0][1] < 0.7 ? `limited by ${parts[0][0]} (${pct(parts[0][1])})` : 'no big problems');
+
+  const a = cardAnalysis, aOk = a && !a.missing, w = cardInOffline() ? '…' : 'only in the offline regions';
+  const houseD = aOk && a.house ? a.house.d : p.dB, houseTxt = aOk && a.house ? distDir(a.house.d, a.house.b) : fmtDist(houseD);
+  const rows = [];
+  rows.push(p.land >= 0 ? cardRow(landIc(p.land), `Terrain: ${esc(LAND[p.land][0])}`, pct(p.qLand), p.qLand < 1 ? LAND_WHY[p.land] || '' : 'fine for a tent') : ph('Terrain'));
+  rows.push(p.slope >= 0 ? cardRow(topoIc(p.slope, p.hollow),
+      `Topography: ${p.hollow ? 'cold hollow' : p.slope < 3 ? 'flat' : `${Math.round(p.slope)}° slope`}${!p.hollow && p.slope >= 6 && p.slope < 12 ? ' · find a flat patch' : ''}`, pct(p.qSlope),
+      `${p.hollow ? `${p.hollow.hollow} m deep · ${Math.round(p.slope)}°` : slopeWord(p.slope).split(',')[0]}${p.slope >= 3 && p.faces !== undefined ? ` · faces ${dirName(p.faces)}` : ''}${p.elev !== undefined ? ` · ${p.elev} m high` : ''}`)
+    : ph('Topography'));
+  rows.push(cardRow(ic('house', CATS.buildings.color), 'Away from houses', pct(p.qHouses),
+    houseD > 1e8 ? `none within ${fmtDist(RADAR_MAX)}` : `nearest ${houseTxt} · ${Math.round(p.dens)} houses/km²`));
+  rows.push(cardRow(ic('stand', CATS.hunting.color), 'Hunting stands', pct(p.qHunt),
+    !aOk ? '…' : a.hunting.length ? `nearest ${distDir(a.hunting[0].d, a.hunting[0].b)} · ${a.hunting.length} within 1 km` : 'none within 1 km'));
+  if (p.hidden >= 0) rows.push(
+    cardRow(ic('eye-slash', 'var(--good)'), 'Hidden from paths & houses', pct(p.qHide), `${pct(p.hidden)} · ${hideWord(p.hidden)}`),
+    cardRow(ic('ear', '#b39ddb'), 'Quiet night', pct(p.qNoise), `road noise ${p.db} dB · ${noiseWord(p.db)}`),
+    cardRow(ic('bicycle', '#e8743a'), 'Access', '', `path or track ${p.bike >= 2550 ? 'over 2.5 km' : fmtDist(p.bike)} away`));
+  else rows.push(...['Hidden from paths & houses', 'Quiet night', 'Access'].map(t => cardRow(off, t, '', w)));
+  // can grow: the terrain mix and the protected area's name and rule
+  const mix = terrainMix(cur);
+  rows.push(mix ? cardRow(ic('map-trifold', 'var(--muted)'), 'Terrain within 100 m', '',
+    mix.filter(m => m.f >= 0.05).slice(0, 3).map(m => `${LAND[m.c][0].toLowerCase()} ${Math.round(m.f * 100)} %`).join(', '))
+    : cardRow(off, 'Terrain within 100 m', '', '…<br>&nbsp;'));
+  const pa = protAt(cur.lat, cur.lon);
+  rows.push(p.land >= 0 ? cardRow(p.prot ? protIc(p.prot) : ic('shield-check', 'var(--good)'), pa ? esc(pa.t) : 'Protected area', pct(p.qProt),
+      !pa ? 'not protected' : (pa.n ? esc(pa.n) + ' · ' : '') + (pa.l === 2 ? 'no camping here; often you must stay on the paths' : 'camping often restricted: check the local rules'))
+    : ph('Protected area'));
+  // same order as above: terrain, topography, houses, hunting, hidden, quiet, access, terrain mix, protected
+  const RL = ['terrain', 'topo', 'density', 'density', 'hidden', 'quiet', null, 'terrain', 'terrain'];
+  el.innerHTML = `<div class="near">${rows.map((r, j) => lk(RL[j], r)).join('')}</div>`;
+  cardScore = s; updateCardSummary(); markLayerRows();
+  if (cardBonus !== p.bonus) { cardBonus = p.bonus; updateCardAround(); }
 }
 
 // What a click on the map does depends on the tool strip
@@ -1860,43 +1969,32 @@ renderSpotList(); drawSpotPins();
 // ════════════════════════════════════════════════════════════════════
 // UI
 // ════════════════════════════════════════════════════════════════════
-function makeSlider(parent, { label, min, max, step, value, fmt, onInput }) {
-  const row = document.createElement('div'); row.className = 'slider-row';
-  if (label) { const l = document.createElement('label'); l.textContent = label; row.appendChild(l); }
-  const wrap = document.createElement('div'); wrap.className = 'slider-wrap';
-  const tip = document.createElement('div'); tip.className = 'tip';
+// Slider row: label (+ quiet hint) left, value fixed at the right, slider below. Without a label (category rows)
+// only the value and the slider are made, for the caller's own grid.
+function makeSlider(parent, { label, hint, min, max, step, value, fmt, onInput }) {
+  const row = document.createElement('div'); row.className = label ? 'slider-row' : 'slider-bare';
+  const val = document.createElement('b'); val.className = 'sl-val';
+  if (label) {
+    const head = document.createElement('div'); head.className = 'sl-head';
+    head.innerHTML = `<label>${label}${hint ? `<small>${hint}</small>` : ''}</label>`; head.appendChild(val); row.appendChild(head);
+  }
   const inp = document.createElement('input');
   inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = value;
   if (label) inp.setAttribute('aria-label', label);
-  wrap.append(tip, inp); row.appendChild(wrap); parent.appendChild(row);
-  const pos = () => {
-    const p = (+inp.value - min) / (max - min);
-    tip.textContent = fmt(+inp.value);
-    const w = inp.clientWidth, half = tip.offsetWidth / 2;   // keep the label inside the panel at both ends
-    tip.style.left = Math.max(half, Math.min(w - half, 7 + p * (w - 14))) + 'px';
-  };
-  inp.addEventListener('input', () => { pos(); onInput(+inp.value); });
-  new ResizeObserver(pos).observe(inp);
-  pos();
+  row.appendChild(inp); if (!label) row.appendChild(val); parent.appendChild(row);
+  const show = () => { val.textContent = fmt(+inp.value); };
+  inp.addEventListener('input', () => { show(); onInput(+inp.value); });
+  show();
   return inp;
 }
-function makeToggle(parent, label, key, onChange) {
+function makeToggle(parent, label, key, onChange, hint) {
   const row = document.createElement('div'); row.className = 'toggle-row';
-  row.innerHTML = `<span>${label}</span><button class="tog" role="switch" aria-label="${label}"></button>`;
+  row.innerHTML = `<span>${label}${hint ? `<small>${hint}</small>` : ''}</span><button class="tog" role="switch" aria-label="${label}"></button>`;
   const b = row.querySelector('button');
   const sync = () => { b.classList.toggle('on', !!settings[key]); b.setAttribute('aria-checked', !!settings[key]); };
   b.onclick = () => { settings[key] = !settings[key]; sync(); saveSettings(); onChange && onChange(settings[key]); };
   sync(); parent.appendChild(row);
 }
-
-// Map data
-const syncOverpass = () => { $('#overpass-opts').style.display = settings.overpass ? '' : 'none'; };
-makeToggle($('#data-toggles'), 'Download other areas from OpenStreetMap', 'overpass', v => { syncOverpass(); if (v) autoLoad(); });
-makeToggle($('#overpass-opts'), 'Download automatically from zoom 13', 'auto', v => v && autoLoad());
-$('#overpass-opts').prepend($('#overpass-opts').lastElementChild);   // put that toggle first
-syncOverpass();
-makeSlider($('#data-sliders'), { label: 'Treat as built-up above', min: 200, max: 3000, step: 100, value: settings.denseKm2,
-  fmt: v => v + ' houses/km²', onInput: v => { settings.denseKm2 = v; saveSettings(); } });
 
 // Display — base map switcher
 (() => {
@@ -1912,41 +2010,42 @@ makeSlider($('#data-sliders'), { label: 'Treat as built-up above', min: 200, max
   }
   seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.key === settings.basemap));
 })();
-makeToggle($('#display-toggles'), 'Show point markers', 'markers', rebuildMarkers);
+makeToggle($('#display-toggles'), 'Place markers', 'markers', rebuildMarkers, 'water, huts, stands … on the map');
 makeToggle($('#display-toggles'), 'Grey base map', 'grey', v => document.body.classList.toggle('grey', v));
+makeToggle($('#display-toggles'), 'Colour-blind colours', 'cbSafe', () => { buildLuts(); buildFactorLuts(); updateLegends(); requestRender(); if (cur && !card.hidden) renderCard(); updateHover(); }, 'orange ↔ blue-green instead of red ↔ green');
 document.body.classList.toggle('grey', settings.grey);
 
-makeSlider($('#display-sliders'), { label: 'Overlay opacity', min: 0.2, max: 1, step: 0.05, value: settings.opacity,
+makeSlider($('#display-sliders'), { label: 'Overlay strength', hint: 'how strongly the colours show', min: 0.2, max: 1, step: 0.05, value: settings.opacity,
   fmt: v => Math.round(v * 100) + '%',
-  onInput: v => { settings.opacity = v; requestRender(); saveSettings(); } });
-makeSlider($('#display-sliders'), { label: 'Overlay detail', min: 0, max: 4, step: 1, value: settings.cellIdx,
+  onInput: v => { settings.opacity = v; requestRender(); saveSettings(); updateLegends(); } });
+makeSlider($('#display-sliders'), { label: 'Overlay detail', hint: 'finer is slower', min: 0, max: 4, step: 1, value: settings.cellIdx,
   fmt: v => CELL_LABELS[v],
   onInput: v => { settings.cellIdx = v; baseDirty = true; requestRender(); saveSettings(); } });
 
 function reachChanged() { if (R.valid && R.pad < MAX_PAD && neededReach() > R.pad * R.cellMc) baseDirty = true; }
 
 // Keep away from houses
-makeSlider($('#haz-sliders'), { label: 'Keep at least this far from a house', min: 50, max: 1000, step: 50, value: settings.cutH, fmt: fmtDist,
+makeSlider($('#haz-sliders'), { label: 'Distance from houses', hint: 'keep at least this far away', min: 50, max: 1000, step: 50, value: settings.cutH, fmt: fmtDist,
   onInput: v => { settings.cutH = v; reachChanged(); requestRender(); saveSettings(); } });
-makeSlider($('#haz-sliders'), { label: 'Too busy above', min: 5, max: 500, step: 5, value: settings.busyKm2, fmt: v => v + ' houses/km²',
+makeSlider($('#haz-sliders'), { label: 'Too busy above', hint: 'houses per km² around the spot', min: 5, max: 500, step: 5, value: settings.busyKm2, fmt: v => v + ' /km²',
   onInput: v => { settings.busyKm2 = v; requestRender(); saveSettings(); } });
-makeSlider($('#haz-sliders'), { label: 'Avoid hunting stands (within 150 m)', min: 0, max: 1, step: 0.1, value: settings.weights.hunting,
+makeSlider($('#haz-sliders'), { label: 'Hunting stands', hint: 'avoid being within 150 m', min: 0, max: 1, step: 0.1, value: settings.weights.hunting,
   fmt: v => v === 0 ? 'off' : Math.round(v * 100) + '%',
   onInput: v => { const was = settings.weights.hunting; settings.weights.hunting = v; requestRender(); saveSettings(); if ((was === 0) !== (v === 0)) rebuildMarkers(); } });
-makeSlider($('#haz-sliders'), { label: 'Density smoothing', min: 100, max: 2000, step: 50, value: settings.densR, fmt: fmtDist,
+makeSlider($('#haz-sliders'), { label: 'Density smoothing', hint: 'area used to count houses', min: 100, max: 2000, step: 50, value: settings.densR, fmt: fmtDist,
   onInput: v => { settings.densR = v; reachChanged(); densDirty = true; requestRender(); saveSettings(); } });
 
 // Hidden & quiet
 const pctOff = v => v === 0 ? 'off' : Math.round(v * 100) + '%';
-makeSlider($('#hide-sliders'), { label: 'Stay hidden', min: 0, max: 1, step: 0.1, value: settings.hideW, fmt: pctOff,
+makeSlider($('#hide-sliders'), { label: 'Stay hidden', hint: 'from paths, roads and houses', min: 0, max: 1, step: 0.1, value: settings.hideW, fmt: pctOff,
   onInput: v => { settings.hideW = v; requestRender(); saveSettings(); } });
-makeSlider($('#hide-sliders'), { label: 'Quiet night (no traffic noise)', min: 0, max: 1, step: 0.1, value: settings.quietW, fmt: pctOff,
+makeSlider($('#hide-sliders'), { label: 'Quiet night', hint: 'no road or railway noise', min: 0, max: 1, step: 0.1, value: settings.quietW, fmt: pctOff,
   onInput: v => { settings.quietW = v; requestRender(); saveSettings(); } });
-makeSlider($('#hide-sliders'), { label: 'Avoid slopes (flat up to 5°, steep from 15°)', min: 0, max: 1, step: 0.1, value: settings.slopeW, fmt: pctOff,
+makeSlider($('#hide-sliders'), { label: 'Avoid slopes', hint: 'flat up to 5°, steep from 15°', min: 0, max: 1, step: 0.1, value: settings.slopeW, fmt: pctOff,
   onInput: v => { settings.slopeW = v; requestRender(); saveSettings(); } });
 
 // Good to have
-makeSlider($('#att-cut'), { label: 'Worth walking up to', min: 100, max: 10000, step: 100, value: settings.cutA, fmt: fmtDist,
+makeSlider($('#att-cut'), { label: 'Worth walking', hint: 'how far a place still counts', min: 100, max: 10000, step: 100, value: settings.cutA, fmt: fmtDist,
   onInput: v => { settings.cutA = v; reachChanged(); updateLegends(); requestRender(); saveSettings(); } });
 
 function buildCatRows() {
@@ -1955,10 +2054,9 @@ function buildCatRows() {
     for (const k of keys) {
       const c = CATS[k], row = document.createElement('div');
       row.className = 'cat-row';
-      row.innerHTML = `<span class="dot" style="background:${c.color}"></span><span class="name">${c.label}</span><span class="cnt" id="cnt-${k}"></span>`;
+      row.innerHTML = `<span class="dot">${ic(c.icon, c.color)}</span><span class="name">${c.label}<small class="cnt" id="cnt-${k}"></small></span>`;
       box.appendChild(row);
-      const cell = document.createElement('div'); row.appendChild(cell);
-      makeSlider(cell, { min: 0, max: 1, step: 0.1, value: settings.weights[k], fmt: v => v === 0 ? 'off' : Math.round(v * 100) + '%',
+      makeSlider(row, { min: 0, max: 1, step: 0.1, value: settings.weights[k], fmt: v => v === 0 ? 'off' : Math.round(v * 100) + '%',
         onInput: v => {
           const wasOff = settings.weights[k] === 0;
           settings.weights[k] = v; requestRender(); saveSettings();
@@ -1970,40 +2068,112 @@ function buildCatRows() {
 buildCatRows();
 
 // Legends
-function drawLegend(sel, table) { const c = $(sel), ctx = c.getContext('2d'), im = ctx.createImageData(256, 1); im.data.set(table); ctx.putImageData(im, 0, 0); }
+// the colour bar as it looks on the (grey) map: each colour blended over a light map grey at the overlay opacity
+function drawLegend(sel, table, op = settings.opacity) {
+  const c = $(sel), ctx = c.getContext('2d'), im = ctx.createImageData(256, 1), bg = [226, 227, 223];
+  for (let i = 0; i < 256; i++) {
+    const a = table[i * 4 + 3] / 255 * Math.min(1, op);
+    for (let k = 0; k < 3; k++) im.data[i * 4 + k] = table[i * 4 + k] * a + bg[k] * (1 - a);
+    im.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(im, 0, 0);
+}
 function setLabels(sel, items) { $(sel).innerHTML = items.map(([t, s]) => `<span style="left:${t * 100}%">${s}</span>`).join(''); }
-const LAYER_NOTES = {
-  score: 'Green = hidden, quiet, dry, allowed and close to useful places. Adjust what counts under Settings.',
-  density: 'Houses per km², smoothed. Hunting stands are shown as markers.',
-  nearby: 'Distance to the nearest useful place, weighted under Settings.',
+// Map layers: "Best spots" (everything combined) and the factors behind it, so you can see why a spot scores
+const LAYERS = {
+  score:   { name: 'Best spots',      icon: 'star',           col: 'var(--blaze)', title: 'Best spots',       desc: 'Everything combined: where to sleep',
+             note: 'Green = hidden, quiet, dry, allowed and close to useful places. Adjust what counts under Settings.' },
+  hidden:  { name: 'Hidden',          icon: 'eye-slash',      col: 'var(--good)',  title: 'Hidden',           desc: 'Can people on paths, roads or in houses see you?',
+             note: 'Forest, scrub, hedges and hills hide you; open fields don\'t. The biggest part of the score.', zoom: true },
+  quiet:   { name: 'Quiet night',     icon: 'ear',            col: '#b39ddb',      title: 'Road noise', desc: 'Traffic noise at night, blocked by forest and hills',
+             note: 'Full penalty from 55 dB. Forest, buildings and hills dampen the noise.', zoom: true },
+  topo:    { name: 'Topography',      icon: 'mountains',      col: 'var(--mid)',   title: 'Topography',       desc: 'Slopes, and cold hollows in blue',
+             note: 'Slope from a 30 m elevation model, so small flat patches may not show. Blue = cold hollow: cold air and dew on clear nights.', zoom: true },
+  terrain: { name: 'Terrain & rules', icon: 'tree-evergreen', col: 'var(--good)',  title: 'Terrain & rules',  desc: 'Ground for a tent, and protected areas',
+             note: 'Colour = how good the ground is for a tent. Hatched = protected: red no camping, orange check the rules.', zoom: true },
+  density: { name: 'Houses',          icon: 'house',          col: '#d64545',      title: 'Houses per km²',   desc: 'How built-up the area is',
+             note: 'Houses per km², smoothed. Hunting stands are shown as markers.' },
+  nearby:  { name: 'Useful places',   icon: 'drop',           col: '#22b8d6',      title: 'Useful places', desc: 'Water, huts, fire pits and more nearby',
+             note: 'Distance to the nearest useful place, weighted under Settings.' },
 };
-const LAYER_TITLES = { score: 'Best spots', density: 'Houses per km²', nearby: 'Useful places nearby' };
+const FACTOR_LAYERS = ['hidden', 'quiet', 'topo', 'terrain'];
+function buildLayerMenu() {
+  const item = k => `<button class="lm-item${settings.layer === k ? ' on' : ''}" data-l="${k}">${ic(LAYERS[k].icon, LAYERS[k].col)}<b>${LAYERS[k].name}</b><small>${LAYERS[k].desc}</small></button>`;
+  $('#layer-menu').innerHTML = `<div class="lm-h">Plan</div>${item('score')}<div class="lm-h">Why a spot scores</div>` +
+    ['hidden', 'quiet', 'topo', 'terrain', 'density', 'nearby'].map(item).join('');
+  $('#layer-menu').querySelectorAll('.lm-item').forEach(b => b.onclick = () => { setLayer(b.dataset.l); showLayerMenu(false); });
+}
+function showLayerMenu(on) { $('#layer-menu').hidden = !on; $('#layer-btn').setAttribute('aria-expanded', on); if (on) buildLayerMenu(); }
+$('#layer-btn').onclick = e => { e.stopPropagation(); showLayerMenu($('#layer-menu').hidden); };
+document.addEventListener('click', e => { if (!$('#layer-menu').hidden && !e.target.closest('.layer-pick')) showLayerMenu(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#layer-menu').hidden) showLayerMenu(false); });
+$('#leg-back').onclick = () => setLayer('score');
+// rows in the card and in "Here" that belong to a layer: click shows it, the current one is highlighted
+document.addEventListener('click', e => {
+  const t = e.target.closest('#spot-card [data-layer], #info [data-layer]');
+  if (t && !e.target.closest('input, textarea, a')) setLayer(t.dataset.layer);
+});
+function markLayerRows() {
+  document.querySelectorAll('#spot-card [data-layer], #info [data-layer]').forEach(e => e.classList.toggle('lk-on', e.dataset.layer === settings.layer));
+}
+// tag a card row (cardRow output) with its layer
+const lk = (layer, html) => !layer ? html : html.replace(/<span>/g, `<span data-layer="${layer}" title="Show on the map">`).replace('<b>', `<b data-layer="${layer}">`);
 function updateLegends() {
   const l = settings.layer;
-  if (l === 'score') {
-    drawLegend('#leg', LUT_S);
-    setLabels('#leg-labels', [[0, 'avoid'], [0.2, 'ok'], [1, 'great spot']]);
+  if (l === 'hidden') {
+    drawLegend('#leg', LUT_H, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'in plain view'], [0.5, 'partly'], [1, 'well hidden']]);
+  } else if (l === 'quiet') {
+    drawLegend('#leg', LUT_Q, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, '30 dB'], [0.33, '40'], [0.67, '50'], [1, '60+ dB']]);
+  } else if (l === 'topo') {
+    drawLegend('#leg', LUT_T, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'flat'], [0.25, '5°'], [0.5, '10°'], [1, '20°+']]);
+  } else if (l === 'terrain') {
+    const T = new Uint8ClampedArray(1024);        // four blocks: good / fair / poor / no
+    for (let i = 0; i < 256; i++) T.set(TERR[Math.min(3, i >> 6)], i * 4);
+    drawLegend('#leg', T, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'good'], [0.375, 'fair'], [0.625, 'poor'], [1, 'no']]);
+  } else if (l === 'score') {
+    drawLegend('#leg', LUT_S, settings.opacity + 0.15);
+    setLabels('#leg-labels', [[0, 'avoid'], [0.2, 'ok'], [0.45, 'good'], [1, 'great']]);   // same words as scoreWord()
   } else if (l === 'density') {
     drawLegend('#leg', LUT_D);
     const L1 = Math.log1p(DMAX), at = v => Math.log1p(v) / L1;
-    setLabels('#leg-labels', [[0, '0'], [at(10), '10'], [at(100), '100'], [1, `${DMAX}+ houses/km²`]]);
+    setLabels('#leg-labels', [[0, '0'], [at(10), '10'], [at(100), '100'], [1, `${DMAX}+`]]);   // unit is in the title
   } else {
-    drawLegend('#leg', LUT_A);
+    drawLegend('#leg', LUT_A, settings.opacity + 0.15);
     setLabels('#leg-labels', [[0, 'right here'], [0.5, fmtDist(settings.cutA / 2)], [1, fmtDist(settings.cutA)]]);
   }
-  $('#layer-note').textContent = LAYER_NOTES[l];
-  $('#leg-title').textContent = LAYER_TITLES[l];
+  const L_ = LAYERS[l];
+  $('#layer-note').textContent = settings.cbSafe ? L_.note.replace(/^Green/, 'Blue-green') : L_.note;
+  $('#leg-title').textContent = L_.title;
+  if (L_.zoom && map.getZoom() < LAND_MIN_Z) setLabels('#leg-labels', [[0, 'zoom in to see this layer']]);
+  $('#leg-back').hidden = l === 'score';
+  $('#layer-ic').innerHTML = ic(L_.icon, L_.col); $('#layer-name').textContent = L_.name;
+}
+map.on('zoomend', () => { if (LAYERS[settings.layer].zoom) updateLegends(); });
+// legend explanation folded away by default; remembered in this browser
+{ const box = $('#legend-box'), btn = $('#leg-toggle');
+  const set = o => { box.classList.toggle('open', o); btn.setAttribute('aria-expanded', o); };
+  try { set(localStorage.getItem('wn:legOpen') === '1'); } catch { set(false); }
+  btn.onclick = () => { const o = !box.classList.contains('open'); set(o); try { localStorage.setItem('wn:legOpen', o ? '1' : '0'); } catch {} }; }
+// marker on the legend bar at the value under the cursor (t = 0..1 along the bar, or null to hide)
+function setLegendMark(t) {
+  const m = $('#leg-mark');
+  if (t == null || !isFinite(t)) { m.style.display = 'none'; return; }
+  m.style.display = 'block'; m.style.left = Math.max(0, Math.min(1, t)) * 100 + '%';
 }
 function setLayer(l) {
   settings.layer = l; saveSettings();
-  $('#layer-select').value = l;
-  updateLegends(); requestRender();
+  updateLegends(); requestRender(); markLayerRows(); setLegendMark(null);
+  if (LAYERS[l].zoom && map.getZoom() < LAND_MIN_Z) showHint(`${LAYERS[l].name}: zoom in a bit to see this layer`);
 }
-$('#layer-select').onchange = e => setLayer(e.target.value);
 
 // Settings sheet (opens over the side panel; full screen on phones)
 function showSettings(open) {
   $('#settings').hidden = !open;
+  document.body.classList.toggle('set-open', open);   // desktop: hide the panel cards behind the settings cards
   $('#btn-settings').setAttribute('aria-expanded', open);
   if (open) $('#settings-close').focus();
 }
@@ -2025,6 +2195,7 @@ $('#sheet-handle').addEventListener('touchend', e => {
 
 // Tool strip: decides what a click on the map does
 let tool = 'inspect';
+updateHover();                                   // empty rows + hint, same layout as with data
 const TOOL_HINTS = { inspect: 'Click the map to look at a spot', near: 'Click the map to find the best spots around that point', off: 'Map clicks are off' };
 let hintT;
 // short message next to the tool strip (also visible on phones, where the status text is hidden); ms = 0 keeps it
@@ -2085,7 +2256,7 @@ function setNearAt(lat, lon, manual, jump) {
   if (manual) {
     L.circle([lat, lon], { radius: NEAR_R, color: '#147337', weight: 1.5, dashArray: '6 6', fill: false, interactive: false }).addTo(nearCentreLayer);
     L.marker([lat, lon], { draggable: true, keyboard: false, title: 'Search centre: drag to move',
-      icon: L.divIcon({ className: '', html: '<div class="near-centre">✥</div>', iconSize: [30, 30], iconAnchor: [15, 15] }) })
+      icon: L.divIcon({ className: '', html: `<div class="near-centre">${ic('arrows-out-cardinal')}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) })
       .on('dragend', e => { const ll = e.target.getLatLng(); setNearAt(ll.lat, ll.lng, true, true); })
       .addTo(nearCentreLayer);
   }
@@ -2155,9 +2326,9 @@ function findNearby() {
   list.innerHTML = picks.map((q, j) => {
     const [d, b] = frame(q.lat, q.lon), lc = landAt(q.lat, q.lon);
     return `<div class="spot-item" data-j="${j}" tabindex="0"><span class="nrank">${j + 1}</span>
-      <span class="nm">${Math.round(q.s * 100)} % · ${scoreWord(q.s)}${lc >= 0 ? ` · ${LAND[lc][1]} ${esc(LAND[lc][0])}` : ''}</span>
-      <span class="dd">${fmtDist(d)} ${dirName(b)}</span></div>`;
-  }).join('') + `<div class="note">Within ${fmtDist(NEAR_R)} of ${nearManual ? 'the search centre (drag ✥ to move it)' : me ? 'you' : 'where you were'}. Tap a number to look closer.</div>`;
+      <span class="nm">${Math.round(q.s * 100)} % · ${scoreWord(q.s)}${lc >= 0 ? ` · ${esc(LAND[lc][0])}` : ''}</span>
+      <span class="dd">${distDir(d, b)}</span></div>`;
+  }).join('') + `<div class="note">Within ${fmtDist(NEAR_R)} of ${nearManual ? 'the search centre (drag the green marker to move it)' : me ? 'you' : 'where you were'}. Tap a number to look closer.</div>`;
   const go = q => { openSpot({ lat: q.lat, lon: q.lon }); if (!map.getBounds().contains([q.lat, q.lon])) map.panTo([q.lat, q.lon]); };
   list.querySelectorAll('.spot-item').forEach(el => {
     const q = picks[+el.dataset.j];
@@ -2232,7 +2403,7 @@ function renderRoute() {
     <div class="rt-opts"><label>Per day <input type="number" id="rt-day" min="0" max="400" step="5" value="${settings.routeDay}"> km</label>
       <label>up to <select id="rt-off">${offs.map(o => `<option value="${o}"${o === settings.routeOff ? ' selected' : ''}>${fmtDist(o)}</option>`).join('')}</select> off route</label></div>
     <div class="btns"><button class="btn primary" id="rt-find">Find spots</button><button class="btn" id="rt-zoom">Show</button>
-      <button class="btn icon" id="rt-del" title="Remove the route" aria-label="Remove the route">✕</button></div>
+      <button class="btn icon" id="rt-del" title="Remove the route" aria-label="Remove the route">${ic('x')}</button></div>
     <div id="route-res"></div>`;
   $('#rt-day').onchange = e => { settings.routeDay = Math.max(0, +e.target.value || 0); saveSettings(); if (routeRes) showRouteRes(); };
   $('#rt-off').onchange = e => { settings.routeOff = +e.target.value; saveSettings(); };
@@ -2252,7 +2423,7 @@ $('#route-file').onchange = async e => {
 // wait (polling) until the offline tiles of a list are loaded, including terrain/hide/slope maps
 async function tilesReady(list, ms = 20000) {
   const want = list.filter(t => offline.has(tkey(t.x, t.y))), t0 = Date.now();
-  ensureTiles(want, false);
+  ensureTiles(want);
   while (Date.now() - t0 < ms) {
     const loaded = want.map(t => tiles.get(tkey(t.x, t.y))).filter(Boolean);
     ensureLand(want);
@@ -2347,29 +2518,6 @@ function showRouteRes() {
 }
 drawRoute(); renderRoute();
 
-// Buttons
-$('#btn-load').onclick = () => {
-  const list = tilesInBounds(map.getBounds(), MANUAL_MAX_TILES * 4);
-  const missing = list ? list.filter(t => !tiles.has(tkey(t.x, t.y)) && !offline.has(tkey(t.x, t.y))) : null;
-  if (!missing || missing.length > MANUAL_MAX_TILES) {
-    setStatus(`This view is too large to load at once — zoom in a little (max ${MANUAL_MAX_TILES} areas)`, 'error'); return;
-  }
-  if (!missing.length) { setStatus('Everything in view is already loaded', 'ok'); return; }
-  if (missing.length > 30 && !confirm(`Load ${missing.length} areas from OpenStreetMap? Dense regions can take several minutes.`)) return;
-  missing.forEach(t => failed.delete(tkey(t.x, t.y)));
-  ensureTiles(missing, true);
-};
-$('#btn-clear').onclick = async () => {
-  if (!confirm('Delete all cached map data from this browser?')) return;
-  queue.length = 0; queued.clear();
-  pendingRects.forEach(r => r.remove()); pendingRects.clear();
-  await db.clear().catch(() => {});
-  tiles.clear(); idbMiss.clear(); failed.clear();
-  CAT_KEYS.forEach(k => catCount[k] = 0); denseCells = 0;
-  baseDirty = true; requestRender(); rebuildMarkers(); updateStats();
-  setStatus('Cached data deleted');
-};
-
 // Search
 $('#search').onsubmit = async e => {
   e.preventDefault();
@@ -2433,16 +2581,16 @@ $('#btn-settings').addEventListener('click', () => { if (!$('#settings').hidden)
 // ════════════════════════════════════════════════════════════════════
 // MAP EVENTS + START
 // ════════════════════════════════════════════════════════════════════
-let offlineChecked = false;                   // don't touch Overpass/IndexedDB before we know the offline tiles
+let offlineChecked = false;                   // wait for data/index.json before loading tiles
 function autoLoad() {
   if (!offlineChecked) return;
   const list = tilesInBounds(map.getBounds().pad(0.15), 4000);
   if (!list) return;
-  ensureTiles(list, settings.overpass && settings.auto && map.getZoom() >= AUTO_MIN_Z);
+  ensureTiles(list);
   if (map.getZoom() >= LAND_MIN_Z) ensureLand(list);
 }
 map.on('moveend', () => {
-  requestRender(); rebuildMarkers(); autoLoad(); reorderQueue();
+  requestRender(); rebuildMarkers(); autoLoad();
   const c = map.getCenter();
   localStorage.setItem('wn:view', JSON.stringify({ lat: c.lat, lng: c.lng, z: map.getZoom() }));
 });
