@@ -1,6 +1,10 @@
 # Geofabrik downloads (large)
 raw/
 
+# Claude Code: personal settings and the session handoff note
+.claude/settings.local.json
+HANDOFF.md
+
 # Python cache
 __pycache__/
 *.py[cod]

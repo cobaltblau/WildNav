@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m unittest *)",
+      "Bash(python tests/smoke_app.py *)",
+      "Bash(python -m py_compile *)",
+      "Bash(node --check *)",
+      "Bash(python -m http.server *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "PowerShell(python -m unittest *)",
+      "PowerShell(python tests/smoke_app.py *)",
+      "PowerShell(python -m py_compile *)",
+      "PowerShell(node --check *)",
+      "PowerShell(python -m http.server *)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log *)"
+    ],
+    "deny": [
+      "Read(/raw/**)",
+      "Read(/data/12/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/check.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
